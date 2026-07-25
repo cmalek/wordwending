@@ -83,6 +83,8 @@ Document metadata should include:
 - source type such as ``pdf`` or ``image-set``
 - page count
 - optional source checksum or source identity digest
+- bibliographic provenance
+- acquisition provenance
 
 Run Metadata
 ------------

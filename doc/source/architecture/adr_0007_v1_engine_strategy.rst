@@ -12,6 +12,10 @@ The package needs a practical v1 engine strategy. More engines can be added
 later, but v1 needs one strong text-first path and one historical OCR ecosystem
 with structured outputs.
 
+The current leading candidate is ``olmocr`` because it has already performed
+well on difficult material, but the architecture must remain open to other
+models when they perform as well or better on the real corpus.
+
 Decision
 ========
 
@@ -20,6 +24,8 @@ V1 starts with:
 - ``olmocr`` as primary difficult-text recognizer candidate
 - ``kraken`` as the first structured historical OCR ecosystem for line, layout,
   coordinate-rich, and fallback text evidence
+
+This is a starting strategy, not a lock-in.
 
 Other framework judgments for now:
 
@@ -36,3 +42,5 @@ Consequences
 - ``bochord`` still leaves room for future runners such as Docling-based or
   custom style passes.
 - Evaluation schema must be engine-agnostic so later replacements remain cheap.
+- Benchmarking against alternate models remains a normal expected workflow, not
+  an architectural exception.

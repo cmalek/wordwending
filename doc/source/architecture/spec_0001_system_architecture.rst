@@ -25,14 +25,15 @@ classes:
 Recommended execution flow:
 
 1. Load run config and source document
-2. Prepare deterministic page images from source PDF or source image set
-3. For each page, execute configured pass runners
-4. Persist raw witness artifacts
-5. Align evidence into shared coordinates
-6. Build derived page graph
-7. Evaluate against gold data or watchlists when configured
-8. Apply overlays when present
-9. Write page bundle and document manifests
+2. Record bibliographic and acquisition provenance for the source document
+3. Prepare deterministic page images from source PDF or source image set
+4. For each page, execute configured pass runners
+5. Persist raw witness artifacts
+6. Align evidence into shared coordinates
+7. Build derived page graph
+8. Evaluate against gold data or watchlists when configured
+9. Apply overlays when present
+10. Write page bundle and document manifests
 
 Suggested Python package layout:
 
@@ -72,6 +73,10 @@ Service Boundaries
 
 ``BundleWriter``
     Writes deterministic bundle files and manifests.
+
+``SourceProvenanceService``
+    Captures bibliographic and acquisition provenance for source documents and
+    attaches it to bundle outputs.
 
 Non-Goals for V1
 ================

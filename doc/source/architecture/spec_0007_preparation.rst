@@ -40,8 +40,20 @@ V1 accepts:
 - page image set
 - single page image
 
+Page image sets are first-class inputs, not fallback edge cases.
+
+Important examples:
+
+- archive.org `.jp2` page folders
+- operator-generated scan folders
+- other ordered page-image directories representing one logical document
+
 For scanned PDFs, the system must render one prepared page image per page before
 any OCR runner executes.
+
+For source image sets, the system must preserve source ordering, source
+filenames, and source-image provenance before producing any prepared-page
+variants.
 
 Preparation Recipe
 ==================

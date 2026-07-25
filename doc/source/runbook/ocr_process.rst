@@ -23,6 +23,11 @@ Inputs are expected to be image-based source materials:
 - page image directories
 - single page images for focused experiments
 
+Common real inputs include:
+
+- archive.org page-image folders such as `.jp2` sets
+- locally scanned page folders
+
 This stage records source identity and run configuration, but does not yet make
 claims about text.
 
@@ -31,6 +36,7 @@ Operator notes:
 - Prefer immutable source inputs.
 - Do not hand-edit source PDFs or source images in place.
 - Treat source naming as provenance, not decoration.
+- Record bibliographic context early, not after OCR work is already underway.
 
 Stage 2: PDF-to-Image Preparation
 =================================

@@ -16,6 +16,10 @@ Top-Level Layout
      manifest.json
      source/
        source.pdf
+       pages/
+         0001.jp2
+         0002.jp2
+       provenance.json
      pages/
        page-0001/
          manifest.json
@@ -60,6 +64,8 @@ Required Manifests
 Document manifest should record:
 
 - source document identity
+- bibliographic provenance
+- acquisition provenance
 - run timestamp
 - run configuration digest
 - pass runner set

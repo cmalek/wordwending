@@ -17,6 +17,7 @@ Primary goals:
 - build a normalized, provenance-aware page graph
 - evaluate OCR quality against gold slices and targeted watchlists
 - support explicit human review and correction
+- preserve bibliographic context and source provenance alongside OCR artifacts
 - export structured JSON, retrieval-oriented JSON, and evidence-preserving
   Markdown views
 
@@ -28,6 +29,7 @@ difficult historical source documents.
 In scope:
 
 - scanned PDF and source-image preparation
+- source-page folders such as `.jp2` or other page-image sets
 - source-quality assessment and operator warnings
 - page classification for preparation and evaluation cohorts
 - OCR pass orchestration
@@ -49,6 +51,16 @@ Out of scope:
 
 - source document: immutable scanned PDF, page-image set, or single page image
   used as input to one `bochord` run
+- source image set: folder of individual page images representing one logical
+  source document, such as `.jp2` page files from archive.org or operator-made
+  scan folders
+- bibliographic provenance: citation-oriented source metadata describing what
+  document a run came from, where it was obtained, which edition or scan it
+  represents, and any other identifying source context needed for later
+  scholarly or software reuse
+- acquisition provenance: operational source metadata describing how input was
+  obtained, such as local scan folder, archive.org derivative set, manual
+  download, or other concrete acquisition path
 - source page: one logical page from a source document before any preparation
   variants or OCR-target subdivision
 - document bundle: top-level run artifact containing source metadata, prepared
@@ -132,7 +144,8 @@ Out of scope:
 - alternate evidence: preserved non-primary candidate output retained in
   provenance for audit and comparison
 - provenance: traceable record of where a derived object came from, including
-  contributing raw witnesses, pass runners, preparation variant, and source page
+  contributing raw witnesses, pass runners, preparation variant, source page,
+  and source-document provenance
 - machine confidence: confidence emitted by an originating model or heuristic
 - merge confidence: confidence that the accepted graph value was resolved
   correctly from competing evidence

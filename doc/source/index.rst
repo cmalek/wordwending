@@ -10,6 +10,7 @@ bochord
    overview/installation
    overview/quickstart
    overview/domain_language
+   runbook/huggingface_setup
 
 .. toctree::
    :maxdepth: 2
@@ -70,7 +71,8 @@ To get started with bochord:
 3. **Usage Guide**: Learn about commands and options in :doc:`/overview/usage`
 4. **Configuration**: Learn about configuration options in :doc:`/overview/configuration`
 5. **Domain Language**: Use the shared vocabulary in :doc:`/overview/domain_language`
-6. **FAQ**: Check the :doc:`/overview/faq` section for common questions and troubleshooting
+6. **Hugging Face Setup**: Prepare model access in :doc:`/runbook/huggingface_setup`
+7. **FAQ**: Check the :doc:`/overview/faq` section for common questions and troubleshooting
 
 For developers, see the :doc:`/runbook/contributing` and :doc:`/runbook/coding_standards` guides.
 

@@ -30,10 +30,12 @@ Read in this order:
    spec_0001_system_architecture
    spec_0007_preparation
    spec_0010_page_classification
+   spec_0012_runner_execution_and_batching
    spec_0008_text_normalization
    spec_0009_merge_policy
    spec_0002_bundle_layout
    spec_0003_evaluation_schema
    spec_0005_human_markup
+   spec_0011_structured_output_strategy
    spec_0006_exports_and_retrieval
    spec_0004_v1_implementation_plan
