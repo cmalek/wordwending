@@ -9,6 +9,25 @@ Before planning or implementation, show concise evidence of:
 3. At least one `codegraph` call (knowledge graph)
 4. `context7` and/or `package-registry-mcp` when external library/package behavior, versioning, or package details matter
 
+## Python Environment (Required)
+
+Before any Python work in `bochord`, activate the repo-local virtual
+environment:
+
+```bash
+source .venv/bin/activate
+```
+
+This applies to:
+
+- running Python commands
+- running tests
+- running linters or type checks
+- running Sphinx docs builds
+- validating imports or package availability
+
+Do not assume the global interpreter matches the project environment.
+
 During Planning:
 
 - Use `code-index` and `codegraph` to find files and function calls
