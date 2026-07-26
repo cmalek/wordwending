@@ -887,6 +887,8 @@ class LineRecord(SchemaModel):
     provenance: ObjectProvenance
     #: Review summary for this line.
     review: ReviewSummary = Field(default_factory=ReviewSummary)
+    #: Optional joined successor line when this line continues on the next line.
+    joins_to_line_id: str | None = None
 
 
 class NoteRecord(SchemaModel):
@@ -1009,6 +1011,12 @@ class BundlePage(SchemaModel):
                 raise ValueError(msg)
             if not set(line.span_ids).issubset(span_id_set):
                 msg = f"line {line.line_id} references an unknown span"
+                raise ValueError(msg)
+            if (
+                line.joins_to_line_id is not None
+                and line.joins_to_line_id not in line_id_set
+            ):
+                msg = f"line {line.line_id} references an unknown joined line"
                 raise ValueError(msg)
         for span in self.spans:
             if span.line_id not in line_id_set:
@@ -1696,6 +1704,40 @@ class GoldNoteLink(SchemaModel):
     note_target_id: str
 
 
+class GoldLineJoin(SchemaModel):
+    """Gold line-join annotation for hyphenation and continuation decisions."""
+
+    #: Stable annotation identifier.
+    annotation_id: str
+    #: Left line in reading order for the join decision.
+    left_line_id: str
+    #: Right line in reading order for the join decision.
+    right_line_id: str
+    #: Whether the annotator judged the lines to be joined.
+    joined: bool
+    #: Exclude this join from metric denominators.
+    do_not_score: bool = False
+    #: Reason for exclusion when ``do_not_score`` is true.
+    exclusion_reason: str | None = None
+
+    @model_validator(mode="after")
+    def validate_exclusion(self) -> GoldLineJoin:
+        """
+        Require an explanation for every scoring exclusion.
+
+        Returns:
+            The validated line-join annotation.
+
+        Raises:
+            ValueError: If ``do_not_score`` is true without an exclusion reason.
+
+        """
+        if self.do_not_score and self.exclusion_reason is None:
+            msg = "do_not_score annotations require an exclusion reason"
+            raise ValueError(msg)
+        return self
+
+
 class GoldCoverage(SchemaModel):
     """Explicit evaluation denominator and exclusion scope for a gold slice."""
 
@@ -1766,6 +1808,8 @@ class GoldPageAnnotation(SchemaModel):
     note_links: list[GoldNoteLink] = Field(default_factory=list)
     #: Gold region and structure annotations for the page.
     regions: list[GoldRegionAnnotation] = Field(default_factory=list)
+    #: Gold line-join annotations for the page.
+    line_joins: list[GoldLineJoin] = Field(default_factory=list)
 
 
 class GoldDocument(SchemaModel):

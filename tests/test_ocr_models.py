@@ -17,6 +17,8 @@ from bochord.models import (
     BibliographicProvenance,
     BoundingBox,
     BundlePage,
+    GoldLineJoin,
+    MetricProfile,
     ChunkType,
     CoordinateSpace,
     DocumentBundle,
@@ -75,6 +77,69 @@ def _provenance() -> ObjectProvenance:
         runner_ids=["olmocr"],
         machine_confidence=0.91,
         merge_confidence=0.84,
+    )
+
+
+def valid_bundle_page() -> BundlePage:
+    """Return a minimal valid page graph for join-reference tests."""
+    provenance = _provenance()
+    return BundlePage(
+        page_id="page-1",
+        page_number=1,
+        prepared_page=PreparedPage(
+            preparation_mode=PreparationMode.FULL_PAGE,
+            page_class=PageClass.ORDINARY_PROSE,
+            image_path="page.png",
+            source_artifact_id="source-1",
+            image_checksum="sha256:image",
+            preparation_recipe_id="prep-v1",
+            coordinate_space=CoordinateSpace(
+                space_id="prepared-page-1",
+                width_px=100,
+                height_px=100,
+            ),
+        ),
+        regions=[
+            RegionRecord(
+                region_id="region-1",
+                region_kind=RegionKind.BODY,
+                reading_order_index=1,
+                line_ids=["line-1", "line-2"],
+                provenance=provenance,
+            )
+        ],
+        lines=[
+            LineRecord(
+                line_id="line-1",
+                region_id="region-1",
+                line_order=1,
+                span_ids=["span-1"],
+                provenance=provenance,
+            ),
+            LineRecord(
+                line_id="line-2",
+                region_id="region-1",
+                line_order=2,
+                span_ids=["span-2"],
+                provenance=provenance,
+            ),
+        ],
+        spans=[
+            SpanRecord(
+                span_id="span-1",
+                line_id="line-1",
+                text_diplomatic="a",
+                text_normalized="a",
+                provenance=provenance,
+            ),
+            SpanRecord(
+                span_id="span-2",
+                line_id="line-2",
+                text_diplomatic="b",
+                text_normalized="b",
+                provenance=provenance,
+            ),
+        ],
     )
 
 
@@ -512,3 +577,37 @@ class TestOcrModels:
                 config_digest="sha256:runner-config",
                 prompt_digest="sha256:prompt",
             )
+
+
+def test_metric_profile_rejects_invalid_iou_threshold() -> None:
+    with pytest.raises(ValidationError):
+        MetricProfile(
+            profile_id="diplomatic-v1",
+            version="1.0.0",
+            whitespace_significant=True,
+            punctuation_significant=True,
+            case_sensitive=True,
+            line_breaks_significant=True,
+            tokenizer_pattern=r"\w+(?:['’]\w+)*|[^\w\s]",
+            region_iou_threshold=1.1,
+            exclude_illegible=True,
+            unknown_style_is_incorrect=True,
+        )
+
+
+def test_excluded_line_join_requires_reason() -> None:
+    with pytest.raises(ValidationError):
+        GoldLineJoin(
+            annotation_id="join-1",
+            left_line_id="line-1",
+            right_line_id="line-2",
+            joined=True,
+            do_not_score=True,
+        )
+
+
+def test_bundle_rejects_unknown_line_join_target() -> None:
+    page = valid_bundle_page()
+    page.lines[0].joins_to_line_id = "missing-line"
+    with pytest.raises(ValidationError, match="unknown joined line"):
+        BundlePage.model_validate(page.model_dump())

@@ -1,6 +1,7 @@
 # Copyright (C) 2026 Chris Malek.
 """Exported data models for bochord."""
 
+from bochord.models.evaluation import MetricProfile
 from bochord.models.ocr import (
     AcceptReviewEvent,
     AcquisitionProvenance,
@@ -31,6 +32,7 @@ from bochord.models.ocr import (
     FontWeight,
     GoldCoverage,
     GoldDocument,
+    GoldLineJoin,
     GoldNoteLink,
     GoldPageAnnotation,
     GoldRegionAnnotation,
@@ -122,6 +124,7 @@ __all__ = [
     "FontWeight",
     "GoldCoverage",
     "GoldDocument",
+    "GoldLineJoin",
     "GoldNoteLink",
     "GoldPageAnnotation",
     "GoldRegionAnnotation",
@@ -132,6 +135,7 @@ __all__ = [
     "LinkNoteReviewEvent",
     "MarkIllegibleReviewEvent",
     "MergeRegionReviewEvent",
+    "MetricProfile",
     "MetricScore",
     "NoteKind",
     "NoteRecord",
