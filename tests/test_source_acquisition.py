@@ -12,7 +12,10 @@ import pytest
 from PIL import Image
 
 from bochord.models import PdfPageImageMode, PreparationRecipe
-from bochord.services.source_acquisition import SourceAcquisitionService
+from bochord.services.source_acquisition import (
+    SourceAcquisitionService,
+    _image_bounds_cover_page,
+)
 
 #: Canonical preparation recipe fixture used by acquisition tests.
 _RECIPE_PATH = Path("tests/fixtures/preparation/recipe-v1.json")
@@ -58,6 +61,7 @@ def test_image_folder_uses_natural_page_order(tmp_path: Path) -> None:
     )
 
     assert [page.source_filename for page in pages] == ["page-2.jpg", "page-10.png"]
+    assert [page.source_page_id for page in pages] == ["page-0001", "page-0002"]
     assert all(page.checksum.startswith("sha256:") for page in pages)
 
 
@@ -107,3 +111,8 @@ def test_pdf_forced_render_matches_render_dpi(tmp_path: Path) -> None:
     assert pages[0].coordinate_space.width_px == round(width_pt / 72 * render_dpi)
     assert pages[0].coordinate_space.height_px == round(height_pt / 72 * render_dpi)
     assert pages[0].coordinate_space.dpi == float(render_dpi)
+
+
+def test_image_bounds_must_overlap_most_of_page_area() -> None:
+    assert _image_bounds_cover_page(0.0, 0.0, 95.0, 95.0, 100.0, 100.0)
+    assert not _image_bounds_cover_page(10.0, 10.0, 110.0, 110.0, 100.0, 100.0)

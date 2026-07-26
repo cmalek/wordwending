@@ -7,7 +7,6 @@ import hashlib
 import io
 import re
 import shutil
-from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from zipfile import ZipFile, ZipInfo
 
@@ -31,24 +30,6 @@ _EMBEDDED_COVERAGE = 0.95
 _ZIP_S_IFMT = 0o170000
 #: UNIX symlink file-type bits stored in ZIP ``external_attr``.
 _ZIP_S_IFLNK = 0o120000
-
-
-@dataclass(frozen=True)
-class _MaterializedRaster:
-    """One written page raster plus identifiers needed for the artifact."""
-
-    #: Written page raster path under ``pages/``.
-    destination: Path
-    #: One-based page number.
-    page_number: int
-    #: Original source basename when available.
-    source_filename: str
-    #: Digest of the original source used for stable ids.
-    source_checksum: str
-    #: PDF acquisition mode, or ``None`` for image sources.
-    acquisition_mode: PdfPageImageMode | None
-    #: Effective raster DPI when known.
-    dpi: float | None
 
 
 class SourceAcquisitionService:
@@ -91,14 +72,12 @@ class SourceAcquisitionService:
             return self._materialize_image_paths(
                 _image_paths_in_directory(source),
                 pages_dir,
-                _directory_source_checksum(source),
             )
         suffix = source.suffix.casefold()
         if suffix in _IMAGE_EXTENSIONS:
             return self._materialize_image_paths(
                 [source],
                 pages_dir,
-                _sha256_label(source.read_bytes()),
             )
         if suffix == ".zip":
             return self._materialize_zip(source, pages_dir)
@@ -111,7 +90,6 @@ class SourceAcquisitionService:
         self,
         paths: list[Path],
         pages_dir: Path,
-        source_checksum: str,
     ) -> list[SourcePageArtifact]:
         """
         Copy image paths into ``pages_dir`` in the given order.
@@ -122,7 +100,6 @@ class SourceAcquisitionService:
         Args:
             paths: Ordered source image paths.
             pages_dir: Destination directory for page files.
-            source_checksum: Digest used to derive stable page identifiers.
 
         Returns:
             Ordered source page artifacts.
@@ -140,14 +117,11 @@ class SourceAcquisitionService:
             shutil.copy2(path, destination)
             artifacts.append(
                 _artifact_from_raster(
-                    _MaterializedRaster(
-                        destination=destination,
-                        page_number=index,
-                        source_filename=path.name,
-                        source_checksum=source_checksum,
-                        acquisition_mode=None,
-                        dpi=_image_dpi(destination),
-                    )
+                    destination=destination,
+                    page_number=index,
+                    source_filename=path.name,
+                    acquisition_mode=None,
+                    dpi=_image_dpi(destination),
                 )
             )
         return artifacts
@@ -174,7 +148,6 @@ class SourceAcquisitionService:
             ValueError: If the archive is empty, unsafe, or non-image.
 
         """
-        source_checksum = _sha256_label(archive.read_bytes())
         with ZipFile(archive) as zip_file:
             members = [info for info in zip_file.infolist() if not info.is_dir()]
             if not members:
@@ -201,14 +174,11 @@ class SourceAcquisitionService:
                     shutil.copyfileobj(handle, output)
                 artifacts.append(
                     _artifact_from_raster(
-                        _MaterializedRaster(
-                            destination=destination,
-                            page_number=index,
-                            source_filename=PurePosixPath(name).name,
-                            source_checksum=source_checksum,
-                            acquisition_mode=None,
-                            dpi=_image_dpi(destination),
-                        )
+                        destination=destination,
+                        page_number=index,
+                        source_filename=PurePosixPath(name).name,
+                        acquisition_mode=None,
+                        dpi=_image_dpi(destination),
                     )
                 )
             return artifacts
@@ -238,7 +208,6 @@ class SourceAcquisitionService:
             ValueError: If forced embedded extraction is impossible.
 
         """
-        source_checksum = _sha256_label(pdf_path.read_bytes())
         document = pdfium.PdfDocument(pdf_path)
         artifacts: list[SourcePageArtifact] = []
         try:
@@ -251,14 +220,11 @@ class SourceAcquisitionService:
                     _save_png(image, destination)
                     artifacts.append(
                         _artifact_from_raster(
-                            _MaterializedRaster(
-                                destination=destination,
-                                page_number=page_number,
-                                source_filename=pdf_path.name,
-                                source_checksum=source_checksum,
-                                acquisition_mode=mode,
-                                dpi=dpi,
-                            )
+                            destination=destination,
+                            page_number=page_number,
+                            source_filename=pdf_path.name,
+                            acquisition_mode=mode,
+                            dpi=dpi,
                         )
                     )
                 finally:
@@ -302,24 +268,6 @@ def _image_paths_in_directory(directory: Path) -> list[Path]:
         if path.is_file() and path.suffix.casefold() in _IMAGE_EXTENSIONS
     ]
     return sorted(paths, key=_natural_key)
-
-
-def _directory_source_checksum(directory: Path) -> str:
-    """
-    Digest ordered image basenames and bytes under ``directory``.
-
-    Args:
-        directory: Image directory.
-
-    Returns:
-        ``sha256:...`` label for stable page identifiers.
-
-    """
-    digest = hashlib.sha256()
-    for path in _image_paths_in_directory(directory):
-        digest.update(path.name.encode("utf-8"))
-        digest.update(path.read_bytes())
-    return f"sha256:{digest.hexdigest()}"
 
 
 def _sha256_label(payload: bytes) -> str:
@@ -429,41 +377,55 @@ def _page_ids(source_checksum: str, page_number: int) -> tuple[str, str, str]:
     """
     material = f"{source_checksum}:{page_number}".encode()
     digest = hashlib.sha256(material).hexdigest()
-    return f"artifact-{digest}", f"page-{digest}", f"space-{digest}"
+    return (
+        f"artifact-{digest}",
+        f"page-{page_number:04d}",
+        f"space-{digest}",
+    )
 
-
-def _artifact_from_raster(raster: _MaterializedRaster) -> SourcePageArtifact:
+def _artifact_from_raster(
+    *,
+    destination: Path,
+    page_number: int,
+    source_filename: str,
+    acquisition_mode: PdfPageImageMode | None,
+    dpi: float | None,
+) -> SourcePageArtifact:
     """
     Build a ``SourcePageArtifact`` from a materialized raster file.
 
-    Args:
-        raster: Written page raster and acquisition metadata.
+    Keyword Args:
+        destination: Written page raster path.
+        page_number: One-based source page order.
+        source_filename: Original source basename when available.
+        acquisition_mode: PDF acquisition mode, or ``None`` for image sources.
+        dpi: Effective raster DPI when known.
 
     Returns:
         Populated source page artifact.
 
     """
-    payload = raster.destination.read_bytes()
+    payload = destination.read_bytes()
     checksum = _sha256_label(payload)
     artifact_id, source_page_id, space_id = _page_ids(
-        raster.source_checksum,
-        raster.page_number,
+        checksum,
+        page_number,
     )
     with Image.open(io.BytesIO(payload)) as image:
         width_px, height_px = image.size
     return SourcePageArtifact(
         artifact_id=artifact_id,
         source_page_id=source_page_id,
-        page_number=raster.page_number,
-        source_path=f"pages/{raster.destination.name}",
-        source_filename=raster.source_filename,
+        page_number=page_number,
+        source_path=f"pages/{destination.name}",
+        source_filename=source_filename,
         checksum=checksum,
-        acquisition_mode=raster.acquisition_mode,
+        acquisition_mode=acquisition_mode,
         coordinate_space=CoordinateSpace(
             space_id=space_id,
             width_px=width_px,
             height_px=height_px,
-            dpi=raster.dpi,
+            dpi=dpi,
         ),
     )
 
@@ -530,10 +492,7 @@ def _try_extract_embedded(
     page_h = page.get_height()
     if page_w <= 0 or page_h <= 0 or display_w <= 0 or display_h <= 0:
         return None
-    if (
-        display_w / page_w < _EMBEDDED_COVERAGE
-        or display_h / page_h < _EMBEDDED_COVERAGE
-    ):
+    if not _image_bounds_cover_page(left, bottom, right, top, page_w, page_h):
         return None
     px_w, px_h = pdf_image.get_px_size()
     dpi_x = px_w / (display_w / 72.0)
@@ -552,6 +511,37 @@ def _try_extract_embedded(
     finally:
         bitmap.close()
     return image, float(native_dpi)
+
+
+def _image_bounds_cover_page(  # noqa: PLR0913, PLR0917
+    left: float,
+    bottom: float,
+    right: float,
+    top: float,
+    page_w: float,
+    page_h: float,
+) -> bool:
+    """
+    Check whether displayed image bounds cover enough of page bounds.
+
+    Args:
+        left: Image left bound in page coordinates.
+        bottom: Image bottom bound in page coordinates.
+        right: Image right bound in page coordinates.
+        top: Image top bound in page coordinates.
+        page_w: Page width in points.
+        page_h: Page height in points.
+
+    Returns:
+        ``True`` when the image overlaps at least 95% of page width and height.
+
+    """
+    covered_w = max(0.0, min(page_w, right) - max(0.0, left))
+    covered_h = max(0.0, min(page_h, top) - max(0.0, bottom))
+    return (
+        covered_w / page_w >= _EMBEDDED_COVERAGE
+        and covered_h / page_h >= _EMBEDDED_COVERAGE
+    )
 
 
 def _render_page(

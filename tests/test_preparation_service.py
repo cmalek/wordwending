@@ -438,6 +438,27 @@ def test_fixed_tile_units_overlap_and_order(tmp_path: Path) -> None:
         assert overlap == pytest.approx(100)
 
 
+def test_transform_chain_targets_final_prepared_space(tmp_path: Path) -> None:
+    image = Image.new("RGB", (1000, 1400), (255, 255, 255))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((200, 200, 800, 1200), fill=(20, 20, 20))
+    result = PagePreparationService(
+        PageQualityAssessor(),
+        PageClassifier(),
+    ).prepare(
+        source_page(image=image),
+        recipe(crop_mode="content-bounding-box"),
+        tmp_path,
+    )
+    transforms = result.prepared_page.transforms
+    assert transforms
+    assert (
+        transforms[-1].target_space_id
+        == result.prepared_page.coordinate_space.space_id
+        == "prepared-page-0001"
+    )
+
+
 def test_basic_dewarp_requires_mapping_artifact(tmp_path: Path) -> None:
     with pytest.raises(
         ValueError,

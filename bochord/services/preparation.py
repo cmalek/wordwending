@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import statistics
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 from PIL import Image, ImageChops, ImageFilter, ImageOps, ImageStat
@@ -34,7 +35,8 @@ from bochord.models import (
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from pathlib import Path
+
+    from bochord.services.source_acquisition import SourceAcquisitionService
 
 #: Longest edge used for cheap heuristic measurement.
 _HEURISTIC_MAX_EDGE_PX = 1600
@@ -252,12 +254,85 @@ class PagePreparationService:
                 reason.
 
         """
-        if recipe.dewarp_mode is DewarpMode.BASIC:
-            raise ValueError(_BASIC_DEWARP_MESSAGE)
+        _ensure_supported_recipe(recipe)
+        source_image = _load_source_image(source_page)
+        context = self._resolve_context(
+            source_page,
+            source_image,
+            recipe,
+            mode_override,
+            page_class_override,
+            override_reason,
+        )
+        prepared_space_id = f"prepared-page-{source_page.page_number:04d}"
+        prepared_image, transforms, prepared_space_id = _apply_recipe_transforms(
+            source_image,
+            source_page,
+            recipe,
+            prepared_space_id=prepared_space_id,
+        )
+        prepared_page_id = _derive_prepared_page_id(
+            source_page.checksum,
+            recipe,
+            context[3],
+        )
+        prepared_page = _persist_prepared_page(
+            prepared_image,
+            transforms=transforms,
+            source_page=source_page,
+            recipe=recipe,
+            mode=context[3],
+            page_class=context[1],
+            prepared_page_id=prepared_page_id,
+            prepared_space_id=prepared_space_id,
+            output_dir=output_dir,
+        )
+        return _build_preparation_result(
+            source_page,
+            prepared_page_id=prepared_page_id,
+            prepared_page=prepared_page,
+            signals=context[0],
+            page_class_suggested=context[5],
+            page_class_final=context[1],
+            page_class_source=context[2],
+            preparation_choice_source=context[4],
+            override_reason=override_reason,
+            columns_fallback_warning=context[6],
+        )
 
-        with Image.open(source_page.source_path) as opened:
-            source_image = opened.copy()
+    def _resolve_context(  # noqa: PLR0913, PLR0917
+        self,
+        source_page: SourcePageArtifact,
+        source_image: Image.Image,
+        recipe: PreparationRecipe,
+        mode_override: PreparationMode | None,
+        page_class_override: PageClass | None,
+        override_reason: str | None,
+    ) -> tuple[
+        list[QualitySignal],
+        PageClass,
+        Literal["auto", "operator"],
+        PreparationMode,
+        Literal["auto", "operator"],
+        PageClass,
+        str | None,
+    ]:
+        """
+        Resolve assessment, class, and subdivision choices for one page.
 
+        Args:
+            source_page: Acquired source page artifact to prepare.
+            source_image: Loaded source raster.
+            recipe: Deterministic preparation profile.
+            mode_override: Operator-forced subdivision mode.
+            page_class_override: Operator-forced page class.
+            override_reason: Required reason when any override is set.
+
+        Returns:
+            Signals, final page class, page-class source, final mode, mode source,
+            suggested page class, and any auto-fallback warning.
+
+        """
         signals = self._assessor.assess(source_page, source_image, recipe)
         suggested = self._classifier.suggest(
             signals,
@@ -274,51 +349,259 @@ class PagePreparationService:
             mode_override,
             override_reason,
         )
-        prepared_image, transforms = _apply_recipe_transforms(
+        mode, warning = _resolve_columns_subdivision_mode(
             source_image,
-            source_page,
-            recipe,
-        )
-        mode, columns_fallback_warning = _resolve_columns_subdivision_mode(
-            prepared_image,
             mode=mode,
             choice_source=choice_source,
         )
-        prepared_page_id = _derive_prepared_page_id(source_page.checksum, recipe, mode)
-        prepared_page = _persist_prepared_page(
-            prepared_image,
-            transforms=transforms,
-            source_page=source_page,
-            recipe=recipe,
-            mode=mode,
-            page_class=page_class,
-            prepared_page_id=prepared_page_id,
-            space_id=f"prepared-page-{source_page.page_number:04d}",
-            output_dir=output_dir,
+        return (
+            signals,
+            page_class,
+            page_class_source,
+            mode,
+            choice_source,
+            suggested,
+            warning,
         )
-        assessment = _build_assessment(
-            source_page=source_page,
-            prepared_page_id=prepared_page_id,
-            signals=signals,
-            page_class_suggested=suggested,
-            page_class_final=page_class,
-            page_class_source=page_class_source,
-            operator_override_reason=(
-                override_reason if page_class_source == "operator" else None
-            ),
-            extra_warnings=(
-                [columns_fallback_warning] if columns_fallback_warning else []
-            ),
+
+
+class PreparationBundleService:
+    """
+    Acquire source pages and persist per-page preparation bundles.
+
+    Args:
+        source_acquisition_service: Source-page materializer.
+        page_preparation_service: Per-page preparation service.
+
+    """
+
+    def __init__(
+        self,
+        source_acquisition_service: SourceAcquisitionService,
+        page_preparation_service: PagePreparationService,
+    ) -> None:
+        """
+        Bind acquisition and per-page preparation collaborators.
+
+        Args:
+            source_acquisition_service: Source-page materializer.
+            page_preparation_service: Per-page preparation service.
+
+        """
+        #: Source-page materializer for files, folders, archives, and PDFs.
+        self._source_acquisition_service = source_acquisition_service
+        #: Page-level preparation service used for each acquired page.
+        self._page_preparation_service = page_preparation_service
+
+    def prepare_bundle(  # noqa: PLR0913
+        self,
+        source: Path,
+        recipe: PreparationRecipe,
+        output_dir: Path,
+        *,
+        mode_override: PreparationMode | None = None,
+        page_class_override: PageClass | None = None,
+        override_reason: str | None = None,
+    ) -> list[PreparationResult]:
+        """
+        Acquire source pages and persist per-page preparation metadata.
+
+        Side Effects:
+            Writes acquired sources, prepared page artifacts, and
+            ``preparation.json`` files under ``output_dir``.
+
+        Args:
+            source: PDF, image, image folder, or ZIP of images.
+            recipe: Preparation profile controlling acquisition and transforms.
+            output_dir: Bundle root receiving source and prepared artifacts.
+
+        Keyword Args:
+            mode_override: Operator-forced subdivision mode.
+            page_class_override: Operator-forced page class.
+            override_reason: Required reason when any override is set.
+
+        Returns:
+            Persisted preparation results in source-page order.
+
+        Raises:
+            OSError: If input/output filesystem access fails.
+            ValueError: If acquisition or preparation validation fails.
+            ValidationError: If persisted results fail model validation.
+
+        """
+        source_pages = self._source_acquisition_service.materialize(
+            source,
+            output_dir / "source",
+            recipe,
         )
-        return PreparationResult(
-            source_page=source_page,
-            prepared_page=prepared_page,
-            assessment=assessment,
-            preparation_choice_source=choice_source,
-            operator_override_reason=(
-                override_reason if choice_source == "operator" else None
-            ),
+        results: list[PreparationResult] = []
+        for source_page in source_pages:
+            result = self._prepare_page(
+                source_page,
+                recipe,
+                output_dir,
+                mode_override=mode_override,
+                page_class_override=page_class_override,
+                override_reason=override_reason,
+            )
+            self._write_result(result, output_dir)
+            results.append(result)
+        return results
+
+    def _prepare_page(  # noqa: PLR0913
+        self,
+        source_page: SourcePageArtifact,
+        recipe: PreparationRecipe,
+        output_dir: Path,
+        *,
+        mode_override: PreparationMode | None,
+        page_class_override: PageClass | None,
+        override_reason: str | None,
+    ) -> PreparationResult:
+        """
+        Prepare one acquired page using the bundle's persisted source path.
+
+        Args:
+            source_page: Acquired source page artifact.
+            recipe: Preparation profile controlling transforms.
+            output_dir: Bundle root receiving artifacts.
+
+        Keyword Args:
+            mode_override: Operator-forced subdivision mode.
+            page_class_override: Operator-forced page class.
+            override_reason: Required reason when any override is set.
+
+        Returns:
+            One persisted-friendly preparation result.
+
+        """
+        absolute_source = (output_dir / "source" / source_page.source_path).resolve()
+        result = self._page_preparation_service.prepare(
+            source_page.model_copy(update={"source_path": str(absolute_source)}),
+            recipe,
+            output_dir,
+            mode_override=mode_override,
+            page_class_override=page_class_override,
+            override_reason=override_reason,
         )
+        return result.model_copy(
+            update={
+                "source_page": result.source_page.model_copy(
+                    update={
+                        "source_path": str(
+                            Path("source") / source_page.source_path
+                        )
+                    }
+                )
+            }
+        )
+
+    def _write_result(self, result: PreparationResult, output_dir: Path) -> None:
+        """
+        Persist one page's preparation metadata under its page directory.
+
+        Side Effects:
+            Creates the page output directory and writes ``preparation.json``.
+
+        Args:
+            result: Preparation result to persist.
+            output_dir: Bundle root receiving artifacts.
+
+        """
+        result_dir = output_dir / "pages" / result.source_page.source_page_id
+        result_dir.mkdir(parents=True, exist_ok=True)
+        (result_dir / "preparation.json").write_text(
+            result.model_dump_json(indent=2),
+            encoding="utf-8",
+        )
+
+
+def _ensure_supported_recipe(recipe: PreparationRecipe) -> None:
+    """
+    Reject recipe modes that are intentionally unsupported today.
+
+    Args:
+        recipe: Preparation profile under validation.
+
+    Raises:
+        ValueError: If the recipe requests unsupported basic dewarp.
+
+    """
+    if recipe.dewarp_mode is DewarpMode.BASIC:
+        raise ValueError(_BASIC_DEWARP_MESSAGE)
+
+
+def _load_source_image(source_page: SourcePageArtifact) -> Image.Image:
+    """
+    Load and detach the source image from its on-disk file handle.
+
+    Args:
+        source_page: Source page artifact pointing at a raster path.
+
+    Returns:
+        In-memory copy of the source raster.
+
+    """
+    with Image.open(source_page.source_path) as opened:
+        return opened.copy()
+
+
+def _build_preparation_result(  # noqa: PLR0913
+    source_page: SourcePageArtifact,
+    *,
+    prepared_page_id: str,
+    prepared_page: PreparedPage,
+    signals: list[QualitySignal],
+    page_class_suggested: PageClass,
+    page_class_final: PageClass,
+    page_class_source: Literal["auto", "operator"],
+    preparation_choice_source: Literal["auto", "operator"],
+    override_reason: str | None,
+    columns_fallback_warning: str | None,
+) -> PreparationResult:
+    """
+    Assemble the persisted result model for one prepared page.
+
+    Args:
+        source_page: Acquired source page artifact.
+
+    Keyword Args:
+        prepared_page_id: Stable prepared-page identifier.
+        prepared_page: Prepared page artifact and subdivisions.
+        signals: Measured quality signals.
+        page_class_suggested: Automatically suggested page class.
+        page_class_final: Final page class after overrides.
+        page_class_source: Whether page class came from automation or operator.
+        preparation_choice_source: Whether preparation mode came from automation
+            or operator.
+        override_reason: Operator explanation when any override is set.
+        columns_fallback_warning: Warning emitted when auto-columns fallback.
+
+    Returns:
+        Full preparation result ready for persistence.
+
+    """
+    assessment = _build_assessment(
+        source_page=source_page,
+        prepared_page_id=prepared_page_id,
+        signals=signals,
+        page_class_suggested=page_class_suggested,
+        page_class_final=page_class_final,
+        page_class_source=page_class_source,
+        operator_override_reason=(
+            override_reason if page_class_source == "operator" else None
+        ),
+        extra_warnings=([columns_fallback_warning] if columns_fallback_warning else []),
+    )
+    return PreparationResult(
+        source_page=source_page,
+        prepared_page=prepared_page,
+        assessment=assessment,
+        preparation_choice_source=preparation_choice_source,
+        operator_override_reason=(
+            override_reason if preparation_choice_source == "operator" else None
+        ),
+    )
 
 
 def _resolve_page_class(
@@ -521,7 +804,7 @@ def _persist_prepared_page(  # noqa: PLR0913
     mode: PreparationMode,
     page_class: PageClass,
     prepared_page_id: str,
-    space_id: str,
+    prepared_space_id: str,
     output_dir: Path,
 ) -> PreparedPage:
     """
@@ -540,7 +823,7 @@ def _persist_prepared_page(  # noqa: PLR0913
         mode: Subdivision mode applied to the page.
         page_class: Final page class for the page.
         prepared_page_id: Stable prepared-page identifier.
-        space_id: Prepared-page coordinate-space identifier.
+        prepared_space_id: Prepared-page coordinate-space identifier.
         output_dir: Bundle root receiving artifacts.
 
     Returns:
@@ -555,7 +838,7 @@ def _persist_prepared_page(  # noqa: PLR0913
         recipe=recipe,
         source_page=source_page,
         prepared_page_id=prepared_page_id,
-        space_id=space_id,
+        space_id=prepared_space_id,
         output_dir=output_dir,
     )
     return PreparedPage(
@@ -566,15 +849,39 @@ def _persist_prepared_page(  # noqa: PLR0913
         source_artifact_id=source_page.artifact_id,
         image_checksum=image_checksum,
         preparation_recipe_id=recipe.recipe_id,
-        coordinate_space=CoordinateSpace(
-            space_id=space_id,
-            width_px=prepared_image.width,
-            height_px=prepared_image.height,
-            dpi=source_page.coordinate_space.dpi,
-            parent_space_id=source_page.coordinate_space.space_id,
+        coordinate_space=_prepared_coordinate_space(
+            prepared_image,
+            source_page,
+            prepared_space_id,
         ),
         transforms=transforms,
         prepared_units=units,
+    )
+
+
+def _prepared_coordinate_space(
+    prepared_image: Image.Image,
+    source_page: SourcePageArtifact,
+    prepared_space_id: str,
+) -> CoordinateSpace:
+    """
+    Build the canonical coordinate space for the prepared page image.
+
+    Args:
+        prepared_image: Fully transformed prepared page raster.
+        source_page: Logical source page identity.
+        prepared_space_id: Prepared-page coordinate-space identifier.
+
+    Returns:
+        Coordinate space for the final prepared page raster.
+
+    """
+    return CoordinateSpace(
+        space_id=prepared_space_id,
+        width_px=prepared_image.width,
+        height_px=prepared_image.height,
+        dpi=source_page.coordinate_space.dpi,
+        parent_space_id=source_page.coordinate_space.space_id,
     )
 
 
@@ -582,7 +889,9 @@ def _apply_recipe_transforms(
     source_image: Image.Image,
     source_page: SourcePageArtifact,
     recipe: PreparationRecipe,
-) -> tuple[Image.Image, list[CoordinateTransform]]:
+    *,
+    prepared_space_id: str,
+) -> tuple[Image.Image, list[CoordinateTransform], str]:
     """
     Apply supported deterministic recipe transforms to ``source_image``.
 
@@ -591,27 +900,42 @@ def _apply_recipe_transforms(
         source_page: Source artifact providing coordinate-space identity.
         recipe: Preparation profile controlling transforms.
 
+    Keyword Args:
+        prepared_space_id: Canonical coordinate-space id for prepared output.
+
     Returns:
-        Prepared image and ordered transform records.
+        Prepared image, ordered transform records, and final coordinate-space id.
 
     """
     working = source_image.copy()
     transforms: list[CoordinateTransform] = []
     current_space = source_page.coordinate_space.space_id
     working, current_space = _maybe_deskew(
-        working, recipe.deskew, current_space, transforms
+        working,
+        recipe.deskew,
+        current_space,
+        transforms,
+        target_space=(
+            f"{prepared_space_id}-deskew"
+            if recipe.crop_mode is not CropMode.NONE
+            else prepared_space_id
+        ),
     )
     if recipe.denoise:
         working = working.filter(ImageFilter.MedianFilter(size=_DENOISE_MEDIAN_SIZE))
-    working, _current_space = _maybe_crop(
-        working, recipe.crop_mode, current_space, transforms
+    working, current_space = _maybe_crop(
+        working,
+        recipe.crop_mode,
+        current_space,
+        transforms,
+        target_space=prepared_space_id,
     )
     working = _apply_color_mode(working, recipe.color_mode)
     if recipe.binarize_mode is not BinarizeMode.NONE:
         working = _apply_binarize(working, recipe.binarize_mode)
     elif recipe.color_mode is ColorMode.BINARY:
         working = _threshold_binary(working.convert("L"), _INK_THRESHOLD)
-    return working, transforms
+    return working, transforms, prepared_space_id
 
 
 def _maybe_deskew(
@@ -619,6 +943,8 @@ def _maybe_deskew(
     deskew: bool,
     current_space: str,
     transforms: list[CoordinateTransform],
+    *,
+    target_space: str,
 ) -> tuple[Image.Image, str]:
     """
     Optionally deskew ``image`` and record the transform.
@@ -628,6 +954,9 @@ def _maybe_deskew(
         deskew: Whether deskew is enabled.
         current_space: Current coordinate-space identifier.
         transforms: Mutable transform chain to append to.
+
+    Keyword Args:
+        target_space: Coordinate-space identifier for deskew output.
 
     Returns:
         Possibly deskewed image and updated space id.
@@ -644,16 +973,15 @@ def _maybe_deskew(
         expand=False,
         fillcolor=_fill_color(image),
     )
-    target = f"{current_space}-deskew"
     transforms.append(
         CoordinateTransform(
             kind=TransformKind.DESKEW,
             source_space_id=current_space,
-            target_space_id=target,
+            target_space_id=target_space,
             parameters={"angle_degrees": -skew},
         )
     )
-    return rotated, target
+    return rotated, target_space
 
 
 def _maybe_crop(
@@ -661,6 +989,8 @@ def _maybe_crop(
     crop_mode: CropMode,
     current_space: str,
     transforms: list[CoordinateTransform],
+    *,
+    target_space: str,
 ) -> tuple[Image.Image, str]:
     """
     Optionally crop ``image`` and record the transform.
@@ -670,6 +1000,9 @@ def _maybe_crop(
         crop_mode: Crop strategy.
         current_space: Current coordinate-space identifier.
         transforms: Mutable transform chain to append to.
+
+    Keyword Args:
+        target_space: Coordinate-space identifier for crop output.
 
     Returns:
         Possibly cropped image and updated space id.
@@ -682,12 +1015,11 @@ def _maybe_crop(
         return image, current_space
     left, upper, right, lower = box
     cropped = image.crop(box)
-    target = f"{current_space}-crop"
     transforms.append(
         CoordinateTransform(
             kind=TransformKind.CROP,
             source_space_id=current_space,
-            target_space_id=target,
+            target_space_id=target_space,
             parameters={
                 "x0": float(left),
                 "y0": float(upper),
@@ -696,7 +1028,7 @@ def _maybe_crop(
             },
         )
     )
-    return cropped, target
+    return cropped, target_space
 
 
 def _fill_color(image: Image.Image) -> int | tuple[int, ...]:

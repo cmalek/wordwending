@@ -28,6 +28,7 @@ from ..services.preparation import (
     PageClassifier,
     PagePreparationService,
     PageQualityAssessor,
+    PreparationBundleService,
 )
 from ..services.source_acquisition import SourceAcquisitionService
 from ..settings import Settings
@@ -275,69 +276,71 @@ def prepare_pages(  # noqa: PLR0913, PLR0917
         click.ClickException: When inputs fail validation or I/O fails.
 
     """
+    try:
+        preparation_recipe = _load_preparation_recipe(recipe)
+        mode_override, page_class_override = _prepare_overrides(
+            mode,
+            page_class,
+            override_reason,
+        )
+        results = PreparationBundleService(
+            SourceAcquisitionService(),
+            PagePreparationService(PageQualityAssessor(), PageClassifier()),
+        ).prepare_bundle(
+            source,
+            preparation_recipe,
+            output_dir,
+            mode_override=mode_override,
+            page_class_override=page_class_override,
+            override_reason=override_reason,
+        )
+    except (OSError, ValidationError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    warning_count = sum(len(result.assessment.warnings) for result in results)
+    click.echo(f"pages: {len(results)}")
+    click.echo(f"warnings: {warning_count}")
+    click.echo(f"output: {output_dir}")
+
+def _load_preparation_recipe(recipe: Path) -> PreparationRecipe:
+    """
+    Load and validate a preparation recipe JSON file.
+
+    Args:
+        recipe: PreparationRecipe JSON file path.
+
+    Returns:
+        Validated preparation recipe model.
+
+    """
+    return PreparationRecipe.model_validate_json(recipe.read_text(encoding="utf-8"))
+
+
+def _prepare_overrides(
+    mode: str | None,
+    page_class: str | None,
+    override_reason: str | None,
+) -> tuple[PreparationMode | None, PageClass | None]:
+    """
+    Validate and convert optional CLI override values.
+
+    Args:
+        mode: Optional preparation-mode override from Click.
+        page_class: Optional page-class override from Click.
+        override_reason: Required reason when any override is set.
+
+    Returns:
+        Parsed preparation-mode and page-class overrides.
+
+    Raises:
+        ValueError: If an override is supplied without a non-empty reason.
+
+    """
     if (mode is not None or page_class is not None) and not (
         override_reason and override_reason.strip()
     ):
         msg = "--override-reason is required when --mode or --page-class is set"
-        raise click.ClickException(msg)
-
-    try:
-        preparation_recipe = PreparationRecipe.model_validate_json(
-            recipe.read_text(encoding="utf-8")
-        )
-    except (OSError, ValidationError, ValueError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    source_dir = output_dir / "source"
-    try:
-        source_pages = SourceAcquisitionService().materialize(
-            source,
-            source_dir,
-            preparation_recipe,
-        )
-    except (OSError, ValueError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
+        raise ValueError(msg)
     mode_override = PreparationMode(mode) if mode is not None else None
     page_class_override = PageClass(page_class) if page_class is not None else None
-    service = PagePreparationService(PageQualityAssessor(), PageClassifier())
-    warning_count = 0
-
-    try:
-        for source_page in source_pages:
-            bundle_relative_source = str(Path("source") / source_page.source_path)
-            absolute_source = (output_dir / bundle_relative_source).resolve()
-            page_for_prep = source_page.model_copy(
-                update={
-                    "source_page_id": f"page-{source_page.page_number:04d}",
-                    "source_path": str(absolute_source),
-                }
-            )
-            result = service.prepare(
-                page_for_prep,
-                preparation_recipe,
-                output_dir,
-                mode_override=mode_override,
-                page_class_override=page_class_override,
-                override_reason=override_reason,
-            )
-            warning_count += len(result.assessment.warnings)
-            persisted = result.model_copy(
-                update={
-                    "source_page": result.source_page.model_copy(
-                        update={"source_path": bundle_relative_source}
-                    )
-                }
-            )
-            result_dir = output_dir / "pages" / page_for_prep.source_page_id
-            result_dir.mkdir(parents=True, exist_ok=True)
-            (result_dir / "preparation.json").write_text(
-                persisted.model_dump_json(indent=2),
-                encoding="utf-8",
-            )
-    except (OSError, ValidationError, ValueError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    click.echo(f"pages: {len(source_pages)}")
-    click.echo(f"warnings: {warning_count}")
-    click.echo(f"output: {output_dir}")
+    return mode_override, page_class_override
