@@ -5,16 +5,28 @@
     "preparation_mode": "full-page",
     "page_class": "note-heavy",
     "image_path": "pages/page-0010/image/page.png",
-    "source_artifact_id": "source-page-10",
-    "image_checksum": "sha256:note-page-10",
-    "preparation_recipe_id": "prep-v1",
+    "source_artifact_id": "sources/Kiparsky-PhonologyOldEnglish-1976.pdf#page=10",
+    "image_checksum": "sha256:fixture-page-0010-prepared",
+    "preparation_recipe_id": "render-300dpi-note-heavy-v1",
     "coordinate_space": {
       "space_id": "prepared-page-0010",
       "width_px": 1800,
       "height_px": 2600,
       "dpi": 300
     },
-    "transforms": [],
+    "transforms": [
+      {
+        "kind": "crop",
+        "source_space_id": "sources/Kiparsky-PhonologyOldEnglish-1976.pdf#page=10",
+        "target_space_id": "prepared-page-0010",
+        "parameters": {
+          "x0": 0.0,
+          "y0": 0.0,
+          "x1": 1800.0,
+          "y1": 2600.0
+        }
+      }
+    ],
     "prepared_units": []
   },
   "regions": [
@@ -66,19 +78,19 @@
       "bounding_box": {
         "x0": 100.0,
         "y0": 120.0,
-        "x1": 1700.0,
+        "x1": 1750.0,
         "y1": 160.0,
         "coordinate_space_id": "prepared-page-0010"
       },
       "baseline": [
         {"x": 100.0, "y": 155.0},
-        {"x": 1700.0, "y": 157.0}
+        {"x": 1750.0, "y": 157.0}
       ],
-      "span_ids": ["span-0010-italic", "span-note-marker-10"],
+      "span_ids": ["span-0010-italic", "span-0010-formula", "span-note-marker-10"],
       "provenance": {
         "source_page_id": "page-0010",
-        "witness_ids": ["wit-note-1"],
-        "runner_ids": ["olmocr"],
+        "witness_ids": ["wit-page-0010-ocr"],
+        "runner_ids": ["olmocr-hf"],
         "machine_confidence": 0.89
       }
     },
@@ -89,8 +101,8 @@
       "span_ids": ["span-0010-footnote-text"],
       "provenance": {
         "source_page_id": "page-0010",
-        "witness_ids": ["wit-note-1"],
-        "runner_ids": ["olmocr"],
+        "witness_ids": ["wit-page-0010-ocr"],
+        "runner_ids": ["olmocr-hf"],
         "machine_confidence": 0.83
       }
     }
@@ -116,9 +128,34 @@
       },
       "provenance": {
         "source_page_id": "page-0010",
-        "witness_ids": ["wit-note-1"],
-        "runner_ids": ["olmocr"],
+        "witness_ids": ["wit-page-0010-ocr"],
+        "runner_ids": ["olmocr-hf"],
         "machine_confidence": 0.9
+      }
+    },
+    {
+      "span_id": "span-0010-formula",
+      "line_id": "line-0010-body-1",
+      "text_diplomatic": "x^2",
+      "text_normalized": "x^2",
+      "typography": {
+        "weight": "regular",
+        "slant": "upright",
+        "baseline_shift": "baseline"
+      },
+      "roles": ["text"],
+      "bounding_box": {
+        "x0": 230.0,
+        "y0": 120.0,
+        "x1": 300.0,
+        "y1": 160.0,
+        "coordinate_space_id": "prepared-page-0010"
+      },
+      "provenance": {
+        "source_page_id": "page-0010",
+        "witness_ids": ["wit-page-0010-ocr"],
+        "runner_ids": ["olmocr-hf"],
+        "machine_confidence": 0.89
       }
     },
     {
@@ -133,16 +170,16 @@
       },
       "roles": ["footnote-marker"],
       "bounding_box": {
-        "x0": 230.0,
+        "x0": 310.0,
         "y0": 110.0,
-        "x1": 260.0,
+        "x1": 340.0,
         "y1": 140.0,
         "coordinate_space_id": "prepared-page-0010"
       },
       "provenance": {
         "source_page_id": "page-0010",
-        "witness_ids": ["wit-note-1"],
-        "runner_ids": ["olmocr"],
+        "witness_ids": ["wit-page-0010-ocr"],
+        "runner_ids": ["olmocr-hf"],
         "machine_confidence": 0.88
       }
     },
@@ -159,8 +196,8 @@
       "roles": ["text"],
       "provenance": {
         "source_page_id": "page-0010",
-        "witness_ids": ["wit-note-1"],
-        "runner_ids": ["olmocr"],
+        "witness_ids": ["wit-page-0010-ocr"],
+        "runner_ids": ["olmocr-hf"],
         "machine_confidence": 0.82
       }
     }
@@ -175,12 +212,12 @@
       "linked_marker_span_ids": ["span-note-marker-10"],
       "provenance": {
         "source_page_id": "page-0010",
-        "witness_ids": ["wit-note-1"],
-        "runner_ids": ["olmocr"],
+        "witness_ids": ["wit-page-0010-ocr"],
+        "runner_ids": ["olmocr-hf"],
         "machine_confidence": 0.81
       }
     }
   ],
   "evaluation_summary": {},
-  "review_event_ids": []
+  "review_event_ids": ["review-packet-page-0010"]
 }

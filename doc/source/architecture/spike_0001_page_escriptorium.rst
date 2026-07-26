@@ -22,7 +22,8 @@ recovery merges are out of scope for Phase 1.
 Environment
 ===========
 
-- **Image:** ``registry.gitlab.com/scripta/escriptorium:latest`` (reported
+- **Image:** ``registry.gitlab.com/scripta/escriptorium@sha256:997e6f4e668ec65a3a0ae108f8ff1aa56e01c0eee16369b2fe8204d9a908ee68``
+  (locally created ``2026-05-18T16:37:48.658854589Z``; application reported
   ``VERSION_DATE`` ``v1.0.0``)
 - **Instance date:** 2026-07-26
 - **Recorded fixtures:**
@@ -33,9 +34,9 @@ Procedure
 =========
 
 1. Export review ZIP + ``*.bochord.json`` sidecar from ``PageXmlInterchangeService``.
-2. Preprocess PAGE for eScriptorium import: round float coordinates to integers
-   and synthesize minimal ``Coords``/``Baseline`` on lines that had word-only
-   geometry (empty-line case on the dictionary page).
+2. Export PAGE directly with the canonical prepared-image filename, canonical
+   width/height, importer-friendly integer coordinates, and explicit line
+   geometry for the representative fixtures.
 3. Import into eScriptorium, apply line-level transcription corrections
    (``drēorig sorrow`` on the dictionary page; ``Deletion 10`` on the note page).
 4. Export native PAGE XML via ``PageXMLExporter`` with no ``merge_word_structure``
@@ -85,6 +86,21 @@ Re-merging Words from the export sidecar or source PAGE after native export
 would invent span ids and violate the spike's id-survival rule. That approach
 was used in an earlier commit and is explicitly disallowed.
 
+Reusable processors and interfaces
+==================================
+
+The spike identified a narrow reuse boundary worth keeping:
+
+- **Reuse directly:** eScriptorium's PAGE import/export workflow for region and
+  line review, plus PAGE 2019-07-15 geometry, reading-order, and line-text
+  conventions.
+- **Keep bochord-owned:** prepared-image provenance, transform chains,
+  checksums, stable span/note ids, note linkage, and span-level typography.
+- **Do not adopt yet:** OCR-D workspace management or ``ocrd-models`` for this
+  slice; the bounded stdlib serializer/importer is enough for Phase 1 and
+  avoids taking on a Python-version mismatch before the real round-trip earns
+  it.
+
 Unsupported correction actions
 ==============================
 
@@ -94,11 +110,16 @@ Unsupported correction actions
 Secondary findings
 ==================
 
-- **Float→int coordinate preprocessing** — eScriptorium's PAGE importer rejects
-  non-integer coordinate pairs; bochord exports may need rounding before import.
-- **Empty-line geometry** — lines with no baseline/coords (dictionary column
-  ``line-0100-2``) require synthesized geometry or eScriptorium skips them on
-  import; export still emits the line with empty ``TextEquiv``.
+- **Canonical package identity matters** — native exports drift from the
+  canonical prepared-image binding recorded in the sidecar
+  (``imageFilename``/dimensions differ from the reviewed package), so
+  ``import_corrected_page`` now rejects them before any coordinate-space relabel.
+- **Integer PAGE coordinates are enough for the bounded exporter** — the
+  direct review package can emit importer-friendly integers without adding OCR-D
+  dependencies or a second preprocessing tool.
+- **Representative fixture coverage now includes formula + note linkage** — the
+  note-page sidecar still carries prose, a formula token, a superscript marker,
+  and a linked footnote even though native PAGE export only preserves line text.
 
 Decision
 ========
@@ -106,9 +127,10 @@ Decision
 **reject**
 
 eScriptorium native PAGE export preserves region and line structure plus
-line-level corrected text, but does not round-trip bochord's required stable
-``Word``/``span-*`` ids. The canonical JSON sidecar cannot honestly restore
-those ids after export without forbidden merge logic.
+line-level corrected text, but it drifts from bochord's canonical prepared-image
+identity and does not round-trip the required stable ``Word``/``span-*`` ids.
+The canonical JSON sidecar cannot honestly restore those ids after export
+without forbidden merge logic.
 
 Phase 1 stops here per the plan cost gate. Do not build OCR-D workspace
 management, production review UI, or fuzzy object matching on this evidence.

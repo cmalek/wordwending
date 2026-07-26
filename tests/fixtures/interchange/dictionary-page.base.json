@@ -5,9 +5,9 @@
     "preparation_mode": "columns",
     "page_class": "dense-dictionary",
     "image_path": "pages/page-0100/image/page.png",
-    "source_artifact_id": "source-page-100",
-    "image_checksum": "sha256:dict-page-100",
-    "preparation_recipe_id": "prep-v1",
+    "source_artifact_id": "sources/anglo_saxon_dictionary_concise.pdf#page=100",
+    "image_checksum": "sha256:fixture-page-0100-prepared",
+    "preparation_recipe_id": "render-300dpi-columns-v1",
     "coordinate_space": {
       "space_id": "prepared-page-0100",
       "width_px": 2400,
@@ -17,7 +17,7 @@
     "transforms": [
       {
         "kind": "crop",
-        "source_space_id": "source-page-100",
+        "source_space_id": "sources/anglo_saxon_dictionary_concise.pdf#page=100",
         "target_space_id": "prepared-page-0100",
         "parameters": {
           "x0": 0.0,
@@ -97,8 +97,8 @@
       "span_ids": ["span-0100-headword", "span-0100-sorrow"],
       "provenance": {
         "source_page_id": "page-0100",
-        "witness_ids": ["wit-dict-1"],
-        "runner_ids": ["olmocr"],
+        "witness_ids": ["wit-page-0100-ocr"],
+        "runner_ids": ["olmocr-hf"],
         "machine_confidence": 0.9
       }
     },
@@ -106,11 +106,31 @@
       "line_id": "line-0100-2",
       "region_id": "region-0100-b",
       "line_order": 1,
+      "bounding_box": {
+        "x0": 1200.0,
+        "y0": 960.0,
+        "x1": 2200.0,
+        "y1": 1800.0,
+        "coordinate_space_id": "prepared-page-0100"
+      },
+      "polygon": {
+        "coordinate_space_id": "prepared-page-0100",
+        "points": [
+          {"x": 1200.0, "y": 960.0},
+          {"x": 2200.0, "y": 961.0},
+          {"x": 2200.0, "y": 1800.0},
+          {"x": 1200.0, "y": 1800.0}
+        ]
+      },
+      "baseline": [
+        {"x": 1200.0, "y": 960.0},
+        {"x": 2200.0, "y": 961.0}
+      ],
       "span_ids": [],
       "provenance": {
         "source_page_id": "page-0100",
-        "witness_ids": ["wit-dict-1"],
-        "runner_ids": ["olmocr"],
+        "witness_ids": ["wit-page-0100-ocr"],
+        "runner_ids": ["olmocr-hf"],
         "machine_confidence": 0.85
       }
     }
@@ -136,8 +156,8 @@
       },
       "provenance": {
         "source_page_id": "page-0100",
-        "witness_ids": ["wit-dict-1"],
-        "runner_ids": ["olmocr"],
+        "witness_ids": ["wit-page-0100-ocr"],
+        "runner_ids": ["olmocr-hf"],
         "machine_confidence": 0.92
       }
     },
@@ -161,13 +181,13 @@
       },
       "provenance": {
         "source_page_id": "page-0100",
-        "witness_ids": ["wit-dict-1"],
-        "runner_ids": ["olmocr"],
+        "witness_ids": ["wit-page-0100-ocr"],
+        "runner_ids": ["olmocr-hf"],
         "machine_confidence": 0.91
       }
     }
   ],
   "notes": [],
   "evaluation_summary": {},
-  "review_event_ids": []
+  "review_event_ids": ["review-packet-page-0100"]
 }

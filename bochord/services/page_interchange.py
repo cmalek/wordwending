@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from pathlib import Path  # noqa: TC003
+from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from bochord.models import (
@@ -51,14 +51,15 @@ class PageXmlInterchangeService:
         output_dir.mkdir(parents=True, exist_ok=True)
         xml_path = output_dir / f"{page.page_id}.xml"
         sidecar_path = output_dir / f"{page.page_id}.bochord.json"
-        self._write_page_xml(page, image_path.name, xml_path)
+        exported_image_name = Path(page.prepared_page.image_path).name
+        self._write_page_xml(page, exported_image_name, xml_path)
         sidecar_path.write_text(
             page.model_dump_json(indent=2) + "\n",
             encoding="utf-8",
         )
         zip_path = output_dir / f"{page.page_id}.review.zip"
         with ZipFile(zip_path, "w", ZIP_DEFLATED) as archive:
-            archive.write(image_path, image_path.name)
+            archive.write(image_path, exported_image_name)
             archive.write(xml_path, xml_path.name)
         return zip_path
 
@@ -141,10 +142,8 @@ class PageXmlInterchangeService:
 
     def _merge_page(self, root: ET.Element, base: BundlePage) -> BundlePage:
         """Apply PAGE-supported field updates onto the canonical sidecar."""
-        page_el = root.find(f"{{{PAGE_NS}}}Page")
-        if page_el is None:
-            msg = "PAGE document missing Page element"
-            raise ValueError(msg)
+        page_el = self._page_element(root)
+        self._validate_page_identity(page_el, base)
         space_id = base.prepared_page.coordinate_space.space_id
         region_elements = self._indexed_children(page_el, "TextRegion")
         line_elements, word_elements = self._collect_line_and_word_elements(
@@ -162,6 +161,40 @@ class PageXmlInterchangeService:
         return base.model_copy(
             update={"regions": regions, "lines": lines, "spans": spans},
         )
+
+    def _page_element(self, root: ET.Element) -> ET.Element:
+        """Return the PAGE Page element, raising when it is absent."""
+        page_el = root.find(f"{{{PAGE_NS}}}Page")
+        if page_el is None:
+            msg = "PAGE document missing Page element"
+            raise ValueError(msg)
+        return page_el
+
+    def _validate_page_identity(
+        self,
+        page_el: ET.Element,
+        base: BundlePage,
+    ) -> None:
+        """Reject PAGE corrections for a different prepared image identity."""
+        expected_name = Path(base.prepared_page.image_path).name
+        expected_space = base.prepared_page.coordinate_space
+        actual_name = page_el.get("imageFilename")
+        actual_width = page_el.get("imageWidth")
+        actual_height = page_el.get("imageHeight")
+        expected_width = str(expected_space.width_px)
+        expected_height = str(expected_space.height_px)
+        if (
+            actual_name != expected_name
+            or actual_width != expected_width
+            or actual_height != expected_height
+        ):
+            msg = (
+                "PAGE image identity mismatch: expected "
+                f"{expected_name} {expected_width}x{expected_height}, got "
+                f"{actual_name or '<missing>'} "
+                f"{actual_width or '<missing>'}x{actual_height or '<missing>'}"
+            )
+            raise ValueError(msg)
 
     def _collect_line_and_word_elements(
         self,
@@ -296,22 +329,32 @@ class PageXmlInterchangeService:
 
     def _coords(self, bounding_box: BoundingBox) -> ET.Element:
         """Convert one axis-aligned box to PAGE Coords."""
+        x0 = self._point_value(bounding_box.x0)
+        y0 = self._point_value(bounding_box.y0)
+        x1 = self._point_value(bounding_box.x1)
+        y1 = self._point_value(bounding_box.y1)
         points = (
-            f"{bounding_box.x0},{bounding_box.y0} "
-            f"{bounding_box.x1},{bounding_box.y0} "
-            f"{bounding_box.x1},{bounding_box.y1} "
-            f"{bounding_box.x0},{bounding_box.y1}"
+            f"{x0},{y0} "
+            f"{x1},{y0} "
+            f"{x1},{y1} "
+            f"{x0},{y1}"
         )
         return ET.Element(f"{{{PAGE_NS}}}Coords", points=points)
 
     def _coords_from_polygon(self, polygon: Polygon) -> ET.Element:
         """Convert one polygon to PAGE Coords."""
-        points = " ".join(f"{point.x},{point.y}" for point in polygon.points)
+        points = " ".join(
+            f"{self._point_value(point.x)},{self._point_value(point.y)}"
+            for point in polygon.points
+        )
         return ET.Element(f"{{{PAGE_NS}}}Coords", points=points)
 
     def _baseline_element(self, baseline: list[Point]) -> ET.Element:
         """Convert one baseline polyline to PAGE Baseline."""
-        points = " ".join(f"{point.x},{point.y}" for point in baseline)
+        points = " ".join(
+            f"{self._point_value(point.x)},{self._point_value(point.y)}"
+            for point in baseline
+        )
         return ET.Element(f"{{{PAGE_NS}}}Baseline", points=points)
 
     def _text_style(self, typography: Typography) -> ET.Element | None:
@@ -496,3 +539,7 @@ class PageXmlInterchangeService:
             Point(x=x, y=y)
             for x, y in self._parse_points(element.get("points", ""))
         ]
+
+    def _point_value(self, value: float) -> str:
+        """Serialize one PAGE coordinate as an importer-friendly integer."""
+        return str(round(value))

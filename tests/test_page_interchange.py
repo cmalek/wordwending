@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from zipfile import ZipFile
 
 import pytest
 
@@ -31,6 +32,12 @@ def _word_ids(root: ET.Element) -> list[str]:
         for word in root.findall(f".//{{{PAGE_NS}}}Word")
         if word.get("id")
     ]
+
+
+def _page_element(root: ET.Element) -> ET.Element:
+    page_el = root.find(f"{{{PAGE_NS}}}Page")
+    assert page_el is not None
+    return page_el
 
 
 def _export_note_page(tmp_path: Path) -> tuple[PageXmlInterchangeService, Path, Path]:
@@ -70,10 +77,53 @@ def test_page_xml_round_trip_keeps_page_contract(tmp_path: Path) -> None:
         for region in sorted(base.regions, key=lambda item: item.region_id)
     ]
     assert returned_order == base_order == [1, 2]
+    assert any(span.text_diplomatic == "x^2" for span in returned.spans)
     marker = next(
         span for span in returned.spans if span.span_id == "span-note-marker-10"
     )
     assert marker.typography.baseline_shift is BaselineShift.SUPERSCRIPT
+    assert returned.review_event_ids == ["review-packet-page-0010"]
+
+
+def test_export_review_package_uses_canonical_prepared_image_identity(
+    tmp_path: Path,
+) -> None:
+    """Export should package the canonical prepared image identity, not temp names."""
+    base = BundlePage.model_validate_json(NOTE_FIXTURE.read_text())
+    image = tmp_path / "note-page.png"
+    image.write_bytes(b"fixture-image")
+    service = PageXmlInterchangeService()
+
+    package = service.export_review_package(base, image, tmp_path)
+    root = ET.parse(tmp_path / "page-0010.xml").getroot()  # noqa: S314
+    page_el = _page_element(root)
+
+    assert page_el.get("imageFilename") == "page.png"
+    assert page_el.get("imageWidth") == "1800"
+    assert page_el.get("imageHeight") == "2600"
+    with ZipFile(package) as archive:
+        assert sorted(archive.namelist()) == ["page-0010.xml", "page.png"]
+
+
+def test_export_review_package_writes_integer_page_coords(tmp_path: Path) -> None:
+    """Export should round PAGE coordinates to importer-friendly integers."""
+    base = BundlePage.model_validate_json(
+        Path("tests/fixtures/interchange/dictionary-page.base.json").read_text()
+    )
+    image = tmp_path / "dictionary-page.png"
+    image.write_bytes(b"fixture-image")
+    service = PageXmlInterchangeService()
+
+    service.export_review_package(base, image, tmp_path)
+    root = ET.parse(tmp_path / "page-0100.xml").getroot()  # noqa: S314
+    points_values = [
+        element.get("points", "")
+        for element in root.findall(
+            f".//{{{PAGE_NS}}}Coords",
+        ) + root.findall(f".//{{{PAGE_NS}}}Baseline")
+    ]
+
+    assert all(".0" not in points for points in points_values)
 
 
 def test_corrected_page_xml_updates_only_page_fields(tmp_path: Path) -> None:
@@ -122,6 +172,16 @@ def test_import_rejects_duplicate_line_id(tmp_path: Path) -> None:
     page_xml.write_text(xml, encoding="utf-8")
 
     with pytest.raises(ValueError, match="duplicate line id line-0010-body-1"):
+        service.import_corrected_page(page_xml, sidecar)
+
+
+def test_import_rejects_page_identity_mismatch(tmp_path: Path) -> None:
+    """Import should fail when corrected PAGE points at a different image identity."""
+    service, page_xml, sidecar = _export_note_page(tmp_path)
+    xml = page_xml.read_text().replace('imageWidth="1800"', 'imageWidth="9999"', 1)
+    page_xml.write_text(xml, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="PAGE image identity mismatch"):
         service.import_corrected_page(page_xml, sidecar)
 
 
@@ -203,29 +263,14 @@ def test_native_escriptorium_export_lacks_stable_word_ids(stem: str) -> None:
 
 
 @pytest.mark.parametrize(
-    ("stem", "missing_word_ids"),
-    [
-        (
-            "dictionary-page",
-            ["span-0100-headword", "span-0100-sorrow"],
-        ),
-        (
-            "note-page",
-            ["span-0010-footnote-text", "span-0010-italic", "span-note-marker-10"],
-        ),
-    ],
+    "stem",
+    ["dictionary-page", "note-page"],
 )
-def test_native_escriptorium_export_rejects_import(
-    stem: str,
-    missing_word_ids: list[str],
-) -> None:
-    """Import must fail when native export omits canonical Word/span ids."""
+def test_native_escriptorium_export_rejects_import(stem: str) -> None:
+    """Import must fail when native export no longer matches the canonical package."""
     service = PageXmlInterchangeService()
     sidecar = FIXTURE_DIR / f"{stem}.base.json"
     corrected = FIXTURE_DIR / f"{stem}.corrected.xml"
 
-    with pytest.raises(ValueError, match="missing word ids:") as exc_info:
+    with pytest.raises(ValueError, match="PAGE image identity mismatch"):
         service.import_corrected_page(corrected, sidecar)
-
-    for word_id in missing_word_ids:
-        assert word_id in str(exc_info.value)
