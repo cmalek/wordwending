@@ -99,8 +99,8 @@
     {
       "span_id": "span-0010-italic",
       "line_id": "line-0010-body-1",
-      "text_diplomatic": "Deletion",
-      "text_normalized": "Deletion",
+      "text_diplomatic": "Delete",
+      "text_normalized": "Delete",
       "typography": {
         "weight": "regular",
         "slant": "italic",

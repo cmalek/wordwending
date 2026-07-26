@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='utf-8'?>
+<PcGts xmlns="http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15/pagecontent.xsd">
+  <Metadata externalRef="zip//bochord-dictionary-page.import.zip/dictionary-100.png">
+	<Creator>escriptorium</Creator>
+	<Created>2026-07-26T02:39:02.623955+00:00</Created>
+        <LastChange>2026-07-26T02:39:02.883350+00:00</LastChange>
+  </Metadata>
+  <Page imageFilename="dictionary-100.png" imageWidth="2400" imageHeight="3600">
+    <TextRegion id="region-0100-a" type="body">
+      <Coords points="100,120 1100,120 1100,1800 100,1800" />
+      <TextLine id="line-0100-1">
+        <Coords points="120,140 500,142 498,180 118,178" />
+        <Baseline points="120,175 500,177" />
+        <Word id="span-0100-headword"><Coords points="120,140 280,140 280,180 120,180" /><TextEquiv><Unicode>drēorig</Unicode></TextEquiv></Word><Word id="span-0100-sorrow"><Coords points="300,140 420,140 420,180 300,180" /><TextStyle italic="true" /><TextEquiv><Unicode>sorrow</Unicode></TextEquiv></Word></TextLine>
+    </TextRegion>
+    <TextRegion id="region-0100-b" type="body">
+      <Coords points="1200,120 2200,120 2200,1800 1200,1800" />
+      <TextLine id="line-0100-2">
+        <Coords points="1200,960 2200,961 2200,1800 1200,1800" />
+        <Baseline points="1200,960 2200,961" />
+        <TextEquiv>
+          <Unicode />
+        </TextEquiv>
+      </TextLine>
+    </TextRegion>
+  <ReadingOrder><OrderedGroup id="reading-order-1"><RegionRefIndexed index="0" regionRef="region-0100-a" /><RegionRefIndexed index="1" regionRef="region-0100-b" /></OrderedGroup></ReadingOrder></Page>
+</PcGts>

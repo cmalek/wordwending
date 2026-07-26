@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='utf-8'?>
+<PcGts xmlns="http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15/pagecontent.xsd">
+  <Metadata externalRef="zip//bochord-note-page.import.zip/note-10.png">
+	<Creator>escriptorium</Creator>
+	<Created>2026-07-26T02:39:02.995376+00:00</Created>
+        <LastChange>2026-07-26T02:39:03.175551+00:00</LastChange>
+  </Metadata>
+  <Page imageFilename="note-10.png" imageWidth="1800" imageHeight="2600">
+    <TextRegion id="region-0010-body" type="body">
+      <Coords points="80,100 1720,100 1720,2100 80,2100" />
+      <TextLine id="line-0010-body-1">
+        <Coords points="100,120 1700,120 1700,160 100,160" />
+        <Baseline points="100,155 1700,157" />
+        <Word id="span-0010-italic"><Coords points="100,120 220,120 220,160 100,160" /><TextStyle italic="true" /><TextEquiv><Unicode>Deletion</Unicode></TextEquiv></Word><Word id="span-note-marker-10"><Coords points="230,110 260,110 260,140 230,140" /><TextStyle superscript="true" /><TextEquiv><Unicode>10</Unicode></TextEquiv></Word></TextLine>
+    </TextRegion>
+    <TextRegion id="region-0010-footnote" type="footnote">
+      <Coords points="80,2200 1720,2200 1720,2500 80,2500" />
+      <TextLine id="line-0010-footnote-1">
+        <Coords points="80,2350 1720,2351 1720,2500 80,2500" />
+        <Baseline points="80,2350 1720,2351" />
+        <Word id="span-0010-footnote-text"><TextEquiv><Unicode>See footnote discussion.</Unicode></TextEquiv></Word></TextLine>
+    </TextRegion>
+  <ReadingOrder><OrderedGroup id="reading-order-1"><RegionRefIndexed index="0" regionRef="region-0010-body" /><RegionRefIndexed index="1" regionRef="region-0010-footnote" /></OrderedGroup></ReadingOrder></Page>
+</PcGts>
