@@ -3,6 +3,7 @@
   "page_number": 1,
   "source_page_label": null,
   "prepared_page": {
+    "prepared_page_id": "prepared-page-1",
     "preparation_mode": "full-page",
     "page_class": "ordinary-prose",
     "image_path": "page.png",
