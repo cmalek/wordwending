@@ -550,6 +550,8 @@ class _RateAccumulator:
 
         Returns:
             Frozen metric score with explicit numerator and denominator.
+            Empty-reference unit-error notes attach only when the final
+            denominator is zero.
 
         """
         if self.denominator == 0:
@@ -568,5 +570,4 @@ class _RateAccumulator:
             value=self.numerator / self.denominator,
             numerator=self.numerator,
             denominator=self.denominator,
-            note=self.note,
         )

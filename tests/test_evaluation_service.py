@@ -230,3 +230,141 @@ def test_missing_watchlist_characters_emit_flag_and_lower_recall() -> None:
     assert {flag.flag_type for flag in summary.text.flags} == {
         "missing_watchlist_character"
     }
+
+
+def test_coverage_do_not_score_excludes_spans_from_denominators() -> None:
+    prediction, gold = text_case(
+        predicted="wrong",
+        reference="right",
+        coverage_do_not_score=True,
+    )
+
+    summary = EvaluationService().evaluate_page(prediction, gold, profile())
+    metrics = {metric.metric_id: metric for metric in summary.text.metrics}
+
+    assert metrics["character_error_rate"].denominator == 0
+    assert metrics["character_error_rate"].value == 0
+    assert metrics["exact_span_match_rate"].denominator == 0
+    assert metrics["exact_span_match_rate"].value == 0
+
+
+def test_iou_fallback_matches_highest_same_family_span() -> None:
+    provenance = _provenance()
+    prediction = BundlePage(
+        page_id="page-1",
+        page_number=1,
+        prepared_page=PreparedPage(
+            preparation_mode=PreparationMode.FULL_PAGE,
+            page_class=PageClass.ORDINARY_PROSE,
+            image_path="page.png",
+            source_artifact_id="source-1",
+            image_checksum="sha256:image",
+            preparation_recipe_id="prep-v1",
+            coordinate_space=CoordinateSpace(
+                space_id="prepared-page-1",
+                width_px=100,
+                height_px=100,
+            ),
+        ),
+        regions=[
+            RegionRecord(
+                region_id="region-1",
+                region_kind=RegionKind.BODY,
+                reading_order_index=1,
+                line_ids=["line-1", "line-2"],
+                provenance=provenance,
+            )
+        ],
+        lines=[
+            LineRecord(
+                line_id="line-1",
+                region_id="region-1",
+                line_order=1,
+                span_ids=["span-near"],
+                provenance=provenance,
+            ),
+            LineRecord(
+                line_id="line-2",
+                region_id="region-1",
+                line_order=2,
+                span_ids=["span-far"],
+                provenance=provenance,
+            ),
+        ],
+        spans=[
+            SpanRecord(
+                span_id="span-near",
+                line_id="line-1",
+                text_diplomatic="match",
+                bounding_box=BoundingBox(x0=0, y0=0, x1=40, y1=10),
+                provenance=provenance,
+            ),
+            SpanRecord(
+                span_id="span-far",
+                line_id="line-2",
+                text_diplomatic="other",
+                bounding_box=BoundingBox(x0=60, y0=60, x1=90, y1=90),
+                provenance=provenance,
+            ),
+        ],
+    )
+    gold = GoldPageAnnotation(
+        page_id="page-1",
+        page_number=1,
+        source_run_id="run-1",
+        base_graph_revision="graph-1",
+        prepared_image_checksum="sha256:image",
+        coverage=[
+            GoldCoverage(
+                coverage_id="coverage-1",
+                dimensions=[ReviewDimension.TEXT],
+                target_object_ids=["span-near", "span-far"],
+                exhaustive=True,
+            )
+        ],
+        text_spans=[
+            GoldTextSpan(
+                annotation_id="gold-span-1",
+                bounding_box=BoundingBox(x0=0, y0=0, x1=38, y1=10),
+                text_diplomatic="match",
+            )
+        ],
+    )
+
+    summary = EvaluationService().evaluate_page(prediction, gold, profile())
+    metrics = {metric.metric_id: metric for metric in summary.text.metrics}
+
+    assert metrics["character_error_rate"].value == 0
+    assert metrics["character_error_rate"].denominator == 5
+    assert metrics["exact_span_match_rate"].value == 1
+
+
+def test_empty_ref_note_omitted_when_other_spans_contribute_denom() -> None:
+    prediction, gold = text_case(predicted="ghost", reference="")
+    provenance = _provenance()
+    prediction.spans.append(
+        SpanRecord(
+            span_id="span-2",
+            line_id="line-1",
+            text_diplomatic="ok",
+            bounding_box=BoundingBox(x0=50, y0=0, x1=80, y1=10),
+            provenance=provenance,
+        )
+    )
+    prediction.lines[0].span_ids.append("span-2")
+    gold.coverage[0].target_object_ids.append("span-2")
+    gold.text_spans.append(
+        GoldTextSpan(
+            annotation_id="gold-span-2",
+            target_object_id="span-2",
+            text_diplomatic="ok",
+        )
+    )
+
+    summary = EvaluationService().evaluate_page(prediction, gold, profile())
+    metrics = {metric.metric_id: metric for metric in summary.text.metrics}
+
+    assert metrics["character_error_rate"].denominator == 2
+    assert metrics["character_error_rate"].value == 0
+    assert metrics["character_error_rate"].note is None
+    assert metrics["word_error_rate"].note is None
