@@ -14,7 +14,8 @@ Non-Negotiable Rules
 - Treat OCR output as evidence, not final truth.
 - Keep raw pass artifacts.
 - Keep prepared page images.
-- Compare text, structure, and style separately.
+- Compare source quality, preparation, structure, text, typography, and note
+  linkage separately.
 - Use overlays for corrections.
 - Rebuild derived outputs rather than hand-editing machine outputs in place.
 
@@ -25,8 +26,7 @@ For every serious run, preserve:
 
 - source PDF or source images
 - prepared page images
-- raw ``olmocr`` artifacts
-- raw ``kraken`` artifacts
+- raw artifacts from every executed runner
 - page graph outputs
 - evaluation outputs
 - overlays
@@ -105,6 +105,32 @@ Good CER, bad reading order
 Bad text from one runner, good structure from another
     This is normal. Merge later. Do not force one winner too early.
 
+Before Starting Any Review Task
+===============================
+
+Refuse a task as malformed rather than guessing its intent when the interface
+does not show:
+
+- one exact question and target scope
+- prepared image plus checksum
+- required raw evidence views
+- review dimensions being certified
+- allowed actions including flag/abstain where applicable
+- completion checklist and coverage
+- guideline version and base run/graph revision
+
+At completion, check that the event names only dimensions actually inspected.
+For example, accepting text does not accept typography, and accepting one span
+does not accept a region or page. Use ``unknown``, ``mark_illegible``, ``flag``,
+``abstained``, or ``needs-adjudication`` rather than a plausible guess.
+
+If Evidence Changed
+===================
+
+Stop review when the visible prepared-image checksum, source run, graph revision,
+or target ids differ from the task packet. Request/rebuild a successor task and
+overlay. Do not apply a stale correction by visual position alone.
+
 Research Discipline
 ===================
 
@@ -127,3 +153,5 @@ Operators should treat that document as normative for:
 - what review verbs mean
 - how trust states change
 - how note and style corrections must be recorded
+- exactly how source, preparation, layout, text, typography, note, gold, and
+  adjudication tasks are completed

@@ -26,10 +26,15 @@ Trust states are:
 - ``reviewed``
 - ``corrected``
 
+Trust is always qualified by reviewed dimensions. Text, structure, typography,
+source quality, preparation, and note linkage are certified independently; no
+single ``reviewed`` bit certifies them all.
+
 Review scope may apply at:
 
 - page
 - region
+- line
 - note
 - span
 
@@ -38,11 +43,21 @@ Initial review verbs are:
 - ``accept``
 - ``correct_text``
 - ``correct_style``
+- ``correct_geometry``
+- ``reorder``
+- ``reclassify_region``
+- ``mark_illegible``
 - ``link_note``
 - ``unlink_note``
 - ``split_region``
 - ``merge_region``
 - ``flag``
+- ``resolve_flag``
+
+Every event binds to a review task, source run, graph revision, prepared image,
+and guideline revision through its overlay. Structural events carry complete
+replayable replacement definitions. A changed base creates a successor/rebased
+overlay rather than silently reusing stale decisions.
 
 Consequences
 ============

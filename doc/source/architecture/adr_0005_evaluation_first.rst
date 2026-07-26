@@ -21,7 +21,8 @@ Evaluation score families remain separate:
 
 - text accuracy
 - structure accuracy
-- style accuracy
+- typography accuracy by independent facet
+- note-linkage accuracy
 
 V1 style scope is intentionally narrow and useful:
 

@@ -1,4 +1,6 @@
-# Configuration file for the Sphinx documentation builder.  # noqa: INP001
+# Copyright (C) 2026 Chris Malek.
+# ruff: noqa: INP001
+# Configuration file for the Sphinx documentation builder.
 #
 # This file only contains a selection of the most common options. For a full
 # list see the documentation:
@@ -59,6 +61,9 @@ source_suffix: str = ".rst"
 templates_path: list[str] = ["_templates"]
 
 autodoc_member_order: str = "groupwise"
+
+# Pydantic signatures include runtime constraint metadata that is not public API.
+autodoc_typehints: str = "none"
 
 # Make Sphinx not expand all our Type Aliases
 autodoc_type_aliases: dict[str, str] = {}

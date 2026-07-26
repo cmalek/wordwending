@@ -37,6 +37,7 @@ bochord
    :caption: Reference
    :hidden:
 
+   api/models
    changelog
 
 Current version is |release|.
@@ -50,7 +51,7 @@ bochord provides the following key features:
 
 **Image-first OCR orchestration**
     - Multi-pass workflows for difficult historical PDFs
-    - Separate text, structure, style, and evaluation concerns
+    - Separate text, structure, typography, note-linkage, and evaluation concerns
 
 **Witness-preserving bundle outputs**
     - Raw pass artifacts remain intact
@@ -85,8 +86,8 @@ Common Use Cases
 ----------------
 
 **Research and compare OCR passes**
-    - Run competing engines on difficult pages
-    - Evaluate text, structure, and style separately
+    - Run competing hosted engines on difficult pages
+    - Evaluate text, structure, typography, and note linkage separately
 
 **Produce reviewable bundle artifacts**
     - Preserve footnotes, italic, bold, and superscript signals

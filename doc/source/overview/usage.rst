@@ -273,7 +273,7 @@ Best Practices
 --------------
 
 Output Format Selection
-~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^
 
 Choose appropriate output formats:
 
@@ -289,7 +289,7 @@ Choose appropriate output formats:
     bochord --output text group1 feature1 --names-only
 
 Configuration Management
-~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 Use configuration files when necessary:
 

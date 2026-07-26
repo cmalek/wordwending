@@ -23,7 +23,7 @@ object, while preserving competing evidence in provenance.
 This means:
 
 - one accepted text per accepted span
-- one accepted style class per accepted span
+- one accepted value per typography facet and semantic role per accepted span
 - one accepted note linkage per accepted note-marker relationship
 - preserved alternate evidence in provenance, not as uncontrolled duplicate
   graph nodes
@@ -52,7 +52,7 @@ Recommended v1 merge sequence:
 2. normalize coordinate systems
 3. align layout or line evidence
 4. align text evidence to chosen structure scaffold
-5. align style evidence onto accepted text spans
+5. align typography and role evidence onto accepted text spans
 6. resolve note linkage
 7. emit graph with provenance and merge confidence
 
@@ -83,24 +83,24 @@ Recommended default for v1:
 - use a configured precedence order
 - allow evaluation or heuristics to override when evidence is strong
 
-Example:
+Runner precedence is set only after corpus benchmark results. Before that,
+candidate evidence remains equal-status raw witness input to an abstaining merge.
 
-- ``olmocr`` preferred for difficult-text recognition
-- ``kraken`` retained as alternate text evidence and structural support
+Typography Resolution Policy
+============================
 
-Style Resolution Policy
-=======================
+When typography evidence disagrees:
 
-When style evidence disagrees:
+- resolve weight, slant, baseline shift, family, size, small capitals, and letter
+  spacing independently
+- preserve conflicting candidates and per-facet confidence in provenance
+- keep semantic roles such as ``footnote-marker`` separate from visual facets
+- lower confidence only for the facets in conflict
 
-- choose one accepted style class per span
-- preserve conflicting style candidates in provenance
-- lower merge confidence when conflict remains unresolved
+If evidence is too weak:
 
-If style evidence is too weak:
-
-- use ``plain`` only when evidence supports it
-- otherwise emit uncertainty or review flag rather than pretending confidence
+- emit ``unknown`` for that facet and a targeted review task when it matters
+- do not convert missing evidence into regular/upright/baseline defaults
 
 Note Linkage Policy
 ===================
@@ -147,7 +147,7 @@ When To Flag Instead of Resolve
 The merge policy should emit flags when:
 
 - text disagreement is material and no clear primary source wins
-- style evidence conflicts strongly
+- typography or semantic-role evidence conflicts strongly
 - note linkage remains ambiguous
 - structure scaffolds disagree in ways that break local reading order
 - source evidence is insufficient for a trustworthy accepted object

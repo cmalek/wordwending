@@ -188,8 +188,8 @@ When reporting a bug, please include:
 
 1. **Command used**: The exact command that failed
 2. **Error message**: The complete error output
-3. **Environment**: OS, Python version, tfmate version
-6. **Verbose output**: Use ``--verbose`` and include the output
+3. **Environment**: OS, Python version, bochord version
+4. **Verbose output**: Use ``--verbose`` and include the output
 
 Example bug report:
 

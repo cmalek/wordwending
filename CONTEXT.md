@@ -119,19 +119,37 @@ Out of scope:
   from aligned pass outputs
 - shared page coordinates: one common coordinate system used to align evidence
   from multiple pass runners on the same page
+- coordinate space: stable identity plus raster dimensions for the image in
+  which a box, polygon, or baseline is expressed
+- transform chain: ordered, replayable source-to-prepared mappings such as crop,
+  scale, rotation, deskew, or dewarp; non-linear mappings retain an artifact
+- polygon: non-rectangular geometry used when an axis-aligned box would lose
+  region or line shape
+- baseline: ordered points describing where a text line sits, especially useful
+  for curved or skewed historical print
 - region: page-graph node representing one layout area such as paragraph, table
   area, marginalia area, or footnote area
 - line: page-graph node representing one ordered textual line inside a region
 - span: page-graph node representing one aligned styled text run inside a line
 - note: page-graph node representing one note body linked to one or more marker
   spans
-- footnote marker: span-level style class marking inline note reference text or
-  symbol
+- footnote marker: semantic span role marking inline note-reference text or a
+  symbol; independent of visual font properties
 - footnote block: note-kind for a note body rendered separately from main text
 - table region: region whose dominant role is tabular or paradigmatic layout;
   v1 does not require full cell modeling
-- style class: constrained label on a span such as `plain`, `italic`, `bold`,
-  `superscript`, `subscript`, or `footnote-marker`
+- typography: orthogonal visual facets on a span: font-family candidates, font
+  size estimate, weight, slant, baseline shift, small capitals, and letter
+  spacing
+- font weight: `regular`, `bold`, or `unknown`, independent of slant and role
+- font slant: `upright`, `italic`, or `unknown`; upright means not italic or
+  oblique and replaces the ambiguous label `roman`
+- baseline shift: `baseline`, `superscript`, `subscript`, or `unknown`
+- text role: semantic role such as `text` or `footnote-marker`, kept separate
+  from typography
+- PAGE interchange: OCR-D PAGE-compatible internal representation used when it
+  reduces custom orchestration or review work; public output remains JSON and
+  Markdown rather than requiring XML
 - structure scaffold: chosen coordinate-rich structural basis used during merge
   so other pass evidence can be aligned onto one accepted page layout
 - merge policy: deterministic rules for resolving competing pass outputs into
@@ -149,29 +167,46 @@ Out of scope:
 - machine confidence: confidence emitted by an originating model or heuristic
 - merge confidence: confidence that the accepted graph value was resolved
   correctly from competing evidence
-- trust state: human-review state on a derived object or exportable chunk:
-  `machine`, `reviewed`, or `corrected`
+- trust state: human-review state on named evidence dimensions of a derived
+  object or exportable chunk: `machine`, `reviewed`, or `corrected`
+- review dimension: independently certifiable evidence family: source quality,
+  preparation, structure, text, typography, or note linkage
 - review scope: granularity at which trust or review applies, such as page,
-  region, note, or span
+  region, line, note, or span
 - machine state: trust state meaning no human acceptance yet
 - reviewed state: trust state meaning a human checked and accepted output
   unchanged
 - corrected state: trust state meaning a human changed machine-derived output
 - review event: one append-only human markup record describing acceptance,
   correction, linkage, split/merge, or flagging activity
+- review task: self-contained operator packet naming one question, dimensions,
+  targets, required evidence, allowed actions, abstention, completion criteria,
+  guideline version, source run, and graph revision
+- abstention: explicit outcome stating that available evidence does not support
+  a defensible decision; it is not machine acceptance or task failure
+- adjudication: review of independent conflicting decisions that preserves the
+  originals and records a new resolution
+- overlay rebase: explicit transfer of still-valid events to a successor image,
+  run, or graph revision while routing unresolved targets back to review
 - overlay: review layer applied on top of derived graph outputs without
   mutating raw witness artifacts
 - append-only review history: review model where events are accumulated rather
   than replaced by one mutable latest-state blob
 - gold slice: manually verified annotation slice used as trusted reference for
   evaluation on a page or page fragment
+- gold coverage: explicit page, graph-object, or image region and dimensions
+  that define what was annotated exhaustively and therefore define metric
+  denominators
+- held-out split: gold examples reserved before model selection and not used to
+  tune prompts, preparation, merge thresholds, or engine choices
 - watchlist metric: targeted evaluation metric focused on one failure family
   such as macrons, ligatures, thorn/eth, or style retention
 - text accuracy: evaluation family covering OCR character and word fidelity
 - structure accuracy: evaluation family covering reading order, linkage,
   coverage, and similar structural correctness
-- style accuracy: evaluation family covering retention of style classes and note
-  markers
+- typography accuracy: evaluation family scored per independent visual facet
+- note-linkage accuracy: evaluation family covering marker roles and
+  marker-to-note edges within explicit gold coverage
 - evidence-preserving text: text kept in a form that does not discard important
   graphemes, style signals, or uncertainty too early
 - diplomatic text: exact or philologically faithful text field derived from the
@@ -191,5 +226,11 @@ Out of scope:
   marker spans and page context
 - stitched chunk: document-level retrieval chunk derived from accepted
   page-graph order across page boundaries
+- chunking recipe: versioned deterministic policy that produced RAG chunk
+  boundaries and text
+- hosted inference boundary: all OCR model inference runs on pinned Hugging Face
+  endpoints; the local laptop prepares inputs, orchestrates requests, validates
+  and stores witnesses, evaluates outputs, and supports review, but never runs
+  OCR models or silently falls back to local weights
 - page-local truth: design principle that correctness is established first at
   the page level before broader document stitching

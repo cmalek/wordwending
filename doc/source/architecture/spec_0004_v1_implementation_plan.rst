@@ -5,134 +5,136 @@ Spec 0004: Ordered V1 Implementation
 Purpose
 =======
 
-Provide a build order that follows the ADR chain and minimizes wasted work.
+Provide a build order that reduces irreversible architecture and model choices.
+Each phase must leave one executable check and evidence for the next decision.
 
-Phase 1: Contracts and Skeleton
+Phase 1: Interoperability Spike
 ===============================
 
-Ship first:
+- round-trip one Bosworth-Toller dictionary page and one prose/note page through
+  OCR-D/PAGE-compatible geometry and eScriptorium review
+- prove source, prepared-image, coordinate-transform, and object-id provenance
+- record which existing processors and interfaces can be reused
 
-- package-level architecture docs
-- run config models
-- page classification models
-- bundle manifest models
-- page graph models
-- pass runner protocol or abstract base
-- empty orchestrator skeleton
+Exit: corrected PAGE-compatible evidence can return to a valid ``bochord``
+bundle without losing text, typography, geometry, reading order, or note links.
 
-Exit criteria:
+Phase 2: Gold Protocol and Evaluator
+====================================
 
-- type-stable models exist
-- one fake pass runner can execute through the orchestrator
-- bundle skeleton can be written to disk
+- publish annotation and adjudication guidelines
+- create calibration examples for diplomatic text, structure, typography, and
+  note linkage
+- annotate explicit coverage/exclusion regions
+- reserve held-out test slices before comparing engines
+- implement metric semantics from :doc:`spec_0003_evaluation_schema`
 
-Phase 2: Raw Witness Infrastructure
-===================================
+Exit: the same valid prediction can be scored repeatedly with fixed
+denominators, and an operator can reproduce one gold annotation from the docs.
 
-Ship next:
+Phase 3: Acquisition and Preparation
+====================================
 
-- page preparation service
-- page assessment and page classification
-- witness artifact storage rules
-- pass runner registry
-- deterministic page bundle writing
+- accept a PDF, one image, or an ordered folder/archive of page images
+- extract or render PDF pages when source images are unavailable
+- assess skew, gutter shadow, resolution, markings, artifacts, and effective
+  font size before expensive OCR
+- preserve source-to-prepared transform chains and checksums
+- choose full-page or per-page subdivision, including mixed document policies
 
-Exit criteria:
+Exit: each source page has a reproducible prepared image, quality decision,
+coordinate identity, warnings, and optional prepared units.
 
-- one input document produces page folders and raw witness artifacts
-- page-level preparation and classification metadata are persisted
-- rerun behavior is deterministic
-
-Phase 3: First Engines
-======================
-
-Ship next:
-
-- ``olmocr`` runner
-- ``kraken`` runner
-- shared runner result normalization
-
-Exit criteria:
-
-- both runners can emit raw witness artifacts for the same page
-- page manifests record both passes correctly
-
-Phase 4: Alignment and Graph Build
-==================================
-
-Ship next:
-
-- shared coordinate normalization
-- evidence alignment logic
-- graph builder for ``region/line/span/note``
-
-Exit criteria:
-
-- one page with two runners yields one derived page graph
-- footnote marker and note block representation works
-
-Phase 5: Evaluation
-===================
-
-Ship next:
-
-- gold slice schema
-- family-specific scoring
-- review flags
-- run summaries
-
-Exit criteria:
-
-- same page graph can be scored against supplied gold data
-- review flags are emitted separately from scores
-
-Phase 6: Overlay and Export
+Phase 4: One Vertical Slice
 ===========================
 
-Ship next:
+- execute one provisional text runner and one coordinate-rich runner
+- preserve raw witnesses and exact model/runtime/config identity
+- build one ``region/line/span/note`` page graph
+- score it, issue dimension-specific review tasks, apply an overlay, and export
+  JSON plus Markdown
 
-- overlay schema
-- overlay application service
-- page and document export views
+Exit: one representative page travels end to end without manual file surgery.
 
-Exit criteria:
+Phase 5: Candidate Model Bake-Off
+=================================
 
-- human corrections can be layered without mutating raw witness data
-- downstream consumers can read stable normalized exports
+- run ``olmocr``, ``kraken``, and licensed alternative candidates against the
+  same prepared inputs and held-out gold using Hugging Face hosted endpoints
+- measure quality by dimension and page class, plus latency, throughput, cost,
+  failure rate, license, and Hugging Face operability
+- measure batch sizes rather than adopting folklore defaults
 
-Phase 7: Retrieval Views
+Exit: recorded evidence selects the smallest useful runner set and page-class
+policies. Losing or redundant candidates are not integrated further.
+
+No phase adds local OCR-model inference. Unit tests use recorded fixtures or
+mock endpoints; live integration and benchmark tests target pinned Hugging Face
+deployments.
+
+Phase 6: Runner Boundary
 ========================
 
-Ship next:
+- extract the common pass-runner interface from two or three working adapters
+- validate batch counts, item/output associations, retries, timestamps, and
+  immutable model/runtime/config revisions
+- persist raw artifacts before normalization
 
-- page-local RAG chunk generation
-- footnote chunk generation
-- document-level stitched chunk generation from accepted page graph order
+Exit: selected runners emit different witness families through one proven
+contract without hiding runner-specific capabilities.
 
-Exit criteria:
+Phase 7: Alignment and Abstaining Merge
+=======================================
 
-- page-local chunks link back to graph truth
-- footnotes are independently retrievable
-- stitched chunks exist without reading raw OCR streams directly
+- normalize PAGE-compatible boxes, polygons, and baselines through recorded
+  coordinate transforms
+- align independent text, structure, typography, and note-link evidence
+- merge only above calibrated thresholds; otherwise retain disagreement and
+  create a targeted review task
 
-Phase 8: Hardening
-==================
+Exit: difficult pages produce an auditable graph or explicit abstention, never
+silent guessed structure.
 
-Only after earlier phases work:
+Phase 8: Human Review and Rebase
+================================
 
-- richer table handling
-- additional engines or runners
-- packaging and CLI ergonomics
-- benchmark corpus growth
+- issue self-contained review task packets
+- replay geometry, ordering, text, typography, note, flag, and illegibility
+  events
+- support adjudication and rebase/supersession when source runs or graphs change
+
+Exit: every human certification names its dimensions, evidence, guidelines,
+coverage, base run, and graph revision.
+
+Phase 9: Exports and Retrieval
+==============================
+
+- emit canonical bundle JSON and human/agent Markdown
+- emit provisional region and note RAG chunks with multi-page provenance
+- keep dictionary-entry, grammar-section, and TEI-inspired semantic transforms
+  in downstream packages until page-graph evidence justifies promotion
+
+Exit: consumers can retrieve accepted content and trace every chunk to pages,
+objects, witnesses, and a chunking recipe.
+
+Phase 10: Operational Hardening
+===============================
+
+- resumability, caching, artifact retention, and corruption checks
+- Hugging Face endpoint deployment, health checks, secrets, quotas, cold starts,
+  queueing, retries, and cost controls
+- corpus expansion, regression gates, and operator calibration monitoring
+
+Exit: interrupted runs resume without data loss and deployed runners are
+reproducible and observable.
 
 Recommended Initial CLI
 =======================
 
-Keep CLI small:
-
+- ``bochord prepare``
 - ``bochord run``
 - ``bochord eval``
 - ``bochord inspect-bundle``
-- ``bochord version``
 
-Avoid v1 CLI sprawl. Most complexity belongs in config and services.
+Add review or endpoint-management commands only after the corresponding phase
+proves a command-line workflow is the right boundary.

@@ -5,5 +5,3 @@ Models
 
 .. automodule:: bochord.models
     :members:
-    :undoc-members:
-    :show-inheritance:

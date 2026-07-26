@@ -1,6 +1,6 @@
-===========================================
+==============================================
 Spec 0012: Runner Execution and Batch Policy
-===========================================
+==============================================
 
 Purpose
 =======
@@ -225,12 +225,38 @@ Each execution batch should record:
 - ``batch_id``
 - runner identity
 - model identity and revision where applicable
+- hosting/runtime identity and immutable container or endpoint revision
+- runner configuration digest and prompt digest where applicable
 - input packaging mode
 - input artifact ids
 - batch size
 - start and end timestamps or duration
 - retry metadata
 - execution result summary
+- exact batch-item ids represented by every output artifact
+
+Hugging Face Execution
+======================
+
+Hugging Face is the required deployment target for OCR models, not runner
+identity. The local laptop performs preparation and orchestration but never
+runs OCR model inference or downloads weights as a fallback. A hosted run must
+record model repository and immutable revision, endpoint/runtime name, container
+revision, hardware class, non-secret configuration digest, prompt digest, and
+request/batch metadata. Credentials never enter bundle provenance.
+
+Endpoint policy must define health checks, cold-start timeout, queue limits,
+request timeout, retryable status codes, idempotency, scale-to-zero behavior,
+quota/cost limits, and artifact retention. A health check proves serving
+readiness; it does not count as an OCR quality check.
+
+Endpoint failure persists a failed or retryable batch. It must not trigger a
+silent local execution path or change models without a new recorded run.
+
+Batch-size experiments use the same prepared inputs and model revision. Record
+warm-up separately, report page/unit throughput and failure rate, and compare
+quality as well as speed. Choose conservative defaults per runner and page class
+only after repeated measurements.
 
 Operator Notes
 ==============

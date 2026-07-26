@@ -117,14 +117,9 @@ V1 node kinds:
 - ``span``
 - ``note``
 
-V1 style classes:
-
-- ``plain``
-- ``italic``
-- ``bold``
-- ``superscript``
-- ``subscript``
-- ``footnote-marker``
+V1 records weight, slant, baseline shift, optional family/size, small capitals,
+and letter spacing independently. ``footnote-marker`` is a semantic role, not a
+font style.
 
 ``note`` is used for bodies such as ``footnote-block``.
 
@@ -168,7 +163,7 @@ Human corrections belong in overlays, not in-place mutations of raw OCR text.
 Overlay examples:
 
 - corrected span text
-- corrected style class
+- corrected typography facets or semantic role
 - corrected note linkage
 - accepted or rejected region interpretation
 

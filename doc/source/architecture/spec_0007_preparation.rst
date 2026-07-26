@@ -48,8 +48,28 @@ Important examples:
 - operator-generated scan folders
 - other ordered page-image directories representing one logical document
 
+``page image set`` is intentionally format-agnostic.
+
+V1 must not assume that page-image inputs always arrive as ``.jp2`` bundles.
+Common real inputs will also include ordered folders or archives of:
+
+- ``.png``
+- ``.jpg`` or ``.jpeg``
+- ``.tif`` or ``.tiff``
+- mixed image formats that still preserve stable page ordering
+
 For scanned PDFs, the system must render one prepared page image per page before
 any OCR runner executes.
+
+More precisely, PDF-to-image preparation must support two page-image acquisition
+paths:
+
+- extract an embedded page raster directly when the PDF already contains one
+  usable source image per page
+- render the PDF page to an image when direct extraction is unavailable or
+  produces materially worse OCR inputs
+
+The chosen path should be recorded per page in preparation provenance.
 
 For source image sets, the system must preserve source ordering, source
 filenames, and source-image provenance before producing any prepared-page
@@ -63,6 +83,7 @@ Every prepared page image must record a preparation recipe identity.
 The recipe should capture, at minimum:
 
 - source type
+- PDF page-image acquisition mode when source type is ``pdf``
 - render backend or renderer identity
 - target DPI or equivalent target resolution
 - color mode
@@ -181,6 +202,7 @@ V1 Required Recipe Fields
 The v1 recipe model should include explicit fields for:
 
 - ``recipe_id``
+- ``pdf_page_image_mode``
 - ``render_dpi``
 - ``color_mode``
 - ``deskew``
@@ -191,6 +213,9 @@ The v1 recipe model should include explicit fields for:
 - optional freeform notes
 
 Suggested v1 enumerations:
+
+``pdf_page_image_mode``
+    ``extract-embedded``, ``render-page``, ``auto``
 
 ``color_mode``
     ``grayscale``, ``rgb``, ``binary``
@@ -272,6 +297,24 @@ When subdivision occurs, preparation should preserve:
 - ordering metadata for reconstructing page flow
 - overlap in pixels between adjacent units when configured
 - recipe and assessment metadata that justified subdivision
+
+Coordinate and Image Provenance
+===============================
+
+Every source page, prepared page variant, and prepared unit has a stable
+coordinate-space id, pixel width/height, optional effective DPI, artifact id,
+and checksum. Boxes, polygons, and baselines name that id rather than a generic
+``pixel`` label.
+
+Preparation records the ordered mapping from source space to prepared space and
+from prepared page to every unit. Crops, scales, rotations, and deskew operations
+store numeric parameters. Dewarp or other non-linear operations retain the
+mapping artifact needed to replay coordinates. OCR evidence is rejected during
+alignment when its coordinate identity cannot be resolved through this chain.
+
+Prepared-image checksums bind later review and gold image anchors to the pixels
+the operator actually inspected. A changed checksum creates a new prepared page
+identity and requires overlay/gold rebase; it never silently inherits old boxes.
 
 Operator Rules for Subdivision
 ==============================

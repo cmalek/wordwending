@@ -146,7 +146,7 @@ Each graph object must carry:
 - ``span_id``
 - parent ``line_id``
 - text
-- style class
+- orthogonal typography facets and semantic roles
 - bounding box
 - trust state
 - provenance references

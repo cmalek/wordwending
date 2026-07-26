@@ -350,7 +350,7 @@ Basic Template
 
     # Logging settings
     log_level = "INFO"
-    log_file = null
+    log_file = ""
 
 Production Template
 ^^^^^^^^^^^^^^^^^^^
@@ -385,7 +385,7 @@ Development Template
 
     # Logging settings
     log_level = "DEBUG"
-    log_file = null
+    log_file = ""
 
 Scripting Template
 ^^^^^^^^^^^^^^^^^^

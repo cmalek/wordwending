@@ -21,7 +21,7 @@ Every evaluated page reports three first-class score families:
     structural correctness
 
 ``style``
-    Retention of style classes and note markers used by downstream workflows
+    Per-facet retention of typography, plus independently scored note-marker roles
 
 Text Metrics
 ============
@@ -49,7 +49,7 @@ Minimum v1 structure metrics:
 Style Metrics
 =============
 
-Minimum v1 style metrics:
+Minimum v1 typography and role metrics:
 
 - italic span retention
 - bold span retention

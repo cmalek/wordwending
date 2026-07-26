@@ -22,20 +22,25 @@ Read in this order:
    adr_0006_pass_runner_plugins
    adr_0007_v1_engine_strategy
    adr_0008_stable_ids_and_review_history
+   adr_0009_ocrd_page_escriptorium
 
 .. toctree::
    :maxdepth: 1
    :caption: Specs
 
+   spec_0004_v1_implementation_plan
    spec_0001_system_architecture
+   spec_0015_gold_annotation_schema
+   spec_0003_evaluation_schema
    spec_0007_preparation
    spec_0010_page_classification
    spec_0012_runner_execution_and_batching
+   spec_0013_pass_runner_interface_schema
    spec_0008_text_normalization
    spec_0009_merge_policy
    spec_0002_bundle_layout
-   spec_0003_evaluation_schema
    spec_0005_human_markup
+   spec_0014_review_overlay_schema
    spec_0011_structured_output_strategy
    spec_0006_exports_and_retrieval
-   spec_0004_v1_implementation_plan
+   spec_0016_concrete_export_models
