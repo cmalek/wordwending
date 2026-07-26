@@ -22,8 +22,6 @@ from bochord.models import (
 
 #: PAGE 2019-07-15 XML namespace used for review-package interchange.
 PAGE_NS = "http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15"
-#: ElementTree namespace map for PAGE XML parsing helpers.
-NS = {"pc": PAGE_NS}
 ET.register_namespace("", PAGE_NS)
 #: Minimum vertex count required to reconstruct polygon geometry from PAGE.
 _MIN_POLYGON_POINTS = 3
