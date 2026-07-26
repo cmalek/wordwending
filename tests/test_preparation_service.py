@@ -3,21 +3,30 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import random
+import tempfile
 from pathlib import Path
 
+import pytest
 from PIL import Image, ImageDraw
 
 from bochord.models import (
     CoordinateSpace,
+    DewarpMode,
     FlagSeverity,
     PageClass,
+    PreparationMode,
     PreparationRecipe,
     QualitySignal,
     SourcePageArtifact,
 )
-from bochord.services.preparation import PageClassifier, PageQualityAssessor
+from bochord.services.preparation import (
+    PageClassifier,
+    PagePreparationService,
+    PageQualityAssessor,
+)
 
 #: Canonical preparation recipe fixture used by preparation tests.
 _RECIPE_PATH = Path("tests/fixtures/preparation/recipe-v1.json")
@@ -39,32 +48,80 @@ def recipe(**overrides: object) -> PreparationRecipe:
     return PreparationRecipe.model_validate(payload)
 
 
-def source_page(*, dpi: float | None = 400.0) -> SourcePageArtifact:
+def _write_source_png(image: Image.Image, destination: Path) -> str:
     """
-    Build a minimal source-page artifact for assessor tests.
+    Persist a source raster and return its ``sha256:`` checksum label.
+
+    Args:
+        image: Raster to write.
+        destination: Output PNG path.
+
+    Returns:
+        Digest label for the written bytes.
+
+    """
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    image.save(
+        destination,
+        format="PNG",
+        optimize=False,
+        compress_level=6,
+        pnginfo=None,
+        exif=b"",
+        icc_profile=None,
+    )
+    digest = hashlib.sha256(destination.read_bytes()).hexdigest()
+    return f"sha256:{digest}"
+
+
+def source_page(
+    *,
+    dpi: float | None = 400.0,
+    image: Image.Image | None = None,
+) -> SourcePageArtifact:
+    """
+    Build a source-page artifact backed by a written PNG.
 
     Keyword Args:
         dpi: Effective DPI recorded on the coordinate space.
+        image: Optional raster; defaults to a blank RGB page.
 
     Returns:
-        Source page artifact with a synthetic coordinate space.
+        Source page artifact pointing at a temporary PNG file.
 
     """
+    raster = (
+        image if image is not None else Image.new("RGB", (1000, 1400), (255, 255, 255))
+    )
+    path = Path(tempfile.mkdtemp(prefix="bochord-prep-")) / "0001.png"
+    checksum = _write_source_png(raster, path)
+    width, height = raster.size
     return SourcePageArtifact(
         artifact_id="artifact-page-1",
         source_page_id="page-0001",
         page_number=1,
-        source_path="pages/0001.png",
+        source_path=str(path),
         source_filename="0001.png",
-        checksum="sha256:test",
+        checksum=checksum,
         acquisition_mode=None,
         coordinate_space=CoordinateSpace(
             space_id="space-page-1",
-            width_px=1000,
-            height_px=1400,
+            width_px=width,
+            height_px=height,
             dpi=dpi,
         ),
     )
+
+
+def dense_source_page() -> SourcePageArtifact:
+    """
+    Build a two-column dense dictionary source page on disk.
+
+    Returns:
+        Source page artifact for column-subdivision tests.
+
+    """
+    return source_page(image=dense_two_column_image(text_height=12))
 
 
 def signal_map(signals: list[QualitySignal]) -> dict[str, QualitySignal]:
@@ -273,3 +330,83 @@ def test_table_rule_page_is_suggested_as_table_heavy() -> None:
     assert rules.value is not None
     assert rules.value >= 6
     assert PageClassifier().suggest(signals) is PageClass.TABLE_HEAVY
+
+
+def test_same_input_and_recipe_produce_same_checksum(tmp_path: Path) -> None:
+    service = PagePreparationService(PageQualityAssessor(), PageClassifier())
+    first = service.prepare(source_page(), recipe(), tmp_path / "first")
+    second = service.prepare(source_page(), recipe(), tmp_path / "second")
+    assert first.prepared_page.image_checksum == second.prepared_page.image_checksum
+    assert first.prepared_page.prepared_page_id == second.prepared_page.prepared_page_id
+
+
+def test_column_units_map_back_to_prepared_page(tmp_path: Path) -> None:
+    result = PagePreparationService(
+        PageQualityAssessor(),
+        PageClassifier(),
+    ).prepare(
+        dense_source_page(),
+        recipe(),
+        tmp_path,
+        mode_override=PreparationMode.COLUMNS,
+        override_reason="known two-column dictionary leaf",
+    )
+    units = result.prepared_page.prepared_units
+    assert len(units) == 2
+    assert [unit.prepared_unit_id for unit in units] == [
+        "page-0001-column-001",
+        "page-0001-column-002",
+    ]
+    assert [unit.order for unit in units] == [1, 2]
+    assert all(
+        unit.parent_prepared_page_id == result.prepared_page.prepared_page_id
+        for unit in units
+    )
+    assert all(unit.checksum for unit in units)
+    assert all(
+        unit.bounding_box is not None
+        and unit.bounding_box.coordinate_space_id == "prepared-page-0001"
+        for unit in units
+    )
+
+
+def test_fixed_tile_units_overlap_and_order(tmp_path: Path) -> None:
+    result = PagePreparationService(
+        PageQualityAssessor(),
+        PageClassifier(),
+    ).prepare(
+        source_page(),
+        recipe(fixed_tile_height_px=500, subdivision_overlap_px=100),
+        tmp_path,
+        mode_override=PreparationMode.FIXED_TILES,
+        override_reason="force fixed tiles for overlap check",
+    )
+    units = result.prepared_page.prepared_units
+    assert len(units) >= 2
+    assert [unit.order for unit in units] == list(range(1, len(units) + 1))
+    assert [unit.prepared_unit_id for unit in units] == [
+        f"page-0001-tile-{index:03d}" for index in range(1, len(units) + 1)
+    ]
+    assert all(
+        unit.parent_prepared_page_id == result.prepared_page.prepared_page_id
+        for unit in units
+    )
+    for earlier, later in zip(units, units[1:], strict=False):
+        assert earlier.bounding_box is not None
+        assert later.bounding_box is not None
+        assert earlier.bounding_box.y0 < later.bounding_box.y0
+        assert earlier.bounding_box.y1 > later.bounding_box.y0
+        overlap = earlier.bounding_box.y1 - later.bounding_box.y0
+        assert overlap == pytest.approx(100)
+
+
+def test_basic_dewarp_requires_mapping_artifact(tmp_path: Path) -> None:
+    with pytest.raises(
+        ValueError,
+        match="basic dewarp requires a replayable mapping artifact",
+    ):
+        PagePreparationService(PageQualityAssessor(), PageClassifier()).prepare(
+            source_page(),
+            recipe(dewarp_mode=DewarpMode.BASIC),
+            tmp_path,
+        )
