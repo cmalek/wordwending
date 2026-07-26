@@ -28,6 +28,7 @@ bochord
 
    architecture/index
    runbook/ocr_process
+   runbook/gold_annotation
    runbook/operator_notes
    runbook/contributing
    runbook/coding_standards

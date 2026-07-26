@@ -1,6 +1,5 @@
-"""
-Tests for CLI commands with low coverage.
-"""
+# Copyright (C) 2026 Chris Malek.
+"""Tests for CLI commands with low coverage."""
 
 from __future__ import annotations
 
@@ -101,6 +100,30 @@ class TestCLIGlobalOptions:
         assert result.exit_code != 0
 
 
+class TestCLIEval:
+    """Test the eval command."""
+
+    def test_eval_command_writes_reproducible_scores(self, runner, tmp_path) -> None:
+        """Test eval writes deterministic PageEvaluationSummary JSON."""
+        output = tmp_path / "scores.json"
+        result = runner.invoke(
+            cli,
+            [
+                "eval",
+                "--prediction",
+                "tests/fixtures/evaluation/page.json",
+                "--gold",
+                "tests/fixtures/evaluation/gold.json",
+                "--profile",
+                "tests/fixtures/evaluation/metric-profile-v1.json",
+                "--output-json",
+                str(output),
+            ],
+        )
+        assert result.exit_code == 0
+        assert json.loads(output.read_text())["text"]["metrics"]
+
+
 class TestCLIErrorHandling:
     """Test CLI error handling."""
 
@@ -108,7 +131,7 @@ class TestCLIErrorHandling:
         """Test CLI without arguments shows help."""
         result = runner.invoke(cli, [])
         # Click expects a command, so exit code 2 is correct for missing command
-        assert result.exit_code == 2  # noqa: PLR2004
+        assert result.exit_code == 2
         assert "Usage:" in result.output
 
     def test_invalid_command(self, runner):

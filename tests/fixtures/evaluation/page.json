@@ -1,0 +1,155 @@
+{
+  "page_id": "page-1",
+  "page_number": 1,
+  "source_page_label": null,
+  "prepared_page": {
+    "preparation_mode": "full-page",
+    "page_class": "ordinary-prose",
+    "image_path": "page.png",
+    "source_artifact_id": "source-1",
+    "image_checksum": "sha256:image",
+    "preparation_recipe_id": "prep-v1",
+    "coordinate_space": {
+      "space_id": "prepared-page-1",
+      "width_px": 100,
+      "height_px": 100,
+      "dpi": null,
+      "parent_space_id": null
+    },
+    "transforms": [],
+    "prepared_units": []
+  },
+  "witnesses": [],
+  "regions": [
+    {
+      "region_id": "region-1",
+      "region_kind": "body",
+      "reading_order_index": 1,
+      "bounding_box": null,
+      "polygon": null,
+      "line_ids": [
+        "line-1"
+      ],
+      "note_ids": [],
+      "trust_state": "machine",
+      "provenance": {
+        "source_page_id": "page-0001",
+        "witness_ids": [
+          "wit-1"
+        ],
+        "runner_ids": [
+          "olmocr"
+        ],
+        "machine_confidence": 0.91,
+        "merge_confidence": 0.84,
+        "disagreement_note": null
+      },
+      "review": {
+        "reviewed_dimensions": [],
+        "corrected_dimensions": [],
+        "last_event_id": null,
+        "event_ids": []
+      }
+    }
+  ],
+  "lines": [
+    {
+      "line_id": "line-1",
+      "region_id": "region-1",
+      "line_order": 1,
+      "bounding_box": null,
+      "polygon": null,
+      "baseline": [],
+      "span_ids": [
+        "span-1"
+      ],
+      "trust_state": "machine",
+      "provenance": {
+        "source_page_id": "page-0001",
+        "witness_ids": [
+          "wit-1"
+        ],
+        "runner_ids": [
+          "olmocr"
+        ],
+        "machine_confidence": 0.91,
+        "merge_confidence": 0.84,
+        "disagreement_note": null
+      },
+      "review": {
+        "reviewed_dimensions": [],
+        "corrected_dimensions": [],
+        "last_event_id": null,
+        "event_ids": []
+      },
+      "joins_to_line_id": null
+    }
+  ],
+  "spans": [
+    {
+      "span_id": "span-1",
+      "line_id": "line-1",
+      "text_diplomatic": "þæt drēam",
+      "text_normalized": "þæt drēam",
+      "typography": {
+        "font_families": [],
+        "font_size_points": null,
+        "font_size_confidence": null,
+        "weight": "unknown",
+        "slant": "unknown",
+        "baseline_shift": "unknown",
+        "small_caps": null,
+        "letter_spaced": null
+      },
+      "roles": [
+        "text"
+      ],
+      "bounding_box": {
+        "x0": 0.0,
+        "y0": 0.0,
+        "x1": 40.0,
+        "y1": 10.0,
+        "coordinate_space_id": "prepared-page"
+      },
+      "trust_state": "machine",
+      "provenance": {
+        "source_page_id": "page-0001",
+        "witness_ids": [
+          "wit-1"
+        ],
+        "runner_ids": [
+          "olmocr"
+        ],
+        "machine_confidence": 0.91,
+        "merge_confidence": 0.84,
+        "disagreement_note": null
+      },
+      "review": {
+        "reviewed_dimensions": [],
+        "corrected_dimensions": [],
+        "last_event_id": null,
+        "event_ids": []
+      }
+    }
+  ],
+  "notes": [],
+  "evaluation_summary": {
+    "text": {
+      "metrics": [],
+      "flags": []
+    },
+    "structure": {
+      "metrics": [],
+      "flags": []
+    },
+    "typography": {
+      "metrics": [],
+      "flags": []
+    },
+    "note_linkage": {
+      "metrics": [],
+      "flags": []
+    }
+  },
+  "review_event_ids": []
+}

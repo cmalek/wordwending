@@ -1,15 +1,22 @@
+# Copyright (C) 2026 Chris Malek.
+"""bochord command-line interface."""
+
 from __future__ import annotations
 
-from importlib.metadata import Distribution
 import json
 import os
 import sys
+from importlib.metadata import Distribution
+from pathlib import Path
 
 import click
+from pydantic import ValidationError
 from rich.table import Table
 
 import bochord
 
+from ..models import BundlePage, GoldDocument, MetricProfile
+from ..services.evaluation import EvaluationService
 from ..settings import Settings
 from .utils import console, print_error, print_info
 
@@ -32,6 +39,14 @@ def cli(
 ):
     """
     bochord command line interface.
+
+    Args:
+        ctx: Click context object.
+        verbose: Enable verbose output.
+        quiet: Suppress all output except errors.
+        config_file: Optional custom configuration file path.
+        output: Selected output format for subcommands.
+
     """  # noqa: D403
     # Ensure context object exists
     ctx.ensure_object(dict)
@@ -43,7 +58,7 @@ def cli(
     ctx.obj["config_file"] = config_file
 
     if config_file:
-        # This will be picked up by the Settings class's settings_customise_sources method
+        # Picked up by Settings.settings_customise_sources.
         os.environ["BOCHORD_CONFIG_FILE"] = config_file
 
     # Load settings
@@ -80,6 +95,10 @@ def version() -> None:
 def show_settings(ctx: click.Context):
     """
     Settings-related commands.
+
+    Args:
+        ctx: Click context object.
+
     """
     output_format = ctx.obj.get("output", "table")
     verbose = ctx.obj.get("verbose", False)
@@ -105,3 +124,77 @@ def show_settings(ctx: click.Context):
 
     if verbose:
         print_info(f"Found {len(settings.model_dump())} settings")
+
+
+@cli.command("eval")
+@click.option(
+    "--prediction",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Predicted BundlePage JSON file.",
+)
+@click.option(
+    "--gold",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="GoldDocument JSON file.",
+)
+@click.option(
+    "--profile",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="MetricProfile JSON file.",
+)
+@click.option(
+    "--output-json",
+    required=True,
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="Destination path for PageEvaluationSummary JSON.",
+)
+def eval_page(
+    prediction: Path,
+    gold: Path,
+    profile: Path,
+    output_json: Path,
+) -> None:
+    """
+    Score one predicted page against gold annotations.
+
+    Args:
+        prediction: Predicted BundlePage JSON file path.
+        gold: GoldDocument JSON file path.
+        profile: MetricProfile JSON file path.
+        output_json: Destination path for PageEvaluationSummary JSON.
+
+    Side Effects:
+        Writes evaluation summary JSON to ``output_json``.
+
+    Raises:
+        click.ClickException: When inputs fail validation or I/O fails.
+
+    """
+    try:
+        page = BundlePage.model_validate_json(prediction.read_text(encoding="utf-8"))
+        gold_document = GoldDocument.model_validate_json(
+            gold.read_text(encoding="utf-8")
+        )
+        metric_profile = MetricProfile.model_validate_json(
+            profile.read_text(encoding="utf-8")
+        )
+    except (OSError, ValidationError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    gold_page = next(
+        (item for item in gold_document.pages if item.page_id == page.page_id),
+        None,
+    )
+    if gold_page is None:
+        msg = f"gold document has no page matching page_id {page.page_id!r}"
+        raise click.ClickException(msg)
+
+    summary = EvaluationService().evaluate_page(page, gold_page, metric_profile)
+
+    try:
+        output_json.write_text(summary.model_dump_json(indent=2), encoding="utf-8")
+    except OSError as exc:
+        raise click.ClickException(str(exc)) from exc
