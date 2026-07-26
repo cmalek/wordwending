@@ -94,6 +94,23 @@ def _edit_distance(left: list[str], right: list[str]) -> int:
     return previous[-1]
 
 
+def _boxes_intersect(left: BoundingBox, right: BoundingBox) -> bool:
+    """
+    Return whether two axis-aligned boxes share positive area.
+
+    Args:
+        left: First box.
+        right: Second box.
+
+    Returns:
+        True when the rectangles overlap.
+
+    """
+    return min(left.x1, right.x1) > max(left.x0, right.x0) and min(
+        left.y1, right.y1
+    ) > max(left.y0, right.y0)
+
+
 def _box_iou(left: BoundingBox, right: BoundingBox) -> float:
     """
     Return intersection-over-union for two axis-aligned boxes.
@@ -185,14 +202,23 @@ def _has_exhaustive_coverage(
     gold: GoldPageAnnotation,
     object_id: str | None,
     dimension: ReviewDimension,
+    *,
+    bounding_box: BoundingBox | None = None,
 ) -> bool:
     """
-    Return whether ``object_id`` lies in exhaustive coverage for ``dimension``.
+    Return whether an object lies in exhaustive coverage for ``dimension``.
+
+    An object qualifies when an eligible coverage record is whole-page, lists
+    ``object_id`` in ``target_object_ids``, or declares an image
+    ``bounding_box`` that intersects the object's ``bounding_box``.
 
     Args:
         gold: Gold annotation slice.
         object_id: Predicted or gold target object id.
         dimension: Required review dimension.
+
+    Keyword Args:
+        bounding_box: Object geometry used for image-scoped coverage.
 
     Returns:
         True when an eligible coverage record includes the object.
@@ -204,6 +230,12 @@ def _has_exhaustive_coverage(
         if coverage.whole_page:
             return True
         if object_id is not None and object_id in coverage.target_object_ids:
+            return True
+        if (
+            coverage.bounding_box is not None
+            and bounding_box is not None
+            and _boxes_intersect(coverage.bounding_box, bounding_box)
+        ):
             return True
     return False
 
@@ -475,8 +507,14 @@ class EvaluationService:
             object_id = (
                 matched.span_id if matched is not None else gold_span.target_object_id
             )
+            box = (
+                matched.bounding_box if matched is not None else gold_span.bounding_box
+            )
             if not _has_exhaustive_coverage(
-                gold, object_id, ReviewDimension.TEXT
+                gold,
+                object_id,
+                ReviewDimension.TEXT,
+                bounding_box=box,
             ):
                 continue
             predicted_text = matched.text_diplomatic if matched is not None else ""
@@ -756,8 +794,16 @@ class _StructureScorer:
             matched = _resolve_region(gold_region, prediction.regions, profile)
             if matched is not None:
                 object_id = matched.region_id
+            box = (
+                matched.bounding_box
+                if matched is not None
+                else gold_region.bounding_box
+            )
             if not _has_exhaustive_coverage(
-                gold, object_id, ReviewDimension.STRUCTURE
+                gold,
+                object_id,
+                ReviewDimension.STRUCTURE,
+                bounding_box=box,
             ):
                 continue
             pairs.append((gold_region, matched))
@@ -821,16 +867,23 @@ class _StructureScorer:
         for join in gold.line_joins:
             if join.do_not_score:
                 continue
+            left = lines_by_id.get(join.left_line_id)
+            box = left.bounding_box if left is not None else None
             if not _has_exhaustive_coverage(
-                gold, join.left_line_id, ReviewDimension.STRUCTURE
+                gold,
+                join.left_line_id,
+                ReviewDimension.STRUCTURE,
+                bounding_box=box,
             ):
                 continue
-            left = lines_by_id.get(join.left_line_id)
-            predicted_join = None if left is None else left.joins_to_line_id
-            if join.joined:
-                correct = predicted_join == join.right_line_id
+            # Missing left line is a miss: do not treat absent joins_to as
+            # success for joined=false (None != right_line_id).
+            if left is None:
+                correct = False
+            elif join.joined:
+                correct = left.joins_to_line_id == join.right_line_id
             else:
-                correct = predicted_join != join.right_line_id
+                correct = left.joins_to_line_id != join.right_line_id
             rate.add(1.0 if correct else 0.0, 1.0)
         return rate
 
@@ -855,8 +908,7 @@ class _StructureScorer:
                     flag_type="low_confidence_merged_graph_region",
                     severity=FlagSeverity.WARNING,
                     message=(
-                        f"Region {region.region_id} has low merge confidence "
-                        f"({merge})"
+                        f"Region {region.region_id} has low merge confidence ({merge})"
                     ),
                     target_object_ids=[region.region_id],
                 )
@@ -917,8 +969,14 @@ class _TypographyScorer:
             object_id = (
                 matched.span_id if matched is not None else gold_span.target_object_id
             )
+            box = (
+                matched.bounding_box if matched is not None else gold_span.bounding_box
+            )
             if not _has_exhaustive_coverage(
-                gold, object_id, ReviewDimension.TYPOGRAPHY
+                gold,
+                object_id,
+                ReviewDimension.TYPOGRAPHY,
+                bounding_box=box,
             ):
                 continue
             pred_typo = matched.typography if matched is not None else Typography()
@@ -1196,8 +1254,16 @@ class _TypographyScorer:
                 if matched is not None
                 else gold_region.target_object_id
             )
+            box = (
+                matched.bounding_box
+                if matched is not None
+                else gold_region.bounding_box
+            )
             if not _has_exhaustive_coverage(
-                gold, object_id, ReviewDimension.STRUCTURE
+                gold,
+                object_id,
+                ReviewDimension.STRUCTURE,
+                bounding_box=box,
             ):
                 continue
             rate.add(1.0 if matched is not None else 0.0, 1.0)
@@ -1225,12 +1291,14 @@ class _NoteLinkageScorer:
 
         """
         del profile
-        predicted_edges = self._predicted_edges(prediction.notes)
+        predicted_edges = self._predicted_edges(prediction.notes, gold)
         rate = _RateAccumulator()
         flags: list[EvaluationFlag] = []
         for gold_link in gold.note_links:
             for marker_span_id in gold_link.marker_span_ids:
-                if not self._edge_in_coverage(gold, marker_span_id, gold_link):
+                if not self._edge_in_coverage(
+                    gold, marker_span_id, gold_link, prediction.notes
+                ):
                     continue
                 edge = (marker_span_id, gold_link.note_target_id)
                 correct = edge in predicted_edges
@@ -1239,8 +1307,7 @@ class _NoteLinkageScorer:
                     flags.append(
                         EvaluationFlag(
                             flag_id=(
-                                f"note-link-{gold_link.annotation_id}"
-                                f"-{marker_span_id}"
+                                f"note-link-{gold_link.annotation_id}-{marker_span_id}"
                             ),
                             flag_type="ambiguous_note_linkage",
                             severity=FlagSeverity.WARNING,
@@ -1261,28 +1328,70 @@ class _NoteLinkageScorer:
         )
 
     @staticmethod
-    def _predicted_edges(notes: list[NoteRecord]) -> set[tuple[str, str]]:
+    def _note_annotation_aliases(
+        gold: GoldPageAnnotation,
+        notes: list[NoteRecord],
+    ) -> dict[str, set[str]]:
         """
-        Expand predicted notes into ``(marker_span_id, note_id)`` edges.
+        Map predicted note ids to gold region annotation ids that name them.
 
         Args:
+            gold: Gold annotation slice.
             notes: Predicted note records.
 
         Returns:
-            Exact predicted linkage edges.
+            ``note_id`` → gold region ``annotation_id`` aliases.
 
         """
-        return {
-            (marker_span_id, note.note_id)
-            for note in notes
-            for marker_span_id in note.linked_marker_span_ids
-        }
+        note_ids = {note.note_id for note in notes}
+        aliases: dict[str, set[str]] = {}
+        for region in gold.regions:
+            target = region.target_object_id
+            if target is None:
+                continue
+            if target in note_ids:
+                aliases.setdefault(target, set()).add(region.annotation_id)
+                continue
+            for note in notes:
+                if note.region_id == target:
+                    aliases.setdefault(note.note_id, set()).add(region.annotation_id)
+        return aliases
+
+    @staticmethod
+    def _predicted_edges(
+        notes: list[NoteRecord],
+        gold: GoldPageAnnotation,
+    ) -> set[tuple[str, str]]:
+        """
+        Expand predicted notes into marker→note edges under gold aliases.
+
+        Emits ``(marker_span_id, note_id)`` and also
+        ``(marker_span_id, annotation_id)`` when a gold region annotation names
+        that note body, so gold ``note_target_id`` may be either form.
+
+        Args:
+            notes: Predicted note records.
+            gold: Gold annotation slice supplying annotation-id aliases.
+
+        Returns:
+            Exact predicted linkage edges keyed by note id and annotation id.
+
+        """
+        aliases = _NoteLinkageScorer._note_annotation_aliases(gold, notes)
+        edges: set[tuple[str, str]] = set()
+        for note in notes:
+            keys = {note.note_id} | aliases.get(note.note_id, set())
+            for marker_span_id in note.linked_marker_span_ids:
+                for key in keys:
+                    edges.add((marker_span_id, key))
+        return edges
 
     @staticmethod
     def _edge_in_coverage(
         gold: GoldPageAnnotation,
         marker_span_id: str,
         gold_link: GoldNoteLink,
+        notes: list[NoteRecord],
     ) -> bool:
         """
         Return whether a gold note edge is in exhaustive NOTE_LINKAGE coverage.
@@ -1291,13 +1400,22 @@ class _NoteLinkageScorer:
             gold: Gold annotation slice.
             marker_span_id: Marker side of the gold edge.
             gold_link: Gold note-link annotation.
+            notes: Predicted notes used to resolve annotation-id targets.
 
         Returns:
             True when the marker or note target is covered.
 
         """
-        return _has_exhaustive_coverage(
-            gold, marker_span_id, ReviewDimension.NOTE_LINKAGE
-        ) or _has_exhaustive_coverage(
+        if _has_exhaustive_coverage(gold, marker_span_id, ReviewDimension.NOTE_LINKAGE):
+            return True
+        if _has_exhaustive_coverage(
             gold, gold_link.note_target_id, ReviewDimension.NOTE_LINKAGE
-        )
+        ):
+            return True
+        aliases = _NoteLinkageScorer._note_annotation_aliases(gold, notes)
+        for note_id, annotation_ids in aliases.items():
+            if gold_link.note_target_id not in annotation_ids:
+                continue
+            if _has_exhaustive_coverage(gold, note_id, ReviewDimension.NOTE_LINKAGE):
+                return True
+        return False

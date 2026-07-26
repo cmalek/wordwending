@@ -730,3 +730,85 @@ def test_wrong_note_edge_emits_targeted_flag() -> None:
     assert {flag.flag_type for flag in summary.note_linkage.flags} == {
         "ambiguous_note_linkage"
     }
+
+
+def test_image_scoped_coverage_scores_intersecting_spans() -> None:
+    prediction, gold = text_case(predicted="þæt", reference="þæt")
+    gold.coverage = [
+        GoldCoverage(
+            coverage_id="coverage-box",
+            dimensions=[ReviewDimension.TEXT],
+            bounding_box=BoundingBox(x0=0, y0=0, x1=50, y1=20),
+            exhaustive=True,
+        )
+    ]
+
+    summary = EvaluationService().evaluate_page(prediction, gold, profile())
+    metrics = {metric.metric_id: metric for metric in summary.text.metrics}
+
+    assert metrics["character_error_rate"].denominator > 0
+    assert metrics["character_error_rate"].value == 0
+
+
+def test_image_scoped_coverage_skips_nonintersecting_spans() -> None:
+    prediction, gold = text_case(predicted="þæt", reference="þæt")
+    gold.coverage = [
+        GoldCoverage(
+            coverage_id="coverage-elsewhere",
+            dimensions=[ReviewDimension.TEXT],
+            bounding_box=BoundingBox(x0=80, y0=80, x1=90, y1=90),
+            exhaustive=True,
+        )
+    ]
+
+    summary = EvaluationService().evaluate_page(prediction, gold, profile())
+    metrics = {metric.metric_id: metric for metric in summary.text.metrics}
+
+    assert metrics["character_error_rate"].denominator == 0
+    assert metrics["character_error_rate"].value == 0
+
+
+def test_missing_left_line_does_not_inflate_unjoined_fidelity() -> None:
+    prediction = structured_prediction()
+    gold = structured_gold()
+    gold.coverage[0].target_object_ids = [
+        *gold.coverage[0].target_object_ids,
+        "line-missing",
+    ]
+    gold.line_joins = [
+        GoldLineJoin(
+            annotation_id="join-missing",
+            left_line_id="line-missing",
+            right_line_id="line-2",
+            joined=False,
+        )
+    ]
+
+    summary = EvaluationService().evaluate_page(prediction, gold, profile())
+    metrics = {metric.metric_id: metric for metric in summary.structure.metrics}
+
+    assert metrics["line_join_fidelity"].denominator == 1
+    assert metrics["line_join_fidelity"].value == 0
+
+
+def test_note_target_annotation_id_matches_predicted_note() -> None:
+    prediction = wrong_note_link_prediction()
+    prediction.notes[0].linked_marker_span_ids = ["span-marker"]
+    gold = note_link_gold()
+    gold.regions = [
+        GoldRegionAnnotation(
+            annotation_id="gold-note-body",
+            target_object_id="note-1",
+            region_kind=RegionKind.FOOTNOTE,
+            reading_order_index=1,
+        )
+    ]
+    gold.note_links[0].note_target_id = "gold-note-body"
+
+    summary = EvaluationService().evaluate_page(prediction, gold, profile())
+    metrics = {
+        metric.metric_id: metric.value for metric in summary.note_linkage.metrics
+    }
+
+    assert metrics["note_linkage_success"] == 1
+    assert summary.note_linkage.flags == []
