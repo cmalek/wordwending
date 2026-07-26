@@ -669,6 +669,54 @@ def test_style_facets_are_independent() -> None:
     assert metrics["font_slant_accuracy"] == 0
 
 
+def test_style_family_collapse_is_partial_xor() -> None:
+    partial = EvaluationService().evaluate_page(
+        bold_but_not_italic_prediction(),
+        bold_italic_gold(),
+        profile(),
+    )
+    assert "style_family_collapse" in {
+        flag.flag_type for flag in partial.typography.flags
+    }
+
+    both_wrong_prediction = bold_but_not_italic_prediction()
+    both_wrong_prediction.spans[0].typography = Typography(
+        weight=FontWeight.REGULAR,
+        slant=FontSlant.UPRIGHT,
+    )
+    both_wrong = EvaluationService().evaluate_page(
+        both_wrong_prediction,
+        bold_italic_gold(),
+        profile(),
+    )
+    assert "style_family_collapse" not in {
+        flag.flag_type for flag in both_wrong.typography.flags
+    }
+
+    weight_only_gold = bold_italic_gold()
+    weight_only_gold.style_spans[0].typography = Typography(weight=FontWeight.BOLD)
+    weight_only = EvaluationService().evaluate_page(
+        bold_but_not_italic_prediction(),
+        weight_only_gold,
+        profile(),
+    )
+    assert "style_family_collapse" not in {
+        flag.flag_type for flag in weight_only.typography.flags
+    }
+
+
+def test_wrong_line_join_lowers_fidelity() -> None:
+    prediction = structured_prediction()
+    prediction.lines[0].joins_to_line_id = None
+    summary = EvaluationService().evaluate_page(
+        prediction,
+        structured_gold(),
+        profile(),
+    )
+    metrics = {metric.metric_id: metric.value for metric in summary.structure.metrics}
+    assert metrics["line_join_fidelity"] < 1
+
+
 def test_wrong_note_edge_emits_targeted_flag() -> None:
     summary = EvaluationService().evaluate_page(
         wrong_note_link_prediction(),

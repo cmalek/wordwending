@@ -956,53 +956,126 @@ class _TypographyScorer:
             rates: Shared page-level rate accumulators.
 
         Returns:
-            A style-family-collapse flag when weight and slant disagree, else
-            ``None``.
+            A partial style-family-collapse flag when warranted, else ``None``.
 
         Side Effects:
             Mutates ``rates`` accumulators.
 
         """
-        gold_typo = gold_span.typography
+        weight_ok, slant_ok = self._accumulate_style_facets(
+            gold_span.typography, predicted, profile, rates
+        )
+        self._score_footnote_marker(gold_span, predicted_roles, rates)
+        return self._style_collapse_flag(gold_span, weight_ok, slant_ok)
+
+    def _accumulate_style_facets(
+        self,
+        gold_typo: Typography,
+        predicted: Typography,
+        profile: MetricProfile,
+        rates: dict[str, _RateAccumulator],
+    ) -> tuple[bool | None, bool | None]:
+        """
+        Score independent typography facets into shared accumulators.
+
+        Args:
+            gold_typo: Gold typography facets.
+            predicted: Predicted typography facets.
+            profile: Metric policy.
+            rates: Shared page-level rate accumulators.
+
+        Returns:
+            ``(weight_ok, slant_ok)`` match results, or ``None`` per unscored
+            facet.
+
+        Side Effects:
+            Mutates ``rates`` accumulators.
+
+        """
+        unknown_wrong = profile.unknown_style_is_incorrect
         weight_ok = self._score_enum_facet(
             rates["font_weight_accuracy"],
             gold_typo.weight,
             predicted.weight,
             FontWeight.UNKNOWN,
-            profile.unknown_style_is_incorrect,
+            unknown_wrong,
         )
         slant_ok = self._score_enum_facet(
             rates["font_slant_accuracy"],
             gold_typo.slant,
             predicted.slant,
             FontSlant.UNKNOWN,
-            profile.unknown_style_is_incorrect,
+            unknown_wrong,
         )
         self._score_enum_facet(
             rates["baseline_shift_accuracy"],
             gold_typo.baseline_shift,
             predicted.baseline_shift,
             BaselineShift.UNKNOWN,
-            profile.unknown_style_is_incorrect,
+            unknown_wrong,
         )
         self._score_optional_bool(
             rates["small_caps_accuracy"],
             gold_typo.small_caps,
             predicted.small_caps,
-            profile.unknown_style_is_incorrect,
+            unknown_wrong,
         )
         self._score_optional_bool(
             rates["letter_spacing_accuracy"],
             gold_typo.letter_spaced,
             predicted.letter_spaced,
-            profile.unknown_style_is_incorrect,
+            unknown_wrong,
         )
-        if TextRole.FOOTNOTE_MARKER in gold_span.roles:
-            retained = TextRole.FOOTNOTE_MARKER in predicted_roles
-            rates["footnote_marker_retention"].add(1.0 if retained else 0.0, 1.0)
+        return weight_ok, slant_ok
+
+    @staticmethod
+    def _score_footnote_marker(
+        gold_span: GoldStyleSpan,
+        predicted_roles: list[TextRole],
+        rates: dict[str, _RateAccumulator],
+    ) -> None:
+        """
+        Score footnote-marker retention when gold carries that role.
+
+        Args:
+            gold_span: Gold style annotation.
+            predicted_roles: Predicted semantic roles.
+            rates: Shared page-level rate accumulators.
+
+        Side Effects:
+            Mutates ``footnote_marker_retention`` when gold has the role.
+
+        """
+        if TextRole.FOOTNOTE_MARKER not in gold_span.roles:
+            return
+        retained = TextRole.FOOTNOTE_MARKER in predicted_roles
+        rates["footnote_marker_retention"].add(1.0 if retained else 0.0, 1.0)
+
+    @staticmethod
+    def _style_collapse_flag(
+        gold_span: GoldStyleSpan,
+        weight_ok: bool | None,
+        slant_ok: bool | None,
+    ) -> EvaluationFlag | None:
+        """
+        Emit partial collapse when weight and slant XOR-match.
+
+        Fires only when both facets are scored (gold non-unknown) and exactly
+        one matches. Both correct, both wrong, or a single scored facet do
+        not emit the flag.
+
+        Args:
+            gold_span: Gold style annotation supplying ids for the flag.
+            weight_ok: Weight match result, or ``None`` if unscored.
+            slant_ok: Slant match result, or ``None`` if unscored.
+
+        Returns:
+            A ``style_family_collapse`` flag, or ``None``.
+
+        """
         if weight_ok is None or slant_ok is None:
             return None
-        if weight_ok and slant_ok:
+        if weight_ok == slant_ok:
             return None
         targets = (
             [gold_span.target_object_id]
@@ -1014,8 +1087,8 @@ class _TypographyScorer:
             flag_type="style_family_collapse",
             severity=FlagSeverity.WARNING,
             message=(
-                "Predicted style collapses independent weight/slant facets "
-                f"for gold style {gold_span.annotation_id}"
+                "Predicted style partially collapses independent "
+                f"weight/slant facets for gold style {gold_span.annotation_id}"
             ),
             target_object_ids=targets,
         )
