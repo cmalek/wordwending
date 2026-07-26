@@ -305,7 +305,8 @@ def prepare_pages(  # noqa: PLR0913, PLR0917
 
     try:
         for source_page in source_pages:
-            absolute_source = (source_dir / source_page.source_path).resolve()
+            bundle_relative_source = str(Path("source") / source_page.source_path)
+            absolute_source = (output_dir / bundle_relative_source).resolve()
             page_for_prep = source_page.model_copy(
                 update={
                     "source_page_id": f"page-{source_page.page_number:04d}",
@@ -321,10 +322,17 @@ def prepare_pages(  # noqa: PLR0913, PLR0917
                 override_reason=override_reason,
             )
             warning_count += len(result.assessment.warnings)
+            persisted = result.model_copy(
+                update={
+                    "source_page": result.source_page.model_copy(
+                        update={"source_path": bundle_relative_source}
+                    )
+                }
+            )
             result_dir = output_dir / "pages" / page_for_prep.source_page_id
             result_dir.mkdir(parents=True, exist_ok=True)
             (result_dir / "preparation.json").write_text(
-                result.model_dump_json(indent=2),
+                persisted.model_dump_json(indent=2),
                 encoding="utf-8",
             )
     except (OSError, ValidationError, ValueError) as exc:

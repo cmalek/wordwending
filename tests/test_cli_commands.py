@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from PIL import Image
 
@@ -149,7 +150,11 @@ class TestCLIPrepare:
 
         assert result.exit_code == 0
         result_path = output / "pages/page-0001/preparation.json"
-        assert PreparationResult.model_validate_json(result_path.read_text())
+        payload = json.loads(result_path.read_text(encoding="utf-8"))
+        assert PreparationResult.model_validate(payload)
+        source_path = payload["source_page"]["source_path"]
+        assert not Path(source_path).is_absolute()
+        assert source_path == "source/pages/1.png"
 
     def test_prepare_rejects_mode_override_without_reason(
         self, runner, tmp_path

@@ -70,8 +70,6 @@ _NOTE_HEAVY_INK_RATIO = 1.5
 _TABLE_HEAVY_RULE_COUNT = 6
 #: Minimum column count for dense-dictionary classification.
 _MIN_DICTIONARY_COLUMNS = 2
-#: Dense-dictionary text-height cutoff matching AssessmentThresholds default.
-_DENSE_TEXT_HEIGHT_PX = 18.0
 #: Warning-signal count that promotes mixed-complex classification.
 _MIXED_COMPLEX_WARNING_COUNT = 3
 #: Floor used when middle-half ink density is effectively zero.
@@ -143,12 +141,21 @@ class PageQualityAssessor:
 class PageClassifier:
     """Suggest a page-class cohort from measured quality signals."""
 
-    def suggest(self, signals: list[QualitySignal]) -> PageClass:
+    def suggest(
+        self,
+        signals: list[QualitySignal],
+        *,
+        minimum_text_run_height_px: float = 18.0,
+    ) -> PageClass:
         """
         Suggest a page class using the fixed priority heuristics.
 
         Args:
             signals: Quality signals from ``PageQualityAssessor.assess``.
+
+        Keyword Args:
+            minimum_text_run_height_px: Dense-dictionary text-height cutoff from
+                ``recipe.thresholds.minimum_text_run_height_px``.
 
         Returns:
             Highest-priority matching ``PageClass`` cohort.
@@ -167,7 +174,7 @@ class PageClassifier:
             column_count is not None
             and column_count >= _MIN_DICTIONARY_COLUMNS
             and text_height is not None
-            and text_height < _DENSE_TEXT_HEIGHT_PX
+            and text_height < minimum_text_run_height_px
         ):
             return PageClass.DENSE_DICTIONARY
 
@@ -252,7 +259,10 @@ class PagePreparationService:
             source_image = opened.copy()
 
         signals = self._assessor.assess(source_page, source_image, recipe)
-        suggested = self._classifier.suggest(signals)
+        suggested = self._classifier.suggest(
+            signals,
+            minimum_text_run_height_px=recipe.thresholds.minimum_text_run_height_px,
+        )
         page_class, page_class_source = _resolve_page_class(
             suggested,
             page_class_override,
