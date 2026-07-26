@@ -340,6 +340,44 @@ def test_same_input_and_recipe_produce_same_checksum(tmp_path: Path) -> None:
     assert first.prepared_page.prepared_page_id == second.prepared_page.prepared_page_id
 
 
+def test_operator_columns_without_valleys_raises(tmp_path: Path) -> None:
+    with pytest.raises(
+        ValueError,
+        match="columns mode was requested but vertical valleys were not detected",
+    ):
+        PagePreparationService(
+            PageQualityAssessor(),
+            PageClassifier(),
+        ).prepare(
+            source_page(),
+            recipe(),
+            tmp_path,
+            mode_override=PreparationMode.COLUMNS,
+            override_reason="force columns without detectable valleys",
+        )
+
+
+def test_auto_columns_without_valleys_falls_back_to_full_page(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "bochord.services.preparation._column_valley_centers",
+        lambda _gray: [],
+    )
+    result = PagePreparationService(
+        PageQualityAssessor(),
+        PageClassifier(),
+    ).prepare(dense_source_page(), recipe(), tmp_path)
+    assert result.prepared_page.preparation_mode is PreparationMode.FULL_PAGE
+    assert result.prepared_page.prepared_units == []
+    assert any(
+        "columns were requested but vertical valleys were not detected"
+        in warning
+        for warning in result.assessment.warnings
+    )
+
+
 def test_column_units_map_back_to_prepared_page(tmp_path: Path) -> None:
     result = PagePreparationService(
         PageQualityAssessor(),

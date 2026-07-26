@@ -88,6 +88,15 @@ _ADAPTIVE_WINDOW = 15
 _ADAPTIVE_BIAS = 10
 #: Exact rejection message for unsupported basic dewarp.
 _BASIC_DEWARP_MESSAGE = "basic dewarp requires a replayable mapping artifact"
+#: Error when an operator forces columns but valley detection finds none.
+_COLUMNS_VALLEYS_MISSING_OPERATOR = (
+    "columns mode was requested but vertical valleys were not detected"
+)
+#: Warning when auto column mode falls back to full-page preparation.
+_COLUMNS_VALLEYS_MISSING_WARNING = (
+    "columns were requested but vertical valleys were not detected; "
+    "fell back to full-page preparation"
+)
 
 
 class PageQualityAssessor:
@@ -260,6 +269,11 @@ class PagePreparationService:
             source_page,
             recipe,
         )
+        mode, columns_fallback_warning = _resolve_columns_subdivision_mode(
+            prepared_image,
+            mode=mode,
+            choice_source=choice_source,
+        )
         prepared_page_id = _derive_prepared_page_id(source_page.checksum, recipe, mode)
         prepared_page = _persist_prepared_page(
             prepared_image,
@@ -281,6 +295,9 @@ class PagePreparationService:
             page_class_source=page_class_source,
             operator_override_reason=(
                 override_reason if page_class_source == "operator" else None
+            ),
+            extra_warnings=(
+                [columns_fallback_warning] if columns_fallback_warning else []
             ),
         )
         return PreparationResult(
@@ -350,6 +367,38 @@ def _resolve_preparation_mode(
             raise ValueError(msg)
         return override, "operator"
     return _choose_preparation_mode(page_class, signals), "auto"
+
+
+def _resolve_columns_subdivision_mode(
+    prepared_image: Image.Image,
+    *,
+    mode: PreparationMode,
+    choice_source: Literal["auto", "operator"],
+) -> tuple[PreparationMode, str | None]:
+    """
+    Resolve column subdivision when valley detection succeeds or fails.
+
+    Args:
+        prepared_image: Fully transformed prepared page raster.
+
+    Keyword Args:
+        mode: Requested subdivision mode.
+        choice_source: Whether the mode came from automation or an operator.
+
+    Returns:
+        Effective subdivision mode and an optional fallback warning.
+
+    Raises:
+        ValueError: If an operator requested columns but no valleys were found.
+
+    """
+    if mode is not PreparationMode.COLUMNS:
+        return mode, None
+    if _column_valley_centers(prepared_image.convert("L")):
+        return mode, None
+    if choice_source == "operator":
+        raise ValueError(_COLUMNS_VALLEYS_MISSING_OPERATOR)
+    return PreparationMode.FULL_PAGE, _COLUMNS_VALLEYS_MISSING_WARNING
 
 
 def _choose_preparation_mode(
@@ -1036,7 +1085,8 @@ def _column_unit_boxes(
     width, height = gray.size
     centers = _column_valley_centers(gray)
     if not centers:
-        return [(0, 0, width, height)]
+        msg = "column valleys were not detected"
+        raise ValueError(msg)
     splits = [0, *centers, width]
     boxes: list[tuple[int, int, int, int]] = []
     last_index = len(splits) - 2
@@ -1095,6 +1145,7 @@ def _build_assessment(  # noqa: PLR0913
     page_class_final: PageClass,
     page_class_source: Literal["auto", "operator"],
     operator_override_reason: str | None,
+    extra_warnings: list[str] | None = None,
 ) -> PreparationAssessment:
     """
     Build assessment metadata for one prepared page.
@@ -1107,6 +1158,7 @@ def _build_assessment(  # noqa: PLR0913
         page_class_final: Final class used for preparation.
         page_class_source: Whether the final class was automatic or operator.
         operator_override_reason: Operator reason when class was overridden.
+        extra_warnings: Additional non-blocking preparation warnings.
 
     Returns:
         Validated preparation assessment.
@@ -1117,6 +1169,9 @@ def _build_assessment(  # noqa: PLR0913
         for signal in signals
         if signal.severity is FlagSeverity.WARNING
     ]
+    warnings = list(flags)
+    if extra_warnings:
+        warnings.extend(extra_warnings)
     return PreparationAssessment(
         assessment_id=f"assessment-{source_page.source_page_id}",
         source_page_id=source_page.source_page_id,
@@ -1124,7 +1179,7 @@ def _build_assessment(  # noqa: PLR0913
         signals=signals,
         flags=flags,
         recommended_actions=[],
-        warnings=list(flags),
+        warnings=warnings,
         page_class_suggested=page_class_suggested,
         page_class_final=page_class_final,
         page_class_source=page_class_source,
