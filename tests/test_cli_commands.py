@@ -5,7 +5,10 @@ from __future__ import annotations
 
 import json
 
+from PIL import Image
+
 from bochord.cli.cli import cli
+from bochord.models import PreparationResult
 
 
 class TestCLIVersion:
@@ -122,6 +125,31 @@ class TestCLIEval:
         )
         assert result.exit_code == 0
         assert json.loads(output.read_text())["text"]["metrics"]
+
+
+class TestCLIPrepare:
+    """Test the prepare command."""
+
+    def test_prepare_command_writes_reproducible_metadata(self, runner, tmp_path) -> None:
+        source = tmp_path / "page.png"
+        Image.new("L", (600, 800), "white").save(source)
+        output = tmp_path / "bundle"
+
+        result = runner.invoke(
+            cli,
+            [
+                "prepare",
+                str(source),
+                "--recipe",
+                "tests/fixtures/preparation/recipe-v1.json",
+                "--output-dir",
+                str(output),
+            ],
+        )
+
+        assert result.exit_code == 0
+        result_path = output / "pages/page-0001/preparation.json"
+        assert PreparationResult.model_validate_json(result_path.read_text())
 
 
 class TestCLIErrorHandling:

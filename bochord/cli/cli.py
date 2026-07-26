@@ -15,8 +15,21 @@ from rich.table import Table
 
 import bochord
 
-from ..models import BundlePage, GoldDocument, MetricProfile
+from ..models import (
+    BundlePage,
+    GoldDocument,
+    MetricProfile,
+    PageClass,
+    PreparationMode,
+    PreparationRecipe,
+)
 from ..services.evaluation import EvaluationService
+from ..services.preparation import (
+    PageClassifier,
+    PagePreparationService,
+    PageQualityAssessor,
+)
+from ..services.source_acquisition import SourceAcquisitionService
 from ..settings import Settings
 from .utils import console, print_error, print_info
 
@@ -89,6 +102,7 @@ def version() -> None:
     table.add_row("pydantic", str(Distribution.from_name("pydantic").version))
 
     console.print(table)
+
 
 @cli.command("settings")
 @click.pass_context
@@ -198,3 +212,124 @@ def eval_page(
         output_json.write_text(summary.model_dump_json(indent=2), encoding="utf-8")
     except OSError as exc:
         raise click.ClickException(str(exc)) from exc
+
+
+@cli.command("prepare")
+@click.argument(
+    "source",
+    type=click.Path(exists=True, path_type=Path),
+)
+@click.option(
+    "--recipe",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="PreparationRecipe JSON file.",
+)
+@click.option(
+    "--output-dir",
+    required=True,
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Destination directory for acquired and prepared pages.",
+)
+@click.option(
+    "--mode",
+    type=click.Choice([mode.value for mode in PreparationMode]),
+    default=None,
+    help="Operator override for preparation subdivision mode.",
+)
+@click.option(
+    "--page-class",
+    type=click.Choice([page_class.value for page_class in PageClass]),
+    default=None,
+    help="Operator override for page-class cohort.",
+)
+@click.option(
+    "--override-reason",
+    default=None,
+    help="Required reason when --mode or --page-class is set.",
+)
+def prepare_pages(  # noqa: PLR0913, PLR0917
+    source: Path,
+    recipe: Path,
+    output_dir: Path,
+    mode: str | None,
+    page_class: str | None,
+    override_reason: str | None,
+) -> None:
+    """
+    Acquire and prepare source pages into a reproducible output bundle.
+
+    Args:
+        source: PDF, image, image folder, or ZIP of images.
+        recipe: PreparationRecipe JSON file path.
+        output_dir: Destination root for source and prepared artifacts.
+        mode: Optional operator preparation-mode override.
+        page_class: Optional operator page-class override.
+        override_reason: Required reason when any override is set.
+
+    Side Effects:
+        Writes acquired pages under ``output_dir/source`` and prepared page
+        artifacts plus ``preparation.json`` under ``output_dir/pages``.
+
+    Raises:
+        click.ClickException: When inputs fail validation or I/O fails.
+
+    """
+    if (mode is not None or page_class is not None) and not (
+        override_reason and override_reason.strip()
+    ):
+        msg = "--override-reason is required when --mode or --page-class is set"
+        raise click.ClickException(msg)
+
+    try:
+        preparation_recipe = PreparationRecipe.model_validate_json(
+            recipe.read_text(encoding="utf-8")
+        )
+    except (OSError, ValidationError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    source_dir = output_dir / "source"
+    try:
+        source_pages = SourceAcquisitionService().materialize(
+            source,
+            source_dir,
+            preparation_recipe,
+        )
+    except (OSError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    mode_override = PreparationMode(mode) if mode is not None else None
+    page_class_override = PageClass(page_class) if page_class is not None else None
+    service = PagePreparationService(PageQualityAssessor(), PageClassifier())
+    warning_count = 0
+
+    try:
+        for source_page in source_pages:
+            absolute_source = (source_dir / source_page.source_path).resolve()
+            page_for_prep = source_page.model_copy(
+                update={
+                    "source_page_id": f"page-{source_page.page_number:04d}",
+                    "source_path": str(absolute_source),
+                }
+            )
+            result = service.prepare(
+                page_for_prep,
+                preparation_recipe,
+                output_dir,
+                mode_override=mode_override,
+                page_class_override=page_class_override,
+                override_reason=override_reason,
+            )
+            warning_count += len(result.assessment.warnings)
+            result_dir = output_dir / "pages" / page_for_prep.source_page_id
+            result_dir.mkdir(parents=True, exist_ok=True)
+            (result_dir / "preparation.json").write_text(
+                result.model_dump_json(indent=2),
+                encoding="utf-8",
+            )
+    except (OSError, ValidationError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(f"pages: {len(source_pages)}")
+    click.echo(f"warnings: {warning_count}")
+    click.echo(f"output: {output_dir}")
