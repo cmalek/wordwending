@@ -10,19 +10,31 @@ from typing import TYPE_CHECKING
 import regex  # type: ignore[import-untyped]
 
 from bochord.models import (
+    BaselineShift,
     BoundingBox,
     BundlePage,
     EvaluationFamilySummary,
     EvaluationFlag,
     FlagSeverity,
+    FontSlant,
+    FontWeight,
     GoldCoverage,
+    GoldNoteLink,
     GoldPageAnnotation,
+    GoldRegionAnnotation,
+    GoldStyleSpan,
     GoldTextSpan,
+    LineRecord,
     MetricProfile,
     MetricScore,
+    NoteRecord,
     PageEvaluationSummary,
+    RegionKind,
+    RegionRecord,
     ReviewDimension,
     SpanRecord,
+    TextRole,
+    Typography,
 )
 
 if TYPE_CHECKING:
@@ -36,6 +48,8 @@ _COMBINING_MACRON = "\u0304"
 _THORN_ETH = frozenset("þðÞÐ")
 #: Old English ligature graphemes tracked by preservation metrics.
 _LIGATURES = frozenset("æœÆŒǣǢ")
+#: Merge confidence below this emits ``low_confidence_merged_graph_region``.
+_LOW_MERGE_CONFIDENCE = 0.5
 
 
 def _graphemes(value: str) -> list[str]:
@@ -148,6 +162,154 @@ def _is_ligature(grapheme: str) -> bool:
     return grapheme in _LIGATURES
 
 
+def _coverage_allows(coverage: GoldCoverage, dimension: ReviewDimension) -> bool:
+    """
+    Return whether coverage may contribute denominators for ``dimension``.
+
+    Args:
+        coverage: One gold coverage record.
+        dimension: Required review dimension.
+
+    Returns:
+        True for exhaustive, non-excluded coverage that includes ``dimension``.
+
+    """
+    return (
+        dimension in coverage.dimensions
+        and coverage.exhaustive
+        and not coverage.do_not_score
+    )
+
+
+def _has_exhaustive_coverage(
+    gold: GoldPageAnnotation,
+    object_id: str | None,
+    dimension: ReviewDimension,
+) -> bool:
+    """
+    Return whether ``object_id`` lies in exhaustive coverage for ``dimension``.
+
+    Args:
+        gold: Gold annotation slice.
+        object_id: Predicted or gold target object id.
+        dimension: Required review dimension.
+
+    Returns:
+        True when an eligible coverage record includes the object.
+
+    """
+    for coverage in gold.coverage:
+        if not _coverage_allows(coverage, dimension):
+            continue
+        if coverage.whole_page:
+            return True
+        if object_id is not None and object_id in coverage.target_object_ids:
+            return True
+    return False
+
+
+def _resolve_anchored_span(
+    gold_span: GoldTextSpan | GoldStyleSpan,
+    spans_by_id: dict[str, SpanRecord],
+    profile: MetricProfile,
+) -> SpanRecord | None:
+    """
+    Resolve a gold span annotation to a predicted span by id or box IoU.
+
+    Args:
+        gold_span: Gold text or style annotation to resolve.
+        spans_by_id: Predicted spans keyed by id.
+        profile: Metric policy supplying the IoU threshold.
+
+    Returns:
+        Matched predicted span, or ``None`` when unresolved.
+
+    """
+    if gold_span.target_object_id is not None:
+        return spans_by_id.get(gold_span.target_object_id)
+    if gold_span.bounding_box is None:
+        return None
+    best: SpanRecord | None = None
+    best_iou = 0.0
+    for span in spans_by_id.values():
+        if span.bounding_box is None:
+            continue
+        iou = _box_iou(gold_span.bounding_box, span.bounding_box)
+        if iou >= profile.region_iou_threshold and iou > best_iou:
+            best = span
+            best_iou = iou
+    return best
+
+
+def _resolve_region(
+    gold_region: GoldRegionAnnotation,
+    regions: list[RegionRecord],
+    profile: MetricProfile,
+) -> RegionRecord | None:
+    """
+    Resolve a gold region by id or same-kind highest IoU.
+
+    Args:
+        gold_region: Gold region annotation.
+        regions: Predicted page regions.
+        profile: Metric policy supplying the IoU threshold.
+
+    Returns:
+        Matched predicted region, or ``None`` when unresolved.
+
+    """
+    if gold_region.target_object_id is not None:
+        by_id = {region.region_id: region for region in regions}
+        matched = by_id.get(gold_region.target_object_id)
+        if matched is not None and matched.region_kind == gold_region.region_kind:
+            return matched
+        return None
+    if gold_region.bounding_box is None:
+        return None
+    best: RegionRecord | None = None
+    best_iou = 0.0
+    for region in regions:
+        if region.region_kind != gold_region.region_kind:
+            continue
+        if region.bounding_box is None:
+            continue
+        iou = _box_iou(gold_region.bounding_box, region.bounding_box)
+        if iou >= profile.region_iou_threshold and iou > best_iou:
+            best = region
+            best_iou = iou
+    return best
+
+
+def _facet_match(
+    gold_value: object,
+    predicted_value: object,
+    *,
+    unknown: object,
+    unknown_is_incorrect: bool,
+) -> bool | None:
+    """
+    Compare one non-unknown gold facet to a prediction.
+
+    Args:
+        gold_value: Gold facet value (caller skips true unknowns).
+        predicted_value: Predicted facet value.
+
+    Keyword Args:
+        unknown: Sentinel meaning unknown for this facet type.
+        unknown_is_incorrect: Profile policy for unknown predictions.
+
+    Returns:
+        True/False when scored, or ``None`` when the prediction is unknown
+        and unknown predictions are ignored.
+
+    """
+    if predicted_value == unknown or predicted_value is None:
+        if unknown_is_incorrect:
+            return False
+        return None
+    return predicted_value == gold_value
+
+
 class EvaluationService:
     """Score one predicted page against a gold annotation slice."""
 
@@ -158,7 +320,7 @@ class EvaluationService:
         profile: MetricProfile,
     ) -> PageEvaluationSummary:
         """
-        Evaluate text fidelity for one page; other families stay empty.
+        Evaluate text, structure, typography, and note-linkage families.
 
         Args:
             prediction: Accepted page graph under evaluation.
@@ -166,11 +328,14 @@ class EvaluationService:
             profile: Frozen metric policy controlling transforms and exclusions.
 
         Returns:
-            Page summary with a populated text family.
+            Page summary with populated evidence families.
 
         """
         return PageEvaluationSummary(
-            text=self._evaluate_text(prediction, gold, profile)
+            text=self._evaluate_text(prediction, gold, profile),
+            structure=_StructureScorer().score(prediction, gold, profile),
+            typography=_TypographyScorer().score(prediction, gold, profile),
+            note_linkage=_NoteLinkageScorer().score(prediction, gold, profile),
         )
 
     def _evaluate_text(
@@ -310,7 +475,9 @@ class EvaluationService:
             object_id = (
                 matched.span_id if matched is not None else gold_span.target_object_id
             )
-            if not self._has_exhaustive_text_coverage(gold, object_id):
+            if not _has_exhaustive_coverage(
+                gold, object_id, ReviewDimension.TEXT
+            ):
                 continue
             predicted_text = matched.text_diplomatic if matched is not None else ""
             pairs.append((gold_span, predicted_text))
@@ -334,63 +501,7 @@ class EvaluationService:
             Matched predicted span, or ``None`` when unresolved.
 
         """
-        if gold_span.target_object_id is not None:
-            return spans_by_id.get(gold_span.target_object_id)
-        if gold_span.bounding_box is None:
-            return None
-        best: SpanRecord | None = None
-        best_iou = 0.0
-        for span in spans_by_id.values():
-            if span.bounding_box is None:
-                continue
-            iou = _box_iou(gold_span.bounding_box, span.bounding_box)
-            if iou >= profile.region_iou_threshold and iou > best_iou:
-                best = span
-                best_iou = iou
-        return best
-
-    def _has_exhaustive_text_coverage(
-        self,
-        gold: GoldPageAnnotation,
-        object_id: str | None,
-    ) -> bool:
-        """
-        Return whether ``object_id`` lies in exhaustive TEXT coverage.
-
-        Args:
-            gold: Gold annotation slice.
-            object_id: Predicted or gold target object id.
-
-        Returns:
-            True when an eligible coverage record includes the object.
-
-        """
-        for coverage in gold.coverage:
-            if not self._coverage_allows_text(coverage):
-                continue
-            if coverage.whole_page:
-                return True
-            if object_id is not None and object_id in coverage.target_object_ids:
-                return True
-        return False
-
-    @staticmethod
-    def _coverage_allows_text(coverage: GoldCoverage) -> bool:
-        """
-        Return whether coverage may contribute TEXT denominators.
-
-        Args:
-            coverage: One gold coverage record.
-
-        Returns:
-            True for exhaustive, non-excluded TEXT coverage.
-
-        """
-        return (
-            ReviewDimension.TEXT in coverage.dimensions
-            and coverage.exhaustive
-            and not coverage.do_not_score
-        )
+        return _resolve_anchored_span(gold_span, spans_by_id, profile)
 
     @staticmethod
     def _transform(value: str, profile: MetricProfile) -> str:
@@ -570,4 +681,550 @@ class _RateAccumulator:
             value=self.numerator / self.denominator,
             numerator=self.numerator,
             denominator=self.denominator,
+        )
+
+
+class _StructureScorer:
+    """Score structure metrics and provenance-backed structure flags."""
+
+    def score(
+        self,
+        prediction: BundlePage,
+        gold: GoldPageAnnotation,
+        profile: MetricProfile,
+    ) -> EvaluationFamilySummary:
+        """
+        Aggregate region, order, join, and table metrics for one page.
+
+        Args:
+            prediction: Accepted page graph under evaluation.
+            gold: Gold annotation slice for the same page.
+            profile: Frozen metric policy.
+
+        Returns:
+            Structure-family metrics and flags.
+
+        """
+        lines_by_id = {line.line_id: line for line in prediction.lines}
+        matches = self._matched_regions(prediction, gold, profile)
+        coverage = _RateAccumulator()
+        tables = _RateAccumulator()
+        flags: list[EvaluationFlag] = []
+        for gold_region, matched in matches:
+            coverage.add(1.0 if matched is not None else 0.0, 1.0)
+            if gold_region.region_kind == RegionKind.TABLE:
+                tables.add(1.0 if matched is not None else 0.0, 1.0)
+            if matched is not None:
+                flags.extend(self._provenance_flags(matched))
+        return EvaluationFamilySummary(
+            metrics=[
+                coverage.to_metric("region_coverage", as_error_rate=False),
+                self._order_rate(matches).to_metric(
+                    "line_ordering_correctness", as_error_rate=False
+                ),
+                self._join_rate(gold, lines_by_id).to_metric(
+                    "line_join_fidelity", as_error_rate=False
+                ),
+                tables.to_metric("table_region_detection", as_error_rate=False),
+            ],
+            flags=flags,
+        )
+
+    def _matched_regions(
+        self,
+        prediction: BundlePage,
+        gold: GoldPageAnnotation,
+        profile: MetricProfile,
+    ) -> list[tuple[GoldRegionAnnotation, RegionRecord | None]]:
+        """
+        Resolve scored gold regions under exhaustive STRUCTURE coverage.
+
+        Args:
+            prediction: Accepted page graph.
+            gold: Gold annotation slice.
+            profile: Metric policy.
+
+        Returns:
+            Ordered ``(gold_region, matched_prediction)`` pairs.
+
+        """
+        pairs: list[tuple[GoldRegionAnnotation, RegionRecord | None]] = []
+        for gold_region in gold.regions:
+            if gold_region.do_not_score:
+                continue
+            object_id = gold_region.target_object_id
+            matched = _resolve_region(gold_region, prediction.regions, profile)
+            if matched is not None:
+                object_id = matched.region_id
+            if not _has_exhaustive_coverage(
+                gold, object_id, ReviewDimension.STRUCTURE
+            ):
+                continue
+            pairs.append((gold_region, matched))
+        return pairs
+
+    @staticmethod
+    def _order_rate(
+        matches: list[tuple[GoldRegionAnnotation, RegionRecord | None]],
+    ) -> _RateAccumulator:
+        """
+        Score adjacent gold reading-order pairs among covered regions.
+
+        Args:
+            matches: Covered gold/prediction region pairs.
+
+        Returns:
+            Accumulator for ``line_ordering_correctness``.
+
+        """
+        rate = _RateAccumulator()
+        ordered = [
+            (gold_region, matched)
+            for gold_region, matched in matches
+            if gold_region.reading_order_index is not None
+        ]
+        ordered.sort(key=lambda item: item[0].reading_order_index or 0)
+        for index in range(len(ordered) - 1):
+            left_gold, left_pred = ordered[index]
+            right_gold, right_pred = ordered[index + 1]
+            del left_gold, right_gold
+            correct = (
+                left_pred is not None
+                and right_pred is not None
+                and left_pred.reading_order_index < right_pred.reading_order_index
+            )
+            rate.add(1.0 if correct else 0.0, 1.0)
+        return rate
+
+    @staticmethod
+    def _join_rate(
+        gold: GoldPageAnnotation,
+        lines_by_id: dict[str, LineRecord],
+    ) -> _RateAccumulator:
+        """
+        Score each non-excluded gold join against ``joins_to_line_id``.
+
+        Semantics: when ``joined`` is true, the left predicted line must set
+        ``joins_to_line_id`` to the gold right line id. When ``joined`` is
+        false, the left line must not point at that right line id. Scoring is
+        one-directional (left → right); mutual joins are not required.
+
+        Args:
+            gold: Gold annotation slice.
+            lines_by_id: Predicted lines keyed by id.
+
+        Returns:
+            Accumulator for ``line_join_fidelity``.
+
+        """
+        rate = _RateAccumulator()
+        for join in gold.line_joins:
+            if join.do_not_score:
+                continue
+            if not _has_exhaustive_coverage(
+                gold, join.left_line_id, ReviewDimension.STRUCTURE
+            ):
+                continue
+            left = lines_by_id.get(join.left_line_id)
+            predicted_join = None if left is None else left.joins_to_line_id
+            if join.joined:
+                correct = predicted_join == join.right_line_id
+            else:
+                correct = predicted_join != join.right_line_id
+            rate.add(1.0 if correct else 0.0, 1.0)
+        return rate
+
+    @staticmethod
+    def _provenance_flags(region: RegionRecord) -> list[EvaluationFlag]:
+        """
+        Emit provenance-backed flags for one matched region.
+
+        Args:
+            region: Matched predicted region.
+
+        Returns:
+            Zero or more structure flags grounded in provenance fields.
+
+        """
+        flags: list[EvaluationFlag] = []
+        merge = region.provenance.merge_confidence
+        if merge is not None and merge < _LOW_MERGE_CONFIDENCE:
+            flags.append(
+                EvaluationFlag(
+                    flag_id=f"low-merge-{region.region_id}",
+                    flag_type="low_confidence_merged_graph_region",
+                    severity=FlagSeverity.WARNING,
+                    message=(
+                        f"Region {region.region_id} has low merge confidence "
+                        f"({merge})"
+                    ),
+                    target_object_ids=[region.region_id],
+                )
+            )
+        note = region.provenance.disagreement_note
+        if note is not None:
+            flags.append(
+                EvaluationFlag(
+                    flag_id=f"disagreement-{region.region_id}",
+                    flag_type="raw_pass_disagreement",
+                    severity=FlagSeverity.WARNING,
+                    message=(
+                        f"Region {region.region_id} carries raw-pass "
+                        f"disagreement: {note}"
+                    ),
+                    target_object_ids=[region.region_id],
+                )
+            )
+        return flags
+
+
+class _TypographyScorer:
+    """Score independent typography facets and footnote role/object metrics."""
+
+    def score(
+        self,
+        prediction: BundlePage,
+        gold: GoldPageAnnotation,
+        profile: MetricProfile,
+    ) -> EvaluationFamilySummary:
+        """
+        Aggregate per-facet style accuracy and footnote role metrics.
+
+        Args:
+            prediction: Accepted page graph under evaluation.
+            gold: Gold annotation slice for the same page.
+            profile: Frozen metric policy.
+
+        Returns:
+            Typography-family metrics and flags.
+
+        """
+        rates = {
+            "font_weight_accuracy": _RateAccumulator(),
+            "font_slant_accuracy": _RateAccumulator(),
+            "baseline_shift_accuracy": _RateAccumulator(),
+            "small_caps_accuracy": _RateAccumulator(),
+            "letter_spacing_accuracy": _RateAccumulator(),
+            "footnote_marker_retention": _RateAccumulator(),
+            "footnote_block_detection": _RateAccumulator(),
+        }
+        flags: list[EvaluationFlag] = []
+        spans_by_id = {span.span_id: span for span in prediction.spans}
+        for gold_span in gold.style_spans:
+            if gold_span.do_not_score:
+                continue
+            matched = _resolve_anchored_span(gold_span, spans_by_id, profile)
+            object_id = (
+                matched.span_id if matched is not None else gold_span.target_object_id
+            )
+            if not _has_exhaustive_coverage(
+                gold, object_id, ReviewDimension.TYPOGRAPHY
+            ):
+                continue
+            pred_typo = matched.typography if matched is not None else Typography()
+            pred_roles = matched.roles if matched is not None else []
+            flag = self._score_style_span(
+                gold_span, pred_typo, pred_roles, profile, rates
+            )
+            if flag is not None:
+                flags.append(flag)
+        self._score_footnote_blocks(prediction, gold, profile, rates)
+        return EvaluationFamilySummary(
+            metrics=[
+                rates[metric_id].to_metric(metric_id, as_error_rate=False)
+                for metric_id in rates
+            ],
+            flags=flags,
+        )
+
+    def _score_style_span(
+        self,
+        gold_span: GoldStyleSpan,
+        predicted: Typography,
+        predicted_roles: list[TextRole],
+        profile: MetricProfile,
+        rates: dict[str, _RateAccumulator],
+    ) -> EvaluationFlag | None:
+        """
+        Score one gold style span into facet and marker accumulators.
+
+        Args:
+            gold_span: Gold style annotation.
+            predicted: Predicted typography facets.
+            predicted_roles: Predicted semantic roles.
+            profile: Metric policy.
+            rates: Shared page-level rate accumulators.
+
+        Returns:
+            A style-family-collapse flag when weight and slant disagree, else
+            ``None``.
+
+        Side Effects:
+            Mutates ``rates`` accumulators.
+
+        """
+        gold_typo = gold_span.typography
+        weight_ok = self._score_enum_facet(
+            rates["font_weight_accuracy"],
+            gold_typo.weight,
+            predicted.weight,
+            FontWeight.UNKNOWN,
+            profile.unknown_style_is_incorrect,
+        )
+        slant_ok = self._score_enum_facet(
+            rates["font_slant_accuracy"],
+            gold_typo.slant,
+            predicted.slant,
+            FontSlant.UNKNOWN,
+            profile.unknown_style_is_incorrect,
+        )
+        self._score_enum_facet(
+            rates["baseline_shift_accuracy"],
+            gold_typo.baseline_shift,
+            predicted.baseline_shift,
+            BaselineShift.UNKNOWN,
+            profile.unknown_style_is_incorrect,
+        )
+        self._score_optional_bool(
+            rates["small_caps_accuracy"],
+            gold_typo.small_caps,
+            predicted.small_caps,
+            profile.unknown_style_is_incorrect,
+        )
+        self._score_optional_bool(
+            rates["letter_spacing_accuracy"],
+            gold_typo.letter_spaced,
+            predicted.letter_spaced,
+            profile.unknown_style_is_incorrect,
+        )
+        if TextRole.FOOTNOTE_MARKER in gold_span.roles:
+            retained = TextRole.FOOTNOTE_MARKER in predicted_roles
+            rates["footnote_marker_retention"].add(1.0 if retained else 0.0, 1.0)
+        if weight_ok is None or slant_ok is None:
+            return None
+        if weight_ok and slant_ok:
+            return None
+        targets = (
+            [gold_span.target_object_id]
+            if gold_span.target_object_id is not None
+            else []
+        )
+        return EvaluationFlag(
+            flag_id=f"style-collapse-{gold_span.annotation_id}",
+            flag_type="style_family_collapse",
+            severity=FlagSeverity.WARNING,
+            message=(
+                "Predicted style collapses independent weight/slant facets "
+                f"for gold style {gold_span.annotation_id}"
+            ),
+            target_object_ids=targets,
+        )
+
+    @staticmethod
+    def _score_enum_facet(
+        rate: _RateAccumulator,
+        gold_value: FontWeight | FontSlant | BaselineShift,
+        predicted_value: FontWeight | FontSlant | BaselineShift,
+        unknown: FontWeight | FontSlant | BaselineShift,
+        unknown_is_incorrect: bool,
+    ) -> bool | None:
+        """
+        Score one enum typography facet when gold is known.
+
+        Args:
+            rate: Target accumulator.
+            gold_value: Gold facet value.
+            predicted_value: Predicted facet value.
+            unknown: Unknown sentinel for this enum.
+            unknown_is_incorrect: Profile unknown-prediction policy.
+
+        Returns:
+            Match result when scored, else ``None`` when gold is unknown.
+
+        Side Effects:
+            Mutates ``rate`` when the gold facet is scorable.
+
+        """
+        if gold_value == unknown:
+            return None
+        result = _facet_match(
+            gold_value,
+            predicted_value,
+            unknown=unknown,
+            unknown_is_incorrect=unknown_is_incorrect,
+        )
+        if result is None:
+            return None
+        rate.add(1.0 if result else 0.0, 1.0)
+        return result
+
+    @staticmethod
+    def _score_optional_bool(
+        rate: _RateAccumulator,
+        gold_value: bool | None,
+        predicted_value: bool | None,
+        unknown_is_incorrect: bool,
+    ) -> None:
+        """
+        Score small-caps or letter-spacing when gold is known.
+
+        Args:
+            rate: Target accumulator.
+            gold_value: Gold boolean facet, or ``None`` when unknown.
+            predicted_value: Predicted boolean facet.
+            unknown_is_incorrect: Profile unknown-prediction policy.
+
+        Side Effects:
+            Mutates ``rate`` when the gold facet is scorable.
+
+        """
+        if gold_value is None:
+            return
+        result = _facet_match(
+            gold_value,
+            predicted_value,
+            unknown=None,
+            unknown_is_incorrect=unknown_is_incorrect,
+        )
+        if result is None:
+            return
+        rate.add(1.0 if result else 0.0, 1.0)
+
+    @staticmethod
+    def _score_footnote_blocks(
+        prediction: BundlePage,
+        gold: GoldPageAnnotation,
+        profile: MetricProfile,
+        rates: dict[str, _RateAccumulator],
+    ) -> None:
+        """
+        Score gold FOOTNOTE regions under exhaustive STRUCTURE coverage.
+
+        Args:
+            prediction: Accepted page graph.
+            gold: Gold annotation slice.
+            profile: Metric policy.
+            rates: Shared typography rate accumulators.
+
+        Side Effects:
+            Mutates ``footnote_block_detection`` in ``rates``.
+
+        """
+        rate = rates["footnote_block_detection"]
+        for gold_region in gold.regions:
+            if (
+                gold_region.do_not_score
+                or gold_region.region_kind != RegionKind.FOOTNOTE
+            ):
+                continue
+            matched = _resolve_region(gold_region, prediction.regions, profile)
+            object_id = (
+                matched.region_id
+                if matched is not None
+                else gold_region.target_object_id
+            )
+            if not _has_exhaustive_coverage(
+                gold, object_id, ReviewDimension.STRUCTURE
+            ):
+                continue
+            rate.add(1.0 if matched is not None else 0.0, 1.0)
+
+
+class _NoteLinkageScorer:
+    """Score exact marker-to-note edges and emit linkage flags."""
+
+    def score(
+        self,
+        prediction: BundlePage,
+        gold: GoldPageAnnotation,
+        profile: MetricProfile,
+    ) -> EvaluationFamilySummary:
+        """
+        Aggregate note-linkage success for covered gold edges.
+
+        Args:
+            prediction: Accepted page graph under evaluation.
+            gold: Gold annotation slice for the same page.
+            profile: Frozen metric policy (unused; retained for API symmetry).
+
+        Returns:
+            Note-linkage metrics and flags.
+
+        """
+        del profile
+        predicted_edges = self._predicted_edges(prediction.notes)
+        rate = _RateAccumulator()
+        flags: list[EvaluationFlag] = []
+        for gold_link in gold.note_links:
+            for marker_span_id in gold_link.marker_span_ids:
+                if not self._edge_in_coverage(gold, marker_span_id, gold_link):
+                    continue
+                edge = (marker_span_id, gold_link.note_target_id)
+                correct = edge in predicted_edges
+                rate.add(1.0 if correct else 0.0, 1.0)
+                if not correct:
+                    flags.append(
+                        EvaluationFlag(
+                            flag_id=(
+                                f"note-link-{gold_link.annotation_id}"
+                                f"-{marker_span_id}"
+                            ),
+                            flag_type="ambiguous_note_linkage",
+                            severity=FlagSeverity.WARNING,
+                            message=(
+                                "Predicted note linkage misses gold edge "
+                                f"({marker_span_id} -> "
+                                f"{gold_link.note_target_id})"
+                            ),
+                            target_object_ids=[
+                                marker_span_id,
+                                gold_link.note_target_id,
+                            ],
+                        )
+                    )
+        return EvaluationFamilySummary(
+            metrics=[rate.to_metric("note_linkage_success", as_error_rate=False)],
+            flags=flags,
+        )
+
+    @staticmethod
+    def _predicted_edges(notes: list[NoteRecord]) -> set[tuple[str, str]]:
+        """
+        Expand predicted notes into ``(marker_span_id, note_id)`` edges.
+
+        Args:
+            notes: Predicted note records.
+
+        Returns:
+            Exact predicted linkage edges.
+
+        """
+        return {
+            (marker_span_id, note.note_id)
+            for note in notes
+            for marker_span_id in note.linked_marker_span_ids
+        }
+
+    @staticmethod
+    def _edge_in_coverage(
+        gold: GoldPageAnnotation,
+        marker_span_id: str,
+        gold_link: GoldNoteLink,
+    ) -> bool:
+        """
+        Return whether a gold note edge is in exhaustive NOTE_LINKAGE coverage.
+
+        Args:
+            gold: Gold annotation slice.
+            marker_span_id: Marker side of the gold edge.
+            gold_link: Gold note-link annotation.
+
+        Returns:
+            True when the marker or note target is covered.
+
+        """
+        return _has_exhaustive_coverage(
+            gold, marker_span_id, ReviewDimension.NOTE_LINKAGE
+        ) or _has_exhaustive_coverage(
+            gold, gold_link.note_target_id, ReviewDimension.NOTE_LINKAGE
         )

@@ -9,11 +9,19 @@ from bochord.models import (
     BoundingBox,
     BundlePage,
     CoordinateSpace,
+    FontSlant,
+    FontWeight,
     GoldCoverage,
+    GoldLineJoin,
+    GoldNoteLink,
     GoldPageAnnotation,
+    GoldRegionAnnotation,
+    GoldStyleSpan,
     GoldTextSpan,
     LineRecord,
     MetricProfile,
+    NoteKind,
+    NoteRecord,
     ObjectProvenance,
     PageClass,
     PreparationMode,
@@ -22,6 +30,8 @@ from bochord.models import (
     RegionRecord,
     ReviewDimension,
     SpanRecord,
+    TextRole,
+    Typography,
 )
 from bochord.services.evaluation import EvaluationService
 
@@ -368,3 +378,307 @@ def test_empty_ref_note_omitted_when_other_spans_contribute_denom() -> None:
     assert metrics["character_error_rate"].value == 0
     assert metrics["character_error_rate"].note is None
     assert metrics["word_error_rate"].note is None
+
+
+def _prepared_page() -> PreparedPage:
+    """Return a shared prepared-page shell for multi-object fixtures."""
+    return PreparedPage(
+        preparation_mode=PreparationMode.FULL_PAGE,
+        page_class=PageClass.ORDINARY_PROSE,
+        image_path="page.png",
+        source_artifact_id="source-1",
+        image_checksum="sha256:image",
+        preparation_recipe_id="prep-v1",
+        coordinate_space=CoordinateSpace(
+            space_id="prepared-page-1",
+            width_px=100,
+            height_px=100,
+        ),
+    )
+
+
+def structured_prediction() -> BundlePage:
+    """Two ordered body regions with an explicit left-to-right line join."""
+    provenance = _provenance()
+    return BundlePage(
+        page_id="page-1",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        regions=[
+            RegionRecord(
+                region_id="region-1",
+                region_kind=RegionKind.BODY,
+                reading_order_index=1,
+                bounding_box=BoundingBox(x0=0, y0=0, x1=40, y1=20),
+                line_ids=["line-1"],
+                provenance=provenance,
+            ),
+            RegionRecord(
+                region_id="region-2",
+                region_kind=RegionKind.BODY,
+                reading_order_index=2,
+                bounding_box=BoundingBox(x0=0, y0=30, x1=40, y1=50),
+                line_ids=["line-2"],
+                provenance=provenance,
+            ),
+        ],
+        lines=[
+            LineRecord(
+                line_id="line-1",
+                region_id="region-1",
+                line_order=1,
+                span_ids=["span-1"],
+                joins_to_line_id="line-2",
+                provenance=provenance,
+            ),
+            LineRecord(
+                line_id="line-2",
+                region_id="region-2",
+                line_order=1,
+                span_ids=["span-2"],
+                provenance=provenance,
+            ),
+        ],
+        spans=[
+            SpanRecord(
+                span_id="span-1",
+                line_id="line-1",
+                text_diplomatic="a",
+                provenance=provenance,
+            ),
+            SpanRecord(
+                span_id="span-2",
+                line_id="line-2",
+                text_diplomatic="b",
+                provenance=provenance,
+            ),
+        ],
+    )
+
+
+def structured_gold() -> GoldPageAnnotation:
+    """Gold structure matching ``structured_prediction`` with one join."""
+    return GoldPageAnnotation(
+        page_id="page-1",
+        page_number=1,
+        source_run_id="run-1",
+        base_graph_revision="graph-1",
+        prepared_image_checksum="sha256:image",
+        coverage=[
+            GoldCoverage(
+                coverage_id="coverage-structure",
+                dimensions=[ReviewDimension.STRUCTURE],
+                target_object_ids=["region-1", "region-2", "line-1", "line-2"],
+                exhaustive=True,
+            )
+        ],
+        regions=[
+            GoldRegionAnnotation(
+                annotation_id="gold-region-1",
+                target_object_id="region-1",
+                region_kind=RegionKind.BODY,
+                reading_order_index=1,
+            ),
+            GoldRegionAnnotation(
+                annotation_id="gold-region-2",
+                target_object_id="region-2",
+                region_kind=RegionKind.BODY,
+                reading_order_index=2,
+            ),
+        ],
+        line_joins=[
+            GoldLineJoin(
+                annotation_id="join-1",
+                left_line_id="line-1",
+                right_line_id="line-2",
+                joined=True,
+            )
+        ],
+    )
+
+
+def bold_but_not_italic_prediction() -> BundlePage:
+    """One span that is bold but upright (not italic)."""
+    provenance = _provenance()
+    return BundlePage(
+        page_id="page-1",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        regions=[
+            RegionRecord(
+                region_id="region-1",
+                region_kind=RegionKind.BODY,
+                reading_order_index=1,
+                line_ids=["line-1"],
+                provenance=provenance,
+            )
+        ],
+        lines=[
+            LineRecord(
+                line_id="line-1",
+                region_id="region-1",
+                line_order=1,
+                span_ids=["span-1"],
+                provenance=provenance,
+            )
+        ],
+        spans=[
+            SpanRecord(
+                span_id="span-1",
+                line_id="line-1",
+                text_diplomatic="word",
+                typography=Typography(
+                    weight=FontWeight.BOLD,
+                    slant=FontSlant.UPRIGHT,
+                ),
+                provenance=provenance,
+            )
+        ],
+    )
+
+
+def bold_italic_gold() -> GoldPageAnnotation:
+    """Gold style requiring both bold and italic facets."""
+    return GoldPageAnnotation(
+        page_id="page-1",
+        page_number=1,
+        source_run_id="run-1",
+        base_graph_revision="graph-1",
+        prepared_image_checksum="sha256:image",
+        coverage=[
+            GoldCoverage(
+                coverage_id="coverage-typography",
+                dimensions=[ReviewDimension.TYPOGRAPHY],
+                target_object_ids=["span-1"],
+                exhaustive=True,
+            )
+        ],
+        style_spans=[
+            GoldStyleSpan(
+                annotation_id="gold-style-1",
+                target_object_id="span-1",
+                typography=Typography(
+                    weight=FontWeight.BOLD,
+                    slant=FontSlant.ITALIC,
+                ),
+            )
+        ],
+    )
+
+
+def wrong_note_link_prediction() -> BundlePage:
+    """Note linked to the wrong marker span."""
+    provenance = _provenance()
+    return BundlePage(
+        page_id="page-1",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        regions=[
+            RegionRecord(
+                region_id="region-1",
+                region_kind=RegionKind.BODY,
+                reading_order_index=1,
+                line_ids=["line-1"],
+                note_ids=["note-1"],
+                provenance=provenance,
+            )
+        ],
+        lines=[
+            LineRecord(
+                line_id="line-1",
+                region_id="region-1",
+                line_order=1,
+                span_ids=["span-marker", "span-other"],
+                provenance=provenance,
+            )
+        ],
+        spans=[
+            SpanRecord(
+                span_id="span-marker",
+                line_id="line-1",
+                text_diplomatic="1",
+                roles=[TextRole.FOOTNOTE_MARKER],
+                provenance=provenance,
+            ),
+            SpanRecord(
+                span_id="span-other",
+                line_id="line-1",
+                text_diplomatic="x",
+                provenance=provenance,
+            ),
+        ],
+        notes=[
+            NoteRecord(
+                note_id="note-1",
+                note_kind=NoteKind.FOOTNOTE_BLOCK,
+                region_id="region-1",
+                text_diplomatic="note body",
+                linked_marker_span_ids=["span-other"],
+                provenance=provenance,
+            )
+        ],
+    )
+
+
+def note_link_gold() -> GoldPageAnnotation:
+    """Gold requiring marker ``span-marker`` to link to ``note-1``."""
+    return GoldPageAnnotation(
+        page_id="page-1",
+        page_number=1,
+        source_run_id="run-1",
+        base_graph_revision="graph-1",
+        prepared_image_checksum="sha256:image",
+        coverage=[
+            GoldCoverage(
+                coverage_id="coverage-notes",
+                dimensions=[ReviewDimension.NOTE_LINKAGE],
+                target_object_ids=["note-1", "span-marker"],
+                exhaustive=True,
+            )
+        ],
+        note_links=[
+            GoldNoteLink(
+                annotation_id="gold-note-1",
+                marker_span_ids=["span-marker"],
+                note_target_id="note-1",
+            )
+        ],
+    )
+
+
+def test_structure_scores_region_order_iou_and_line_joins() -> None:
+    summary = EvaluationService().evaluate_page(
+        structured_prediction(),
+        structured_gold(),
+        profile(),
+    )
+    metrics = {metric.metric_id: metric.value for metric in summary.structure.metrics}
+    assert metrics["region_coverage"] == 1
+    assert metrics["line_ordering_correctness"] == 1
+    assert metrics["line_join_fidelity"] == 1
+
+
+def test_style_facets_are_independent() -> None:
+    summary = EvaluationService().evaluate_page(
+        bold_but_not_italic_prediction(),
+        bold_italic_gold(),
+        profile(),
+    )
+    metrics = {metric.metric_id: metric.value for metric in summary.typography.metrics}
+    assert metrics["font_weight_accuracy"] == 1
+    assert metrics["font_slant_accuracy"] == 0
+
+
+def test_wrong_note_edge_emits_targeted_flag() -> None:
+    summary = EvaluationService().evaluate_page(
+        wrong_note_link_prediction(),
+        note_link_gold(),
+        profile(),
+    )
+    metrics = {
+        metric.metric_id: metric.value for metric in summary.note_linkage.metrics
+    }
+    assert metrics["note_linkage_success"] == 0
+    assert {flag.flag_type for flag in summary.note_linkage.flags} == {
+        "ambiguous_note_linkage"
+    }
