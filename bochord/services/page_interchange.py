@@ -28,7 +28,13 @@ _MIN_POLYGON_POINTS = 3
 
 
 class PageXmlInterchangeService:
-    """Round-trip canonical page evidence through PAGE review packages."""
+    """
+    Round-trip canonical page evidence through PAGE review packages.
+
+    Exports a review ZIP plus JSON sidecar for eScriptorium, then merges
+    PAGE-supported corrections back onto the sidecar without inventing
+    unsupported graph objects.
+    """
 
     def export_review_package(
         self,
@@ -46,6 +52,9 @@ class PageXmlInterchangeService:
 
         Returns:
             Path to the review ZIP written for eScriptorium import.
+
+        Side Effects:
+            Creates ``output_dir`` and writes XML, JSON sidecar, and ZIP files.
 
         """
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -97,7 +106,18 @@ class PageXmlInterchangeService:
         image_filename: str,
         xml_path: Path,
     ) -> None:
-        """Serialize one bundle page to PAGE 2019-07-15 XML."""
+        """
+        Serialize one bundle page to PAGE 2019-07-15 XML.
+
+        Args:
+            page: Canonical page bundle to serialize.
+            image_filename: Image basename written into the PAGE header.
+            xml_path: Destination path for the PAGE XML document.
+
+        Side Effects:
+            Writes ``xml_path`` to disk.
+
+        """
         space = page.prepared_page.coordinate_space
         root = ET.Element(f"{{{PAGE_NS}}}PcGts")
         page_el = ET.SubElement(
@@ -141,7 +161,20 @@ class PageXmlInterchangeService:
         )
 
     def _merge_page(self, root: ET.Element, base: BundlePage) -> BundlePage:
-        """Apply PAGE-supported field updates onto the canonical sidecar."""
+        """
+        Apply PAGE-supported field updates onto the canonical sidecar.
+
+        Args:
+            root: Parsed PAGE ``PcGts`` root element.
+            base: Canonical sidecar page to update.
+
+        Returns:
+            Updated bundle page with PAGE corrections applied.
+
+        Raises:
+            ValueError: If page identity or required stable ids are invalid.
+
+        """
         page_el = self._page_element(root)
         self._validate_page_identity(page_el, base)
         space_id = base.prepared_page.coordinate_space.space_id
@@ -163,7 +196,19 @@ class PageXmlInterchangeService:
         )
 
     def _page_element(self, root: ET.Element) -> ET.Element:
-        """Return the PAGE Page element, raising when it is absent."""
+        """
+        Return the PAGE Page element, raising when it is absent.
+
+        Args:
+            root: Parsed PAGE ``PcGts`` root element.
+
+        Returns:
+            The ``Page`` child element.
+
+        Raises:
+            ValueError: If the ``Page`` element is missing.
+
+        """
         page_el = root.find(f"{{{PAGE_NS}}}Page")
         if page_el is None:
             msg = "PAGE document missing Page element"
@@ -175,7 +220,17 @@ class PageXmlInterchangeService:
         page_el: ET.Element,
         base: BundlePage,
     ) -> None:
-        """Reject PAGE corrections for a different prepared image identity."""
+        """
+        Reject PAGE corrections for a different prepared image identity.
+
+        Args:
+            page_el: PAGE ``Page`` element under validation.
+            base: Canonical sidecar page supplying expected identity.
+
+        Raises:
+            ValueError: If image filename or pixel dimensions disagree.
+
+        """
         expected_name = Path(base.prepared_page.image_path).name
         expected_space = base.prepared_page.coordinate_space
         actual_name = page_el.get("imageFilename")
@@ -200,7 +255,19 @@ class PageXmlInterchangeService:
         self,
         region_elements: dict[str, ET.Element],
     ) -> tuple[dict[str, ET.Element], dict[str, ET.Element]]:
-        """Index TextLine and Word elements by stable id."""
+        """
+        Index TextLine and Word elements by stable id.
+
+        Args:
+            region_elements: PAGE TextRegion elements keyed by region id.
+
+        Returns:
+            ``(line_elements, word_elements)`` keyed by stable id.
+
+        Raises:
+            ValueError: If a line or word id is missing or duplicated.
+
+        """
         line_elements: dict[str, ET.Element] = {}
         word_elements: dict[str, ET.Element] = {}
         for region_el in region_elements.values():
@@ -231,7 +298,22 @@ class PageXmlInterchangeService:
         reading_order: dict[str, int],
         space_id: str,
     ) -> list[RegionRecord]:
-        """Merge PAGE region geometry and reading order."""
+        """
+        Merge PAGE region geometry and reading order.
+
+        Args:
+            regions: Canonical region records from the sidecar.
+            region_elements: PAGE TextRegion elements keyed by id.
+            reading_order: One-based reading-order indices by region id.
+            space_id: Coordinate-space id for reconstructed geometry.
+
+        Returns:
+            Regions with PAGE geometry and reading order applied.
+
+        Raises:
+            ValueError: If any canonical region id is missing from PAGE.
+
+        """
         merged = [
             self._merge_region(
                 region,
@@ -256,7 +338,21 @@ class PageXmlInterchangeService:
         line_elements: dict[str, ET.Element],
         space_id: str,
     ) -> list[LineRecord]:
-        """Merge PAGE line geometry for every canonical line id."""
+        """
+        Merge PAGE line geometry for every canonical line id.
+
+        Args:
+            lines: Canonical line records from the sidecar.
+            line_elements: PAGE TextLine elements keyed by id.
+            space_id: Coordinate-space id for reconstructed geometry.
+
+        Returns:
+            Lines with PAGE geometry applied.
+
+        Raises:
+            ValueError: If any canonical line id is missing from PAGE.
+
+        """
         merged = [
             self._merge_line(line, line_elements[line.line_id], space_id)
             for line in lines
@@ -276,7 +372,21 @@ class PageXmlInterchangeService:
         word_elements: dict[str, ET.Element],
         space_id: str,
     ) -> list[SpanRecord]:
-        """Merge PAGE word text and typography for every canonical span id."""
+        """
+        Merge PAGE word text and typography for every canonical span id.
+
+        Args:
+            spans: Canonical span records from the sidecar.
+            word_elements: PAGE Word elements keyed by id.
+            space_id: Coordinate-space id for reconstructed geometry.
+
+        Returns:
+            Spans with PAGE text, typography, and geometry applied.
+
+        Raises:
+            ValueError: If any canonical span id is missing from PAGE.
+
+        """
         merged = [
             self._merge_span(span, word_elements[span.span_id], space_id)
             for span in spans
@@ -291,7 +401,16 @@ class PageXmlInterchangeService:
         return merged
 
     def _region_element(self, region: RegionRecord) -> ET.Element:
-        """Build one PAGE TextRegion from a canonical region record."""
+        """
+        Build one PAGE TextRegion from a canonical region record.
+
+        Args:
+            region: Canonical region to serialize.
+
+        Returns:
+            PAGE ``TextRegion`` element with optional Coords.
+
+        """
         region_el = ET.Element(
             f"{{{PAGE_NS}}}TextRegion",
             id=region.region_id,
@@ -304,7 +423,16 @@ class PageXmlInterchangeService:
         return region_el
 
     def _line_element(self, line: LineRecord) -> ET.Element:
-        """Build one PAGE TextLine from a canonical line record."""
+        """
+        Build one PAGE TextLine from a canonical line record.
+
+        Args:
+            line: Canonical line to serialize.
+
+        Returns:
+            PAGE ``TextLine`` element with optional Coords and Baseline.
+
+        """
         line_el = ET.Element(f"{{{PAGE_NS}}}TextLine", id=line.line_id)
         if line.polygon is not None:
             line_el.append(self._coords_from_polygon(line.polygon))
@@ -315,7 +443,16 @@ class PageXmlInterchangeService:
         return line_el
 
     def _word_element(self, span: SpanRecord) -> ET.Element:
-        """Build one PAGE Word from a canonical span record."""
+        """
+        Build one PAGE Word from a canonical span record.
+
+        Args:
+            span: Canonical span to serialize.
+
+        Returns:
+            PAGE ``Word`` element with text, optional style, and Coords.
+
+        """
         word_el = ET.Element(f"{{{PAGE_NS}}}Word", id=span.span_id)
         if span.bounding_box is not None:
             word_el.append(self._coords(span.bounding_box))
@@ -328,21 +465,34 @@ class PageXmlInterchangeService:
         return word_el
 
     def _coords(self, bounding_box: BoundingBox) -> ET.Element:
-        """Convert one axis-aligned box to PAGE Coords."""
+        """
+        Convert one axis-aligned box to PAGE Coords.
+
+        Args:
+            bounding_box: Axis-aligned page geometry.
+
+        Returns:
+            PAGE ``Coords`` element with four corner points.
+
+        """
         x0 = self._point_value(bounding_box.x0)
         y0 = self._point_value(bounding_box.y0)
         x1 = self._point_value(bounding_box.x1)
         y1 = self._point_value(bounding_box.y1)
-        points = (
-            f"{x0},{y0} "
-            f"{x1},{y0} "
-            f"{x1},{y1} "
-            f"{x0},{y1}"
-        )
+        points = f"{x0},{y0} {x1},{y0} {x1},{y1} {x0},{y1}"
         return ET.Element(f"{{{PAGE_NS}}}Coords", points=points)
 
     def _coords_from_polygon(self, polygon: Polygon) -> ET.Element:
-        """Convert one polygon to PAGE Coords."""
+        """
+        Convert one polygon to PAGE Coords.
+
+        Args:
+            polygon: Non-rectangular page geometry.
+
+        Returns:
+            PAGE ``Coords`` element listing polygon vertices.
+
+        """
         points = " ".join(
             f"{self._point_value(point.x)},{self._point_value(point.y)}"
             for point in polygon.points
@@ -350,7 +500,16 @@ class PageXmlInterchangeService:
         return ET.Element(f"{{{PAGE_NS}}}Coords", points=points)
 
     def _baseline_element(self, baseline: list[Point]) -> ET.Element:
-        """Convert one baseline polyline to PAGE Baseline."""
+        """
+        Convert one baseline polyline to PAGE Baseline.
+
+        Args:
+            baseline: Ordered baseline points in reading order.
+
+        Returns:
+            PAGE ``Baseline`` element.
+
+        """
         points = " ".join(
             f"{self._point_value(point.x)},{self._point_value(point.y)}"
             for point in baseline
@@ -358,7 +517,16 @@ class PageXmlInterchangeService:
         return ET.Element(f"{{{PAGE_NS}}}Baseline", points=points)
 
     def _text_style(self, typography: Typography) -> ET.Element | None:
-        """Map supported typography facets to PAGE TextStyle."""
+        """
+        Map supported typography facets to PAGE TextStyle.
+
+        Args:
+            typography: Canonical typography facets.
+
+        Returns:
+            PAGE ``TextStyle`` when a supported facet is set, else ``None``.
+
+        """
         attrs: dict[str, str] = {}
         if typography.slant is FontSlant.ITALIC:
             attrs["italic"] = "true"
@@ -373,7 +541,20 @@ class PageXmlInterchangeService:
         parent: ET.Element,
         tag_name: str,
     ) -> dict[str, ET.Element]:
-        """Index direct child elements by stable id, rejecting duplicates."""
+        """
+        Index direct child elements by stable id, rejecting duplicates.
+
+        Args:
+            parent: Parent PAGE element to scan.
+            tag_name: Local PAGE tag name of the children.
+
+        Returns:
+            Child elements keyed by stable ``id``.
+
+        Raises:
+            ValueError: If a child lacks an id or duplicates one.
+
+        """
         indexed: dict[str, ET.Element] = {}
         for child in parent.findall(f"{{{PAGE_NS}}}{tag_name}"):
             child_id = child.get("id")
@@ -387,7 +568,16 @@ class PageXmlInterchangeService:
         return indexed
 
     def _reading_order_indices(self, page_el: ET.Element) -> dict[str, int]:
-        """Read region reading-order indices from PAGE ReadingOrder."""
+        """
+        Read region reading-order indices from PAGE ReadingOrder.
+
+        Args:
+            page_el: PAGE ``Page`` element.
+
+        Returns:
+            One-based reading-order indices keyed by region id.
+
+        """
         indices: dict[str, int] = {}
         reading_order = page_el.find(f"{{{PAGE_NS}}}ReadingOrder")
         if reading_order is None:
@@ -406,7 +596,19 @@ class PageXmlInterchangeService:
         reading_order_index: int,
         space_id: str,
     ) -> RegionRecord:
-        """Merge PAGE geometry and reading order into one region record."""
+        """
+        Merge PAGE geometry and reading order into one region record.
+
+        Args:
+            region: Canonical region from the sidecar.
+            region_el: Matching PAGE TextRegion element.
+            reading_order_index: One-based PAGE reading-order index.
+            space_id: Coordinate-space id for reconstructed geometry.
+
+        Returns:
+            Updated region record.
+
+        """
         coords = region_el.find(f"{{{PAGE_NS}}}Coords")
         polygon = self._polygon_from_coords(coords, space_id)
         bounding_box = self._bbox_from_coords(coords, space_id)
@@ -424,7 +626,18 @@ class PageXmlInterchangeService:
         line_el: ET.Element,
         space_id: str,
     ) -> LineRecord:
-        """Merge PAGE geometry into one line record."""
+        """
+        Merge PAGE geometry into one line record.
+
+        Args:
+            line: Canonical line from the sidecar.
+            line_el: Matching PAGE TextLine element.
+            space_id: Coordinate-space id for reconstructed geometry.
+
+        Returns:
+            Updated line record.
+
+        """
         coords = line_el.find(f"{{{PAGE_NS}}}Coords")
         baseline_el = line_el.find(f"{{{PAGE_NS}}}Baseline")
         polygon = self._polygon_from_coords(coords, space_id)
@@ -444,7 +657,18 @@ class PageXmlInterchangeService:
         word_el: ET.Element,
         space_id: str,
     ) -> SpanRecord:
-        """Merge PAGE text, typography, and geometry into one span record."""
+        """
+        Merge PAGE text, typography, and geometry into one span record.
+
+        Args:
+            span: Canonical span from the sidecar.
+            word_el: Matching PAGE Word element.
+            space_id: Coordinate-space id for reconstructed geometry.
+
+        Returns:
+            Updated span record.
+
+        """
         coords = word_el.find(f"{{{PAGE_NS}}}Coords")
         unicode_el = word_el.find(f".//{{{PAGE_NS}}}Unicode")
         text_diplomatic = span.text_diplomatic
@@ -468,7 +692,17 @@ class PageXmlInterchangeService:
         text_style: ET.Element | None,
         base: Typography,
     ) -> Typography:
-        """Apply PAGE TextStyle updates onto canonical typography."""
+        """
+        Apply PAGE TextStyle updates onto canonical typography.
+
+        Args:
+            text_style: Optional PAGE ``TextStyle`` element.
+            base: Canonical typography to update.
+
+        Returns:
+            Typography with PAGE-supported facet updates applied.
+
+        """
         if text_style is None:
             return base
         updates: dict[str, FontSlant | BaselineShift] = {}
@@ -485,7 +719,16 @@ class PageXmlInterchangeService:
         return base.model_copy(update=updates)
 
     def _parse_points(self, points: str) -> list[tuple[float, float]]:
-        """Parse PAGE point strings into coordinate pairs."""
+        """
+        Parse PAGE point strings into coordinate pairs.
+
+        Args:
+            points: Space-separated ``x,y`` PAGE point string.
+
+        Returns:
+            Ordered ``(x, y)`` coordinate pairs.
+
+        """
         parsed: list[tuple[float, float]] = []
         for token in points.split():
             if not token:
@@ -499,7 +742,17 @@ class PageXmlInterchangeService:
         coords: ET.Element | None,
         space_id: str,
     ) -> BoundingBox | None:
-        """Derive one axis-aligned box from PAGE Coords."""
+        """
+        Derive one axis-aligned box from PAGE Coords.
+
+        Args:
+            coords: Optional PAGE ``Coords`` element.
+            space_id: Coordinate-space id for the box.
+
+        Returns:
+            Bounding box covering the points, or ``None`` when absent.
+
+        """
         if coords is None:
             return None
         points = self._parse_points(coords.get("points", ""))
@@ -520,7 +773,17 @@ class PageXmlInterchangeService:
         coords: ET.Element | None,
         space_id: str,
     ) -> Polygon | None:
-        """Derive one polygon from PAGE Coords when enough points exist."""
+        """
+        Derive one polygon from PAGE Coords when enough points exist.
+
+        Args:
+            coords: Optional PAGE ``Coords`` element.
+            space_id: Coordinate-space id for the polygon.
+
+        Returns:
+            Polygon when at least three points exist, else ``None``.
+
+        """
         if coords is None:
             return None
         points = self._parse_points(coords.get("points", ""))
@@ -532,14 +795,31 @@ class PageXmlInterchangeService:
         )
 
     def _points_from_coords(self, element: ET.Element | None) -> list[Point]:
-        """Derive one point list from PAGE Baseline or Coords."""
+        """
+        Derive one point list from PAGE Baseline or Coords.
+
+        Args:
+            element: Optional PAGE element carrying a ``points`` attribute.
+
+        Returns:
+            Ordered points, or an empty list when absent.
+
+        """
         if element is None:
             return []
         return [
-            Point(x=x, y=y)
-            for x, y in self._parse_points(element.get("points", ""))
+            Point(x=x, y=y) for x, y in self._parse_points(element.get("points", ""))
         ]
 
     def _point_value(self, value: float) -> str:
-        """Serialize one PAGE coordinate as an importer-friendly integer."""
+        """
+        Serialize one PAGE coordinate as an importer-friendly integer.
+
+        Args:
+            value: Floating-point page coordinate.
+
+        Returns:
+            Rounded integer string suitable for PAGE ``points``.
+
+        """
         return str(round(value))

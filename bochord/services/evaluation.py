@@ -343,7 +343,14 @@ def _facet_match(
 
 
 class EvaluationService:
-    """Score one predicted page against a gold annotation slice."""
+    """
+    Score one predicted page against a gold annotation slice.
+
+    Orchestrates text, structure, typography, and note-linkage scorers under a
+    frozen :class:`~bochord.models.MetricProfile`. Gold coverage defines every
+    denominator; ``do_not_score`` never enters one. No blended page score is
+    produced.
+    """
 
     def evaluate_page(
         self,
@@ -634,10 +641,21 @@ class EvaluationService:
 
 
 class _RateAccumulator:
-    """Mutable numerator/denominator accumulator for one page metric."""
+    """
+    Mutable numerator/denominator accumulator for one page metric.
+
+    Tracks success or edit-distance contributions plus the empty-reference
+    insertion case that forces error-rate value ``1`` with an explanatory note.
+    """
 
     def __init__(self) -> None:
-        """Initialize empty numerator and denominator totals."""
+        """
+        Initialize empty numerator and denominator totals.
+
+        Side Effects:
+            Creates mutable accumulator fields on ``self``.
+
+        """
         #: Sum of successes or edit distances contributed so far.
         self.numerator = 0.0
         #: Sum of reference lengths or span counts contributed so far.
@@ -723,7 +741,12 @@ class _RateAccumulator:
 
 
 class _StructureScorer:
-    """Score structure metrics and provenance-backed structure flags."""
+    """
+    Score structure metrics and provenance-backed structure flags.
+
+    Covers region coverage, adjacent reading-order pairs, line-join fidelity,
+    and table-region detection under exhaustive STRUCTURE coverage.
+    """
 
     def score(
         self,
@@ -931,7 +954,13 @@ class _StructureScorer:
 
 
 class _TypographyScorer:
-    """Score independent typography facets and footnote role/object metrics."""
+    """
+    Score independent typography facets and footnote role/object metrics.
+
+    Facets are scored separately; bold italic is never one mutually exclusive
+    class. Footnote-marker retention and footnote-block detection use
+    TYPOGRAPHY / STRUCTURE coverage respectively.
+    """
 
     def score(
         self,
@@ -1270,7 +1299,13 @@ class _TypographyScorer:
 
 
 class _NoteLinkageScorer:
-    """Score exact marker-to-note edges and emit linkage flags."""
+    """
+    Score exact marker-to-note edges and emit linkage flags.
+
+    Gold ``note_target_id`` may be a predicted note id or a gold region
+    ``annotation_id`` that resolves to a note body. Coverage is checked on the
+    marker span and the resolved note target.
+    """
 
     def score(
         self,
