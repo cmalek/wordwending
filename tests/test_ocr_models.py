@@ -644,6 +644,35 @@ def recipe_payload(**overrides: object) -> dict[str, object]:
     return payload
 
 
+@pytest.mark.parametrize(
+    ("parent_prepared_page_id", "checksum"),
+    [
+        (None, "sha256:abc"),
+        ("prepared-page-1", None),
+        ("", "sha256:abc"),
+        ("prepared-page-1", ""),
+        ("   ", "sha256:abc"),
+        ("prepared-page-1", "   "),
+    ],
+)
+def test_prepared_unit_rejects_missing_or_empty_lineage_fields(
+    parent_prepared_page_id: str | None,
+    checksum: str | None,
+) -> None:
+    with pytest.raises(ValidationError, match="prepared units require"):
+        PreparedArtifactRef(
+            artifact_id="prep-unit-1",
+            kind=InputKind.PREPARED_UNIT,
+            page_id="page-0001",
+            prepared_unit_id="col-1-part-1",
+            artifact_path="pages/page-0001/image/col-1-part-1.png",
+            parent_prepared_page_id=parent_prepared_page_id,
+            checksum=checksum,
+            order=1,
+            bounding_box=BoundingBox(x0=0, y0=0, x1=1200, y1=3600),
+        )
+
+
 def test_operator_override_requires_reason() -> None:
     with pytest.raises(ValidationError):
         PreparationAssessment(

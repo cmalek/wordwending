@@ -619,9 +619,12 @@ class PreparedArtifactRef(SchemaModel):
         if self.kind != InputKind.PREPARED_UNIT:
             return self
         missing: list[str] = []
-        if self.parent_prepared_page_id is None:
+        if (
+            self.parent_prepared_page_id is None
+            or not self.parent_prepared_page_id.strip()
+        ):
             missing.append("parent_prepared_page_id")
-        if self.checksum is None:
+        if self.checksum is None or not self.checksum.strip():
             missing.append("checksum")
         if self.order is None:
             missing.append("order")
