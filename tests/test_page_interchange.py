@@ -11,7 +11,26 @@ import pytest
 from bochord.models import BaselineShift, BundlePage, FontSlant
 from bochord.services.page_interchange import PAGE_NS, PageXmlInterchangeService
 
-NOTE_FIXTURE = Path("tests/fixtures/interchange/note-page.base.json")
+FIXTURE_DIR = Path("tests/fixtures/interchange")
+NOTE_FIXTURE = FIXTURE_DIR / "note-page.base.json"
+
+
+def _parse_native_corrected(stem: str) -> ET.Element:
+    """Return the root element of one recorded eScriptorium PAGE export."""
+    return ET.parse(FIXTURE_DIR / f"{stem}.corrected.xml").getroot()  # noqa: S314
+
+
+def _line_unicode(line_el: ET.Element) -> str:
+    unicode_el = line_el.find(f"{{{PAGE_NS}}}TextEquiv/{{{PAGE_NS}}}Unicode")
+    return "" if unicode_el is None or unicode_el.text is None else unicode_el.text
+
+
+def _word_ids(root: ET.Element) -> list[str]:
+    return [
+        word.get("id", "")
+        for word in root.findall(f".//{{{PAGE_NS}}}Word")
+        if word.get("id")
+    ]
 
 
 def _export_note_page(tmp_path: Path) -> tuple[PageXmlInterchangeService, Path, Path]:
@@ -121,3 +140,92 @@ def test_import_rejects_missing_word_id(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="missing word ids: span-note-marker-10"):
         service.import_corrected_page(page_xml, sidecar)
+
+
+@pytest.mark.parametrize(
+    ("stem", "corrected_text", "region_ids", "line_ids"),
+    [
+        (
+            "dictionary-page",
+            "drēorig",
+            ["region-0100-a", "region-0100-b"],
+            ["line-0100-1", "line-0100-2"],
+        ),
+        (
+            "note-page",
+            "Deletion",
+            ["region-0010-body", "region-0010-footnote"],
+            ["line-0010-body-1", "line-0010-footnote-1"],
+        ),
+    ],
+)
+def test_native_escriptorium_export_preserves_region_line_ids_and_text(
+    stem: str,
+    corrected_text: str,
+    region_ids: list[str],
+    line_ids: list[str],
+) -> None:
+    """Recorded native exports keep region/line ids and line-level corrections."""
+    root = _parse_native_corrected(stem)
+    page_el = root.find(f"{{{PAGE_NS}}}Page")
+    assert page_el is not None
+
+    exported_region_ids = [
+        region.get("id")
+        for region in page_el.findall(f"{{{PAGE_NS}}}TextRegion")
+        if region.get("id")
+    ]
+    exported_line_ids = [
+        line.get("id")
+        for region in page_el.findall(f"{{{PAGE_NS}}}TextRegion")
+        for line in region.findall(f"{{{PAGE_NS}}}TextLine")
+        if line.get("id")
+    ]
+    assert exported_region_ids == region_ids
+    assert exported_line_ids == line_ids
+
+    body_line = next(
+        line
+        for region in page_el.findall(f"{{{PAGE_NS}}}TextRegion")
+        for line in region.findall(f"{{{PAGE_NS}}}TextLine")
+        if line.get("id") == line_ids[0]
+    )
+    assert corrected_text in _line_unicode(body_line)
+
+
+@pytest.mark.parametrize("stem", ["dictionary-page", "note-page"])
+def test_native_escriptorium_export_lacks_stable_word_ids(stem: str) -> None:
+    """Native eScriptorium PAGE export drops Word elements and span-* ids."""
+    root = _parse_native_corrected(stem)
+    assert root.findall(f".//{{{PAGE_NS}}}Word") == []
+    assert _word_ids(root) == []
+    assert "span-" not in ET.tostring(root, encoding="unicode")
+
+
+@pytest.mark.parametrize(
+    ("stem", "missing_word_ids"),
+    [
+        (
+            "dictionary-page",
+            ["span-0100-headword", "span-0100-sorrow"],
+        ),
+        (
+            "note-page",
+            ["span-0010-footnote-text", "span-0010-italic", "span-note-marker-10"],
+        ),
+    ],
+)
+def test_native_escriptorium_export_rejects_import(
+    stem: str,
+    missing_word_ids: list[str],
+) -> None:
+    """Import must fail when native export omits canonical Word/span ids."""
+    service = PageXmlInterchangeService()
+    sidecar = FIXTURE_DIR / f"{stem}.base.json"
+    corrected = FIXTURE_DIR / f"{stem}.corrected.xml"
+
+    with pytest.raises(ValueError, match="missing word ids:") as exc_info:
+        service.import_corrected_page(corrected, sidecar)
+
+    for word_id in missing_word_ids:
+        assert word_id in str(exc_info.value)

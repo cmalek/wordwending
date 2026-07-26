@@ -26,6 +26,12 @@ Read in this order:
 
 .. toctree::
    :maxdepth: 1
+   :caption: Spikes
+
+   spike_0001_page_escriptorium
+
+.. toctree::
+   :maxdepth: 1
    :caption: Specs
 
    spec_0004_v1_implementation_plan
