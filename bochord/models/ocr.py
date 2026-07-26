@@ -595,8 +595,42 @@ class PreparedArtifactRef(SchemaModel):
     prepared_unit_id: str | None = None
     #: Filesystem-relative bundle path for this artifact.
     artifact_path: str
+    #: Parent prepared-page identifier for prepared units.
+    parent_prepared_page_id: str | None = None
+    #: Digest binding the prepared artifact bytes.
+    checksum: str | None = None
+    #: Reading-order position for prepared units.
+    order: int | None = Field(default=None, ge=1)
     #: Bounding box for the prepared unit within the source page when applicable.
     bounding_box: BoundingBox | None = None
+
+    @model_validator(mode="after")
+    def validate_prepared_unit_requirements(self) -> PreparedArtifactRef:
+        """
+        Require lineage and geometry for prepared-unit artifacts.
+
+        Returns:
+            The validated prepared artifact reference.
+
+        Raises:
+            ValueError: If a prepared unit lacks required metadata.
+
+        """
+        if self.kind != InputKind.PREPARED_UNIT:
+            return self
+        missing: list[str] = []
+        if self.parent_prepared_page_id is None:
+            missing.append("parent_prepared_page_id")
+        if self.checksum is None:
+            missing.append("checksum")
+        if self.order is None:
+            missing.append("order")
+        if self.bounding_box is None:
+            missing.append("bounding_box")
+        if missing:
+            msg = f"prepared units require {', '.join(missing)}"
+            raise ValueError(msg)
+        return self
 
 
 class BatchItemRef(SchemaModel):
@@ -819,6 +853,8 @@ class PageEvaluationSummary(SchemaModel):
 class PreparedPage(SchemaModel):
     """Preparation outcome for one page."""
 
+    #: Stable prepared-page identifier within the document bundle.
+    prepared_page_id: str
     #: Accepted preparation mode for the page.
     preparation_mode: PreparationMode
     #: Final page-class label used by later stages.

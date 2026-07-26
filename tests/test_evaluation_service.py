@@ -68,6 +68,7 @@ def text_case(
         page_id="page-1",
         page_number=1,
         prepared_page=PreparedPage(
+            prepared_page_id="prepared-page-1",
             preparation_mode=PreparationMode.FULL_PAGE,
             page_class=PageClass.ORDINARY_PROSE,
             image_path="page.png",
@@ -264,6 +265,7 @@ def test_iou_fallback_matches_highest_same_family_span() -> None:
         page_id="page-1",
         page_number=1,
         prepared_page=PreparedPage(
+            prepared_page_id="prepared-page-1",
             preparation_mode=PreparationMode.FULL_PAGE,
             page_class=PageClass.ORDINARY_PROSE,
             image_path="page.png",
@@ -383,6 +385,7 @@ def test_empty_ref_note_omitted_when_other_spans_contribute_denom() -> None:
 def _prepared_page() -> PreparedPage:
     """Return a shared prepared-page shell for multi-object fixtures."""
     return PreparedPage(
+        prepared_page_id="prepared-page-1",
         preparation_mode=PreparationMode.FULL_PAGE,
         page_class=PageClass.ORDINARY_PROSE,
         image_path="page.png",

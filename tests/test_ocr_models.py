@@ -10,6 +10,7 @@ from pydantic import TypeAdapter, ValidationError
 
 from bochord.models import (
     AcquisitionProvenance,
+    AssessmentThresholds,
     BaselineShift,
     BatchItemRef,
     BatchResultStatus,
@@ -40,7 +41,9 @@ from bochord.models import (
     PageClass,
     PageEvaluationSummary,
     PageOverlay,
+    PreparationAssessment,
     PreparationMode,
+    PreparationRecipe,
     PreparedArtifactRef,
     PreparedPage,
     RagChunk,
@@ -87,6 +90,7 @@ def valid_bundle_page() -> BundlePage:
         page_id="page-1",
         page_number=1,
         prepared_page=PreparedPage(
+            prepared_page_id="prepared-page-1",
             preparation_mode=PreparationMode.FULL_PAGE,
             page_class=PageClass.ORDINARY_PROSE,
             image_path="page.png",
@@ -212,11 +216,16 @@ class TestOcrModels:
             page_id="page-0001",
             prepared_unit_id="col-1-part-1",
             artifact_path="pages/page-0001/image/col-1-part-1.png",
+            parent_prepared_page_id="prepared-page-1",
+            checksum="sha256:col-1-part-1",
+            order=1,
+            bounding_box=BoundingBox(x0=0, y0=0, x1=1200, y1=3600),
         )
         page = BundlePage(
             page_id="page-0001",
             page_number=1,
             prepared_page=PreparedPage(
+                prepared_page_id="prepared-page-1",
                 preparation_mode=PreparationMode.COLUMNS,
                 page_class=PageClass.DENSE_DICTIONARY,
                 image_path="pages/page-0001/image/page.png",
@@ -532,6 +541,7 @@ class TestOcrModels:
                 page_id="page-1",
                 page_number=1,
                 prepared_page=PreparedPage(
+                    prepared_page_id="prepared-page-1",
                     preparation_mode=PreparationMode.FULL_PAGE,
                     page_class=PageClass.ORDINARY_PROSE,
                     image_path="page.png",
@@ -611,3 +621,47 @@ def test_bundle_rejects_unknown_line_join_target() -> None:
     page.lines[0].joins_to_line_id = "missing-line"
     with pytest.raises(ValidationError, match="unknown joined line"):
         BundlePage.model_validate(page.model_dump())
+
+
+def recipe_payload(**overrides: object) -> dict[str, object]:
+    """Return a valid preparation-recipe payload with optional overrides."""
+    payload: dict[str, object] = {
+        "recipe_id": "historical-print-v1",
+        "pdf_page_image_mode": "auto",
+        "render_dpi": 400,
+        "color_mode": "grayscale",
+        "deskew": False,
+        "denoise": False,
+        "crop_mode": "none",
+        "binarize_mode": "none",
+        "dewarp_mode": "none",
+        "subdivision_overlap_px": 64,
+        "fixed_tile_height_px": 1600,
+        "thresholds": AssessmentThresholds().model_dump(),
+        "notes": "Initial deterministic profile; calibrate from held-out gold.",
+    }
+    payload.update(overrides)
+    return payload
+
+
+def test_operator_override_requires_reason() -> None:
+    with pytest.raises(ValidationError):
+        PreparationAssessment(
+            assessment_id="assessment-page-1",
+            source_page_id="page-0001",
+            prepared_page_id=None,
+            signals=[],
+            flags=[],
+            recommended_actions=[],
+            warnings=[],
+            page_class_suggested=PageClass.ORDINARY_PROSE,
+            page_class_final=PageClass.DENSE_DICTIONARY,
+            page_class_source="operator",
+            operator_override_reason=None,
+        )
+
+
+def test_recipe_rejects_overlap_not_smaller_than_tile() -> None:
+    payload = recipe_payload(subdivision_overlap_px=500, fixed_tile_height_px=500)
+    with pytest.raises(ValidationError):
+        PreparationRecipe.model_validate(payload)

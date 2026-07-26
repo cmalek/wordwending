@@ -1,0 +1,22 @@
+{
+  "recipe_id": "historical-print-v1",
+  "pdf_page_image_mode": "auto",
+  "render_dpi": 400,
+  "color_mode": "grayscale",
+  "deskew": false,
+  "denoise": false,
+  "crop_mode": "none",
+  "binarize_mode": "none",
+  "dewarp_mode": "none",
+  "subdivision_overlap_px": 64,
+  "fixed_tile_height_px": 1600,
+  "thresholds": {
+    "minimum_dpi": 300,
+    "minimum_contrast_stddev": 25,
+    "maximum_abs_skew_degrees": 1.5,
+    "maximum_dark_margin_ratio": 0.25,
+    "maximum_speckle_ratio": 0.02,
+    "minimum_text_run_height_px": 18
+  },
+  "notes": "Initial deterministic profile; calibrate from held-out gold."
+}
