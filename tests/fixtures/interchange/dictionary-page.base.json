@@ -1,0 +1,173 @@
+{
+  "page_id": "page-0100",
+  "page_number": 100,
+  "prepared_page": {
+    "preparation_mode": "columns",
+    "page_class": "dense-dictionary",
+    "image_path": "pages/page-0100/image/page.png",
+    "source_artifact_id": "source-page-100",
+    "image_checksum": "sha256:dict-page-100",
+    "preparation_recipe_id": "prep-v1",
+    "coordinate_space": {
+      "space_id": "prepared-page-0100",
+      "width_px": 2400,
+      "height_px": 3600,
+      "dpi": 400
+    },
+    "transforms": [
+      {
+        "kind": "crop",
+        "source_space_id": "source-page-100",
+        "target_space_id": "prepared-page-0100",
+        "parameters": {
+          "x0": 0.0,
+          "y0": 0.0,
+          "x1": 2400.0,
+          "y1": 3600.0
+        }
+      }
+    ],
+    "prepared_units": []
+  },
+  "regions": [
+    {
+      "region_id": "region-0100-a",
+      "region_kind": "body",
+      "reading_order_index": 1,
+      "bounding_box": {
+        "x0": 100.0,
+        "y0": 120.0,
+        "x1": 1100.0,
+        "y1": 1800.0,
+        "coordinate_space_id": "prepared-page-0100"
+      },
+      "line_ids": ["line-0100-1"],
+      "provenance": {
+        "source_page_id": "page-0100",
+        "witness_ids": ["wit-dict-1"],
+        "runner_ids": ["olmocr"],
+        "machine_confidence": 0.88
+      }
+    },
+    {
+      "region_id": "region-0100-b",
+      "region_kind": "body",
+      "reading_order_index": 2,
+      "bounding_box": {
+        "x0": 1200.0,
+        "y0": 120.0,
+        "x1": 2200.0,
+        "y1": 1800.0,
+        "coordinate_space_id": "prepared-page-0100"
+      },
+      "line_ids": ["line-0100-2"],
+      "provenance": {
+        "source_page_id": "page-0100",
+        "witness_ids": ["wit-dict-1"],
+        "runner_ids": ["olmocr"],
+        "machine_confidence": 0.86
+      }
+    }
+  ],
+  "lines": [
+    {
+      "line_id": "line-0100-1",
+      "region_id": "region-0100-a",
+      "line_order": 1,
+      "bounding_box": {
+        "x0": 120.0,
+        "y0": 140.0,
+        "x1": 500.0,
+        "y1": 180.0,
+        "coordinate_space_id": "prepared-page-0100"
+      },
+      "polygon": {
+        "coordinate_space_id": "prepared-page-0100",
+        "points": [
+          {"x": 120.0, "y": 140.0},
+          {"x": 500.0, "y": 142.0},
+          {"x": 498.0, "y": 180.0},
+          {"x": 118.0, "y": 178.0}
+        ]
+      },
+      "baseline": [
+        {"x": 120.0, "y": 175.0},
+        {"x": 500.0, "y": 177.0}
+      ],
+      "span_ids": ["span-0100-headword", "span-0100-sorrow"],
+      "provenance": {
+        "source_page_id": "page-0100",
+        "witness_ids": ["wit-dict-1"],
+        "runner_ids": ["olmocr"],
+        "machine_confidence": 0.9
+      }
+    },
+    {
+      "line_id": "line-0100-2",
+      "region_id": "region-0100-b",
+      "line_order": 1,
+      "span_ids": [],
+      "provenance": {
+        "source_page_id": "page-0100",
+        "witness_ids": ["wit-dict-1"],
+        "runner_ids": ["olmocr"],
+        "machine_confidence": 0.85
+      }
+    }
+  ],
+  "spans": [
+    {
+      "span_id": "span-0100-headword",
+      "line_id": "line-0100-1",
+      "text_diplomatic": "dreorig",
+      "text_normalized": "dreorig",
+      "typography": {
+        "weight": "regular",
+        "slant": "upright",
+        "baseline_shift": "baseline"
+      },
+      "roles": ["text"],
+      "bounding_box": {
+        "x0": 120.0,
+        "y0": 140.0,
+        "x1": 280.0,
+        "y1": 180.0,
+        "coordinate_space_id": "prepared-page-0100"
+      },
+      "provenance": {
+        "source_page_id": "page-0100",
+        "witness_ids": ["wit-dict-1"],
+        "runner_ids": ["olmocr"],
+        "machine_confidence": 0.92
+      }
+    },
+    {
+      "span_id": "span-0100-sorrow",
+      "line_id": "line-0100-1",
+      "text_diplomatic": "sorrow",
+      "text_normalized": "sorrow",
+      "typography": {
+        "weight": "regular",
+        "slant": "italic",
+        "baseline_shift": "baseline"
+      },
+      "roles": ["text"],
+      "bounding_box": {
+        "x0": 300.0,
+        "y0": 140.0,
+        "x1": 420.0,
+        "y1": 180.0,
+        "coordinate_space_id": "prepared-page-0100"
+      },
+      "provenance": {
+        "source_page_id": "page-0100",
+        "witness_ids": ["wit-dict-1"],
+        "runner_ids": ["olmocr"],
+        "machine_confidence": 0.91
+      }
+    }
+  ],
+  "notes": [],
+  "evaluation_summary": {},
+  "review_event_ids": []
+}

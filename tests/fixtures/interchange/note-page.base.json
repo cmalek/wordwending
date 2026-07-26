@@ -1,0 +1,186 @@
+{
+  "page_id": "page-0010",
+  "page_number": 10,
+  "prepared_page": {
+    "preparation_mode": "full-page",
+    "page_class": "note-heavy",
+    "image_path": "pages/page-0010/image/page.png",
+    "source_artifact_id": "source-page-10",
+    "image_checksum": "sha256:note-page-10",
+    "preparation_recipe_id": "prep-v1",
+    "coordinate_space": {
+      "space_id": "prepared-page-0010",
+      "width_px": 1800,
+      "height_px": 2600,
+      "dpi": 300
+    },
+    "transforms": [],
+    "prepared_units": []
+  },
+  "regions": [
+    {
+      "region_id": "region-0010-body",
+      "region_kind": "body",
+      "reading_order_index": 1,
+      "bounding_box": {
+        "x0": 80.0,
+        "y0": 100.0,
+        "x1": 1720.0,
+        "y1": 2100.0,
+        "coordinate_space_id": "prepared-page-0010"
+      },
+      "line_ids": ["line-0010-body-1"],
+      "provenance": {
+        "source_page_id": "page-0010",
+        "witness_ids": ["wit-note-1"],
+        "runner_ids": ["olmocr"],
+        "machine_confidence": 0.87
+      }
+    },
+    {
+      "region_id": "region-0010-footnote",
+      "region_kind": "footnote",
+      "reading_order_index": 2,
+      "bounding_box": {
+        "x0": 80.0,
+        "y0": 2200.0,
+        "x1": 1720.0,
+        "y1": 2500.0,
+        "coordinate_space_id": "prepared-page-0010"
+      },
+      "line_ids": ["line-0010-footnote-1"],
+      "note_ids": ["note-10"],
+      "provenance": {
+        "source_page_id": "page-0010",
+        "witness_ids": ["wit-note-1"],
+        "runner_ids": ["olmocr"],
+        "machine_confidence": 0.84
+      }
+    }
+  ],
+  "lines": [
+    {
+      "line_id": "line-0010-body-1",
+      "region_id": "region-0010-body",
+      "line_order": 1,
+      "bounding_box": {
+        "x0": 100.0,
+        "y0": 120.0,
+        "x1": 1700.0,
+        "y1": 160.0,
+        "coordinate_space_id": "prepared-page-0010"
+      },
+      "baseline": [
+        {"x": 100.0, "y": 155.0},
+        {"x": 1700.0, "y": 157.0}
+      ],
+      "span_ids": ["span-0010-italic", "span-note-marker-10"],
+      "provenance": {
+        "source_page_id": "page-0010",
+        "witness_ids": ["wit-note-1"],
+        "runner_ids": ["olmocr"],
+        "machine_confidence": 0.89
+      }
+    },
+    {
+      "line_id": "line-0010-footnote-1",
+      "region_id": "region-0010-footnote",
+      "line_order": 1,
+      "span_ids": ["span-0010-footnote-text"],
+      "provenance": {
+        "source_page_id": "page-0010",
+        "witness_ids": ["wit-note-1"],
+        "runner_ids": ["olmocr"],
+        "machine_confidence": 0.83
+      }
+    }
+  ],
+  "spans": [
+    {
+      "span_id": "span-0010-italic",
+      "line_id": "line-0010-body-1",
+      "text_diplomatic": "Delete",
+      "text_normalized": "Delete",
+      "typography": {
+        "weight": "regular",
+        "slant": "italic",
+        "baseline_shift": "baseline"
+      },
+      "roles": ["text"],
+      "bounding_box": {
+        "x0": 100.0,
+        "y0": 120.0,
+        "x1": 220.0,
+        "y1": 160.0,
+        "coordinate_space_id": "prepared-page-0010"
+      },
+      "provenance": {
+        "source_page_id": "page-0010",
+        "witness_ids": ["wit-note-1"],
+        "runner_ids": ["olmocr"],
+        "machine_confidence": 0.9
+      }
+    },
+    {
+      "span_id": "span-note-marker-10",
+      "line_id": "line-0010-body-1",
+      "text_diplomatic": "10",
+      "text_normalized": "10",
+      "typography": {
+        "weight": "regular",
+        "slant": "upright",
+        "baseline_shift": "superscript"
+      },
+      "roles": ["footnote-marker"],
+      "bounding_box": {
+        "x0": 230.0,
+        "y0": 110.0,
+        "x1": 260.0,
+        "y1": 140.0,
+        "coordinate_space_id": "prepared-page-0010"
+      },
+      "provenance": {
+        "source_page_id": "page-0010",
+        "witness_ids": ["wit-note-1"],
+        "runner_ids": ["olmocr"],
+        "machine_confidence": 0.88
+      }
+    },
+    {
+      "span_id": "span-0010-footnote-text",
+      "line_id": "line-0010-footnote-1",
+      "text_diplomatic": "See footnote discussion.",
+      "text_normalized": "See footnote discussion.",
+      "typography": {
+        "weight": "regular",
+        "slant": "upright",
+        "baseline_shift": "baseline"
+      },
+      "roles": ["text"],
+      "provenance": {
+        "source_page_id": "page-0010",
+        "witness_ids": ["wit-note-1"],
+        "runner_ids": ["olmocr"],
+        "machine_confidence": 0.82
+      }
+    }
+  ],
+  "notes": [
+    {
+      "note_id": "note-10",
+      "note_kind": "footnote-block",
+      "region_id": "region-0010-footnote",
+      "text_diplomatic": "See footnote discussion.",
+      "text_normalized": "See footnote discussion.",
+      "linked_marker_span_ids": ["span-note-marker-10"],
+      "provenance": {
+        "source_page_id": "page-0010",
+        "witness_ids": ["wit-note-1"],
+        "runner_ids": ["olmocr"],
+        "machine_confidence": 0.81
+      }
+    }
+  ],
+  "evaluation_summary": {},
+  "review_event_ids": []
+}
