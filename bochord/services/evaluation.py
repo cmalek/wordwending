@@ -347,8 +347,8 @@ class EvaluationService:
     """
     Score one predicted page against a gold annotation slice.
 
-    Orchestrates text, structure, typography, and note-linkage scorers under a
-    frozen :class:`~bochord.models.MetricProfile`. Gold coverage defines every
+    Orchestrates text, structure, and style scorers (typography and note-linkage
+    nested under style) under a frozen :class:`~bochord.models.MetricProfile`. Gold coverage defines every
     denominator; ``do_not_score`` never enters one. No blended page score is
     produced.
     """
@@ -360,7 +360,7 @@ class EvaluationService:
         profile: MetricProfile,
     ) -> PageEvaluationSummary:
         """
-        Evaluate text, structure, typography, and note-linkage families.
+        Evaluate text, structure, and style families.
 
         Args:
             prediction: Accepted page graph under evaluation.
