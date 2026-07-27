@@ -661,13 +661,37 @@ def test_structure_scores_region_order_iou_and_line_joins() -> None:
     assert metrics["line_join_fidelity"] == 1
 
 
+def test_evaluation_keeps_style_subfamilies_independent() -> None:
+    typography = EvaluationService().evaluate_page(
+        bold_but_not_italic_prediction(),
+        bold_italic_gold(),
+        profile(),
+    )
+    typography_metrics = {
+        metric.metric_id: metric for metric in typography.style.typography.metrics
+    }
+    assert typography_metrics["font_slant_accuracy"].denominator == 1
+
+    note_linkage = EvaluationService().evaluate_page(
+        wrong_note_link_prediction(),
+        note_link_gold(),
+        profile(),
+    )
+    note_metrics = {
+        metric.metric_id: metric for metric in note_linkage.style.note_linkage.metrics
+    }
+    assert note_metrics["note_linkage_success"].denominator == 1
+
+
 def test_style_facets_are_independent() -> None:
     summary = EvaluationService().evaluate_page(
         bold_but_not_italic_prediction(),
         bold_italic_gold(),
         profile(),
     )
-    metrics = {metric.metric_id: metric.value for metric in summary.typography.metrics}
+    metrics = {
+        metric.metric_id: metric.value for metric in summary.style.typography.metrics
+    }
     assert metrics["font_weight_accuracy"] == 1
     assert metrics["font_slant_accuracy"] == 0
 
@@ -679,7 +703,7 @@ def test_style_family_collapse_is_partial_xor() -> None:
         profile(),
     )
     assert "style_family_collapse" in {
-        flag.flag_type for flag in partial.typography.flags
+        flag.flag_type for flag in partial.style.typography.flags
     }
 
     both_wrong_prediction = bold_but_not_italic_prediction()
@@ -693,7 +717,7 @@ def test_style_family_collapse_is_partial_xor() -> None:
         profile(),
     )
     assert "style_family_collapse" not in {
-        flag.flag_type for flag in both_wrong.typography.flags
+        flag.flag_type for flag in both_wrong.style.typography.flags
     }
 
     weight_only_gold = bold_italic_gold()
@@ -704,7 +728,7 @@ def test_style_family_collapse_is_partial_xor() -> None:
         profile(),
     )
     assert "style_family_collapse" not in {
-        flag.flag_type for flag in weight_only.typography.flags
+        flag.flag_type for flag in weight_only.style.typography.flags
     }
 
 
@@ -727,10 +751,11 @@ def test_wrong_note_edge_emits_targeted_flag() -> None:
         profile(),
     )
     metrics = {
-        metric.metric_id: metric.value for metric in summary.note_linkage.metrics
+        metric.metric_id: metric.value
+        for metric in summary.style.note_linkage.metrics
     }
     assert metrics["note_linkage_success"] == 0
-    assert {flag.flag_type for flag in summary.note_linkage.flags} == {
+    assert {flag.flag_type for flag in summary.style.note_linkage.flags} == {
         "ambiguous_note_linkage"
     }
 
@@ -810,8 +835,9 @@ def test_note_target_annotation_id_matches_predicted_note() -> None:
 
     summary = EvaluationService().evaluate_page(prediction, gold, profile())
     metrics = {
-        metric.metric_id: metric.value for metric in summary.note_linkage.metrics
+        metric.metric_id: metric.value
+        for metric in summary.style.note_linkage.metrics
     }
 
     assert metrics["note_linkage_success"] == 1
-    assert summary.note_linkage.flags == []
+    assert summary.style.note_linkage.flags == []

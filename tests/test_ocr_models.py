@@ -66,6 +66,7 @@ from bochord.models import (
     SourceDescriptor,
     SourceType,
     SpanRecord,
+    StyleEvaluationSummary,
     TextRole,
     TrustState,
     Typography,
@@ -318,8 +319,7 @@ class TestOcrModels:
             evaluation_summary=DocumentEvaluationSummary(
                 text=EvaluationFamilySummary(),
                 structure=EvaluationFamilySummary(),
-                typography=EvaluationFamilySummary(),
-                note_linkage=EvaluationFamilySummary(),
+                style=StyleEvaluationSummary(),
             ),
             exports=ExportSummary(
                 bundle_json_path="exports/bundle.json",
@@ -694,3 +694,9 @@ def test_recipe_rejects_overlap_not_smaller_than_tile() -> None:
     payload = recipe_payload(subdivision_overlap_px=500, fixed_tile_height_px=500)
     with pytest.raises(ValidationError):
         PreparationRecipe.model_validate(payload)
+
+
+def test_page_evaluation_has_exactly_three_top_level_families() -> None:
+    summary = PageEvaluationSummary()
+    assert set(summary.model_dump()) == {"text", "structure", "style"}
+    assert set(summary.style.model_dump()) == {"typography", "note_linkage"}

@@ -836,13 +836,9 @@ class EvaluationFamilySummary(SchemaModel):
     flags: list[EvaluationFlag] = Field(default_factory=list)
 
 
-class PageEvaluationSummary(SchemaModel):
-    """Per-page grouped evaluation output."""
+class StyleEvaluationSummary(SchemaModel):
+    """Typography and note-linkage scores grouped under the style family."""
 
-    #: Text-fidelity metrics and flags.
-    text: EvaluationFamilySummary = Field(default_factory=EvaluationFamilySummary)
-    #: Structure metrics and flags.
-    structure: EvaluationFamilySummary = Field(default_factory=EvaluationFamilySummary)
     #: Typography metrics and flags, scored per independent visual facet.
     typography: EvaluationFamilySummary = Field(
         default_factory=EvaluationFamilySummary
@@ -851,6 +847,17 @@ class PageEvaluationSummary(SchemaModel):
     note_linkage: EvaluationFamilySummary = Field(
         default_factory=EvaluationFamilySummary
     )
+
+
+class PageEvaluationSummary(SchemaModel):
+    """Per-page grouped evaluation output."""
+
+    #: Text-fidelity metrics and flags.
+    text: EvaluationFamilySummary = Field(default_factory=EvaluationFamilySummary)
+    #: Structure metrics and flags.
+    structure: EvaluationFamilySummary = Field(default_factory=EvaluationFamilySummary)
+    #: Typography and note-linkage metrics and flags.
+    style: StyleEvaluationSummary = Field(default_factory=StyleEvaluationSummary)
 
 
 class PreparedPage(SchemaModel):
@@ -1078,14 +1085,8 @@ class DocumentEvaluationSummary(SchemaModel):
     text: EvaluationFamilySummary = Field(default_factory=EvaluationFamilySummary)
     #: Structure metrics and flags across the document.
     structure: EvaluationFamilySummary = Field(default_factory=EvaluationFamilySummary)
-    #: Typography metrics and flags across the document.
-    typography: EvaluationFamilySummary = Field(
-        default_factory=EvaluationFamilySummary
-    )
-    #: Note-linkage metrics and flags across the document.
-    note_linkage: EvaluationFamilySummary = Field(
-        default_factory=EvaluationFamilySummary
-    )
+    #: Typography and note-linkage metrics and flags across the document.
+    style: StyleEvaluationSummary = Field(default_factory=StyleEvaluationSummary)
 
 
 class RunMetadata(SchemaModel):
@@ -1959,6 +1960,7 @@ __all__ = [
     "SpanRecord",
     "SplitRegionReviewEvent",
     "StitchedChunk",
+    "StyleEvaluationSummary",
     "TextRole",
     "TransformKind",
     "TrustState",

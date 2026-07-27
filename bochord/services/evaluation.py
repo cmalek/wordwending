@@ -33,6 +33,7 @@ from bochord.models import (
     RegionRecord,
     ReviewDimension,
     SpanRecord,
+    StyleEvaluationSummary,
     TextRole,
     Typography,
 )
@@ -373,8 +374,10 @@ class EvaluationService:
         return PageEvaluationSummary(
             text=self._evaluate_text(prediction, gold, profile),
             structure=_StructureScorer().score(prediction, gold, profile),
-            typography=_TypographyScorer().score(prediction, gold, profile),
-            note_linkage=_NoteLinkageScorer().score(prediction, gold, profile),
+            style=StyleEvaluationSummary(
+                typography=_TypographyScorer().score(prediction, gold, profile),
+                note_linkage=_NoteLinkageScorer().score(prediction, gold, profile),
+            ),
         )
 
     def _evaluate_text(

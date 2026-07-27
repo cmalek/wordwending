@@ -143,13 +143,15 @@
       "metrics": [],
       "flags": []
     },
-    "typography": {
-      "metrics": [],
-      "flags": []
-    },
-    "note_linkage": {
-      "metrics": [],
-      "flags": []
+    "style": {
+      "typography": {
+        "metrics": [],
+        "flags": []
+      },
+      "note_linkage": {
+        "metrics": [],
+        "flags": []
+      }
     }
   },
   "review_event_ids": []
