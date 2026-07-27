@@ -4,10 +4,9 @@
 
 Before planning or implementation, show concise evidence of:
 
-1. `memory_search` for relevant prior context
-2. At least one `code-index` call (search/find/symbol/summary as useful)
-3. At least one `codegraph` call (knowledge graph)
-4. `context7` and/or `package-registry-mcp` when external library/package behavior, versioning, or package details matter
+1. At least one `code-index` call (search/find/symbol/summary as useful)
+2. At least one `codegraph` call (knowledge graph)
+3. `context7` and/or `package-registry-mcp` when external library/package behavior, versioning, or package details matter
 
 ## Python Environment (Required)
 
@@ -49,8 +48,7 @@ Implement the correct product code directly. Do not add runtime patching, indire
 
 1. Prefer 3rd-party open source packages that solve or can greatly assist the ADR/Spec/problem before building it ourselves
 
-   a. Judge the 3rd-party package for code quality: commit cadence (is it abandoned); stars on github, other typical criteria
-      and factor that into your decision.
+   a. Judge the 3rd-party package for code quality: commit cadence (is it abandoned); stars on github, other typical criteria and factor that into your decision.
    b. Use `context7` and `package-registry-mcp` to help you in searching and evaluating
 
 2. Put the change in the correct source file, even when that file has noisy docs or baseline issues
@@ -62,6 +60,7 @@ Implement the correct product code directly. Do not add runtime patching, indire
 1. Data models (Pydantic, `@dataclass`) → semantically named files in `bochord.models`; mostly bare models plus validation
 2. Business logic → service classes in `bochord.services`; inject `click`/`rich`/`textual` from CLI when needed
 3. CLI/user interaction/display → `bochord.cli` only; no business logic there
+4. Settings: all user configurable settings should be accessed throurh bochord/settings.py, a pydantic-settings settings object.   If you need a secret or setting that only the user can provide, put it here; never read it from `os.environ`
 
 ## AWS Interaction
 
