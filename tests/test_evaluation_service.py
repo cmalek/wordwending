@@ -226,6 +226,44 @@ def test_punctuation_policy_strips_before_compare() -> None:
     assert metrics["exact_span_match_rate"].value == 1
 
 
+def test_watchlist_exact_match_counts_only_watchlist_spans() -> None:
+    prediction, gold = text_case("þā", "þā")
+    summary = EvaluationService().evaluate_page(prediction, gold, profile())
+    metrics = {metric.metric_id: metric for metric in summary.text.metrics}
+    score = metrics["watchlist_exact_match_rate"]
+    assert (score.numerator, score.denominator, score.value) == (1.0, 1.0, 1.0)
+
+    plain_prediction, plain_gold = text_case("wrong", "plain")
+    plain_summary = EvaluationService().evaluate_page(
+        plain_prediction,
+        plain_gold,
+        profile(),
+    )
+    plain_metrics = {
+        metric.metric_id: metric for metric in plain_summary.text.metrics
+    }
+    assert plain_metrics["watchlist_exact_match_rate"].denominator == 0
+
+
+def test_watchlist_exact_match_rejects_extra_or_missing_watchlist_graphemes() -> None:
+    prediction, gold = text_case("þþa", "þā")
+    summary = EvaluationService().evaluate_page(prediction, gold, profile())
+    metrics = {metric.metric_id: metric for metric in summary.text.metrics}
+    score = metrics["watchlist_exact_match_rate"]
+    assert (score.numerator, score.denominator, score.value) == (0.0, 1.0, 0.0)
+
+    reordered_prediction, reordered_gold = text_case("āþ", "þā")
+    reordered = EvaluationService().evaluate_page(
+        reordered_prediction,
+        reordered_gold,
+        profile(),
+    )
+    reordered_metrics = {
+        metric.metric_id: metric for metric in reordered.text.metrics
+    }
+    assert reordered_metrics["watchlist_exact_match_rate"].value == 0
+
+
 def test_missing_watchlist_characters_emit_flag_and_lower_recall() -> None:
     prediction, gold = text_case(
         predicted="paet dream",

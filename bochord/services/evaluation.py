@@ -348,7 +348,8 @@ class EvaluationService:
     Score one predicted page against a gold annotation slice.
 
     Orchestrates text, structure, and style scorers (typography and note-linkage
-    nested under style) under a frozen :class:`~bochord.models.MetricProfile`. Gold coverage defines every
+    nested under style) under a frozen
+    :class:`~bochord.models.MetricProfile`. Gold coverage defines every
     denominator; ``do_not_score`` never enters one. No blended page score is
     produced.
     """
@@ -402,6 +403,7 @@ class EvaluationService:
             "cer": _RateAccumulator(),
             "wer": _RateAccumulator(),
             "exact": _RateAccumulator(),
+            "watchlist_exact": _RateAccumulator(),
             "macron": _RateAccumulator(),
             "ligature": _RateAccumulator(),
             "thorn_eth": _RateAccumulator(),
@@ -418,6 +420,10 @@ class EvaluationService:
                 rates["cer"].to_metric("character_error_rate"),
                 rates["wer"].to_metric("word_error_rate"),
                 rates["exact"].to_metric("exact_span_match_rate", as_error_rate=False),
+                rates["watchlist_exact"].to_metric(
+                    "watchlist_exact_match_rate",
+                    as_error_rate=False,
+                ),
                 rates["macron"].to_metric("macron_recall", as_error_rate=False),
                 rates["ligature"].to_metric(
                     "ligature_preservation_rate", as_error_rate=False
@@ -461,6 +467,22 @@ class EvaluationService:
             rates["exact"].add(1.0 if reference == hypothesis else 0.0, 1.0)
         ref_gs = _graphemes(reference)
         hyp_gs = _graphemes(hypothesis)
+        watchlist_predicates = (_is_macron_grapheme, _is_ligature, _is_thorn_eth)
+        reference_watchlist = [
+            grapheme
+            for grapheme in ref_gs
+            if any(predicate(grapheme) for predicate in watchlist_predicates)
+        ]
+        if reference_watchlist:
+            hypothesis_watchlist = [
+                grapheme
+                for grapheme in hyp_gs
+                if any(predicate(grapheme) for predicate in watchlist_predicates)
+            ]
+            rates["watchlist_exact"].add(
+                float(reference_watchlist == hypothesis_watchlist),
+                1.0,
+            )
         missing = self._accumulate_watchlist(
             rates["macron"], ref_gs, hyp_gs, _is_macron_grapheme
         )

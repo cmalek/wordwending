@@ -181,6 +181,10 @@ def eval_page(
         profile: MetricProfile JSON file path.
         output_json: Destination path for PageEvaluationSummary JSON.
 
+    Returns:
+        Writes JSON with three top-level families: ``text``, ``structure``,
+        and ``style`` (typography and note linkage nested under ``style``).
+
     Side Effects:
         Writes evaluation summary JSON to ``output_json``.
 

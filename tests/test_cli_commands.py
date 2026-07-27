@@ -125,7 +125,11 @@ class TestCLIEval:
             ],
         )
         assert result.exit_code == 0
-        assert json.loads(output.read_text())["text"]["metrics"]
+        payload = json.loads(output.read_text(encoding="utf-8"))
+        assert set(payload) == {"text", "structure", "style"}
+        assert "watchlist_exact_match_rate" in {
+            item["metric_id"] for item in payload["text"]["metrics"]
+        }
 
 
 class TestCLIPrepare:
