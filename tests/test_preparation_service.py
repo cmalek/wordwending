@@ -8,6 +8,7 @@ import json
 import random
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from PIL import Image, ImageDraw
@@ -27,10 +28,29 @@ from bochord.services.preparation import (
     PageClassifier,
     PagePreparationService,
     PageQualityAssessor,
+    PreparationBundleService,
 )
+from bochord.services.source_acquisition import SourceAcquisitionService
+
+if TYPE_CHECKING:
+    from pytest_mock import MockerFixture
 
 #: Canonical preparation recipe fixture used by preparation tests.
 _RECIPE_PATH = Path("tests/fixtures/preparation/recipe-v1.json")
+
+
+def binary_recipe(**overrides: object) -> PreparationRecipe:
+    """
+    Load a binary/Otsu recipe variant for multi-recipe bundle tests.
+
+    Keyword Args:
+        overrides: Recipe fields to replace in the fixture payload.
+
+    Returns:
+        Validated binary preparation recipe.
+
+    """
+    return recipe(color_mode="binary", binarize_mode="otsu", **overrides)
 
 
 def recipe(**overrides: object) -> PreparationRecipe:
@@ -73,6 +93,38 @@ def _write_source_png(image: Image.Image, destination: Path) -> str:
     )
     digest = hashlib.sha256(destination.read_bytes()).hexdigest()
     return f"sha256:{digest}"
+
+
+def source_image() -> Path:
+    """
+    Write a single-page source raster for bundle tests.
+
+    Returns:
+        Path to a temporary PNG source image.
+
+    """
+    path = Path(tempfile.mkdtemp(prefix="bochord-bundle-")) / "page.png"
+    Image.new("L", (600, 800), "white").save(path)
+    return path
+
+
+def bundle_service(
+    acquisition: SourceAcquisitionService,
+) -> PreparationBundleService:
+    """
+    Build a preparation bundle service wired to ``acquisition``.
+
+    Args:
+        acquisition: Source-page materializer used by the bundle service.
+
+    Returns:
+        Bundle service with stock page preparation collaborators.
+
+    """
+    return PreparationBundleService(
+        acquisition,
+        PagePreparationService(PageQualityAssessor(), PageClassifier()),
+    )
 
 
 def preparation_service() -> PagePreparationService:
@@ -480,6 +532,45 @@ def test_transform_chain_targets_final_prepared_space(tmp_path: Path) -> None:
         == result.prepared_page.coordinate_space.space_id
         == "prepared-page-0001"
     )
+
+
+def test_two_recipes_preserve_two_variants_without_reacquisition(
+    tmp_path: Path,
+    mocker: MockerFixture,
+) -> None:
+    acquisition = SourceAcquisitionService()
+    spy = mocker.spy(acquisition, "materialize")
+    recipes = [recipe(recipe_id="gray"), binary_recipe(recipe_id="binary")]
+    source = source_image()
+
+    service = bundle_service(acquisition)
+    results = service.prepare_variants(
+        source,
+        recipes,
+        tmp_path,
+    )
+
+    assert spy.call_count == 1
+    assert len(results) == 2
+    assert len({item.prepared_page.prepared_page_id for item in results}) == 2
+    assert all(Path(tmp_path, item.prepared_page.image_path).exists() for item in results)
+    assert len(list((tmp_path / "recipes").glob("*.json"))) == 2
+
+    variant_dirs = sorted((tmp_path / "pages/page-0001/prepared").iterdir())
+    first_metadata = {
+        variant_dir / "preparation.json": (variant_dir / "preparation.json").read_bytes()
+        for variant_dir in variant_dirs
+    }
+
+    results_rerun = service.prepare_variants(source, recipes, tmp_path)
+
+    assert len(list((tmp_path / "pages/page-0001/prepared").iterdir())) == len(
+        variant_dirs
+    )
+    assert len(results_rerun) == 2
+    for variant_dir in variant_dirs:
+        preparation_path = variant_dir / "preparation.json"
+        assert preparation_path.read_bytes() == first_metadata[preparation_path]
 
 
 def test_basic_dewarp_requires_mapping_artifact(tmp_path: Path) -> None:

@@ -153,12 +153,59 @@ class TestCLIPrepare:
         )
 
         assert result.exit_code == 0
-        result_path = output / "pages/page-0001/preparation.json"
-        payload = json.loads(result_path.read_text(encoding="utf-8"))
+        preparation_files = list(
+            (output / "pages/page-0001/prepared").glob("*/preparation.json")
+        )
+        assert len(preparation_files) == 1
+        payload = json.loads(preparation_files[0].read_text(encoding="utf-8"))
         assert PreparationResult.model_validate(payload)
         source_path = payload["source_page"]["source_path"]
         assert not Path(source_path).is_absolute()
         assert source_path == "source/pages/1.png"
+
+    def test_prepare_command_preserves_competing_variants(
+        self, runner, tmp_path
+    ) -> None:
+        source = tmp_path / "page.png"
+        Image.new("L", (600, 800), "white").save(source)
+        output = tmp_path / "bundle"
+        gray_recipe = tmp_path / "gray.json"
+        binary_recipe = tmp_path / "binary.json"
+        gray_payload = json.loads(
+            Path("tests/fixtures/preparation/recipe-v1.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        gray_payload["recipe_id"] = "gray"
+        binary_payload = {
+            **gray_payload,
+            "recipe_id": "binary",
+            "color_mode": "binary",
+            "binarize_mode": "otsu",
+        }
+        gray_recipe.write_text(json.dumps(gray_payload, indent=2), encoding="utf-8")
+        binary_recipe.write_text(
+            json.dumps(binary_payload, indent=2), encoding="utf-8"
+        )
+
+        result = runner.invoke(
+            cli,
+            [
+                "prepare",
+                str(source),
+                "--recipe",
+                str(gray_recipe),
+                "--recipe",
+                str(binary_recipe),
+                "--output-dir",
+                str(output),
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert "variants: 2" in result.output
+        assert len(list((output / "recipes").glob("*.json"))) == 2
+        assert len(list((output / "pages/page-0001/prepared").iterdir())) == 2
 
     def test_prepare_rejects_mode_override_without_reason(
         self, runner, tmp_path

@@ -225,8 +225,9 @@ def eval_page(
 @click.option(
     "--recipe",
     required=True,
+    multiple=True,
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
-    help="PreparationRecipe JSON file.",
+    help="PreparationRecipe JSON file. Repeat for competing variants.",
 )
 @click.option(
     "--output-dir",
@@ -253,7 +254,7 @@ def eval_page(
 )
 def prepare_pages(  # noqa: PLR0913, PLR0917
     source: Path,
-    recipe: Path,
+    recipe: tuple[Path, ...],
     output_dir: Path,
     mode: str | None,
     page_class: str | None,
@@ -264,7 +265,7 @@ def prepare_pages(  # noqa: PLR0913, PLR0917
 
     Args:
         source: PDF, image, image folder, or ZIP of images.
-        recipe: PreparationRecipe JSON file path.
+        recipe: One or more PreparationRecipe JSON file paths.
         output_dir: Destination root for source and prepared artifacts.
         mode: Optional operator preparation-mode override.
         page_class: Optional operator page-class override.
@@ -279,28 +280,39 @@ def prepare_pages(  # noqa: PLR0913, PLR0917
 
     """
     try:
-        preparation_recipe = _load_preparation_recipe(recipe)
+        preparation_recipes = [_load_preparation_recipe(path) for path in recipe]
         mode_override, page_class_override = _prepare_overrides(
             mode,
             page_class,
             override_reason,
         )
-        results = PreparationBundleService(
+        service = PreparationBundleService(
             SourceAcquisitionService(),
             PagePreparationService(PageQualityAssessor(), PageClassifier()),
-        ).prepare_bundle(
-            source,
-            preparation_recipe,
-            output_dir,
-            mode_override=mode_override,
-            page_class_override=page_class_override,
-            override_reason=override_reason,
         )
+        if len(preparation_recipes) == 1:
+            results = service.prepare_bundle(
+                source,
+                preparation_recipes[0],
+                output_dir,
+                mode_override=mode_override,
+                page_class_override=page_class_override,
+                override_reason=override_reason,
+            )
+        else:
+            results = service.prepare_variants(
+                source,
+                preparation_recipes,
+                output_dir,
+            )
     except (OSError, ValidationError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
 
     warning_count = sum(len(result.assessment.warnings) for result in results)
-    click.echo(f"pages: {len(results)}")
+    page_count = len({result.source_page.source_page_id for result in results})
+    click.echo(f"pages: {page_count}")
+    if len(preparation_recipes) > 1:
+        click.echo(f"variants: {len(preparation_recipes)}")
     click.echo(f"warnings: {warning_count}")
     click.echo(f"output: {output_dir}")
 

@@ -429,23 +429,97 @@ class PreparationBundleService:
             ValidationError: If persisted results fail model validation.
 
         """
+        return self._prepare_variants(
+            source,
+            [recipe],
+            output_dir,
+            mode_override=mode_override,
+            page_class_override=page_class_override,
+            override_reason=override_reason,
+        )
+
+    def prepare_variants(
+        self,
+        source: Path,
+        recipes: list[PreparationRecipe],
+        output_dir: Path,
+    ) -> list[PreparationResult]:
+        """
+        Acquire source pages once and persist one variant per recipe.
+
+        Side Effects:
+            Writes acquired sources, recipe artifacts, prepared page images,
+            and ``preparation.json`` files under ``output_dir``.
+
+        Args:
+            source: PDF, image, image folder, or ZIP of images.
+            recipes: Preparation profiles to apply to every acquired page.
+            output_dir: Bundle root receiving source and prepared artifacts.
+
+        Returns:
+            Persisted preparation results in source-page then recipe order.
+
+        Raises:
+            OSError: If input/output filesystem access fails.
+            ValueError: If ``recipes`` is empty or validation fails.
+            ValidationError: If persisted results fail model validation.
+
+        """
+        if not recipes:
+            msg = "recipes must not be empty"
+            raise ValueError(msg)
+        return self._prepare_variants(source, recipes, output_dir)
+
+    def _prepare_variants(  # noqa: PLR0913
+        self,
+        source: Path,
+        recipes: list[PreparationRecipe],
+        output_dir: Path,
+        *,
+        mode_override: PreparationMode | None = None,
+        page_class_override: PageClass | None = None,
+        override_reason: str | None = None,
+    ) -> list[PreparationResult]:
+        """
+        Materialize sources and prepare one variant per page and recipe.
+
+        Args:
+            source: PDF, image, image folder, or ZIP of images.
+            recipes: Preparation profiles to apply to every acquired page.
+            output_dir: Bundle root receiving artifacts.
+
+        Keyword Args:
+            mode_override: Operator-forced subdivision mode for single-recipe runs.
+            page_class_override: Operator-forced page class for single-recipe runs.
+            override_reason: Required reason when any override is set.
+
+        Returns:
+            Persisted preparation results in source-page then recipe order.
+
+        """
         source_pages = self._source_acquisition_service.materialize(
             source,
             output_dir / "source",
-            recipe,
+            recipes[0],
         )
+        for recipe in recipes:
+            _persist_recipe(recipe, output_dir)
+        apply_overrides = len(recipes) == 1
         results: list[PreparationResult] = []
         for source_page in source_pages:
-            result = self._prepare_page(
-                source_page,
-                recipe,
-                output_dir,
-                mode_override=mode_override,
-                page_class_override=page_class_override,
-                override_reason=override_reason,
-            )
-            self._write_result(result, output_dir)
-            results.append(result)
+            for recipe in recipes:
+                result = self._prepare_page(
+                    source_page,
+                    recipe,
+                    output_dir,
+                    mode_override=mode_override if apply_overrides else None,
+                    page_class_override=(
+                        page_class_override if apply_overrides else None
+                    ),
+                    override_reason=override_reason if apply_overrides else None,
+                )
+                self._write_result(result, output_dir)
+                results.append(result)
         return results
 
     def _prepare_page(  # noqa: PLR0913
@@ -508,12 +582,43 @@ class PreparationBundleService:
             output_dir: Bundle root receiving artifacts.
 
         """
-        result_dir = output_dir / "pages" / result.source_page.source_page_id
+        result_dir = (
+            output_dir
+            / "pages"
+            / result.source_page.source_page_id
+            / "prepared"
+            / result.prepared_page.prepared_page_id
+        )
         result_dir.mkdir(parents=True, exist_ok=True)
         (result_dir / "preparation.json").write_text(
             result.model_dump_json(indent=2),
             encoding="utf-8",
         )
+
+
+def _persist_recipe(recipe: PreparationRecipe, output_dir: Path) -> None:
+    """
+    Persist one recipe artifact under ``output_dir/recipes``.
+
+    Side Effects:
+        Creates ``output_dir/recipes`` and writes the recipe JSON file.
+
+    Args:
+        recipe: Preparation profile to persist.
+        output_dir: Bundle root receiving recipe artifacts.
+
+    Raises:
+        ValueError: If an existing recipe file contains different content.
+
+    """
+    recipe_name = f"{recipe.recipe_id}-{_recipe_digest(recipe)}.json"
+    recipe_path = output_dir / "recipes" / recipe_name
+    serialized = recipe.model_dump_json(indent=2)
+    if recipe_path.exists() and recipe_path.read_text(encoding="utf-8") != serialized:
+        msg = f"recipe artifact collision: {recipe_name}"
+        raise ValueError(msg)
+    recipe_path.parent.mkdir(parents=True, exist_ok=True)
+    recipe_path.write_text(serialized, encoding="utf-8")
 
 
 def _ensure_supported_recipe(recipe: PreparationRecipe) -> None:
@@ -844,7 +949,10 @@ def _persist_prepared_page(  # noqa: PLR0913
         Prepared page model with optional units.
 
     """
-    image_rel = f"pages/{source_page.source_page_id}/image/page.png"
+    variant_base = (
+        f"pages/{source_page.source_page_id}/prepared/{prepared_page_id}"
+    )
+    image_rel = f"{variant_base}/image.png"
     image_checksum = _save_prepared_png(prepared_image, output_dir / image_rel)
     units = _build_prepared_units(
         prepared_image,
@@ -1271,7 +1379,14 @@ def _build_prepared_units(  # noqa: PLR0913
     if mode is PreparationMode.FULL_PAGE:
         return []
     boxes, kind = _subdivision_boxes(prepared_image, mode=mode, recipe=recipe)
-    units_dir = output_dir / "pages" / source_page.source_page_id / "image" / "units"
+    units_dir = (
+        output_dir
+        / "pages"
+        / source_page.source_page_id
+        / "prepared"
+        / prepared_page_id
+        / "units"
+    )
     units_dir.mkdir(parents=True, exist_ok=True)
     return [
         _prepared_unit_from_box(
@@ -1361,7 +1476,10 @@ def _prepared_unit_from_box(  # noqa: PLR0913
 
     """
     unit_id = f"{source_page.source_page_id}-{kind}-{order:03d}"
-    rel = f"pages/{source_page.source_page_id}/image/units/{unit_id}.png"
+    rel = (
+        f"pages/{source_page.source_page_id}/prepared/"
+        f"{prepared_page_id}/units/{unit_id}.png"
+    )
     checksum = _save_prepared_png(prepared_image.crop(box), output_dir / rel)
     x0, y0, x1, y1 = box
     return PreparedArtifactRef(
