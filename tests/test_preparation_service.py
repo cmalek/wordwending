@@ -29,6 +29,7 @@ from bochord.services.preparation import (
     PagePreparationService,
     PageQualityAssessor,
     PreparationBundleService,
+    _recipe_digest,
 )
 from bochord.services.source_acquisition import SourceAcquisitionService
 
@@ -571,6 +572,21 @@ def test_two_recipes_preserve_two_variants_without_reacquisition(
     for variant_dir in variant_dirs:
         preparation_path = variant_dir / "preparation.json"
         assert preparation_path.read_bytes() == first_metadata[preparation_path]
+
+
+def test_recipe_artifact_collision_raises(tmp_path: Path) -> None:
+    colliding = recipe(recipe_id="gray")
+    recipe_name = f"gray-{_recipe_digest(colliding)}.json"
+    recipe_path = tmp_path / "recipes" / recipe_name
+    recipe_path.parent.mkdir(parents=True)
+    recipe_path.write_text('{"recipe_id": "gray", "wrong": true}', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="recipe artifact collision"):
+        bundle_service(SourceAcquisitionService()).prepare_variants(
+            source_image(),
+            [colliding],
+            tmp_path,
+        )
 
 
 def test_basic_dewarp_requires_mapping_artifact(tmp_path: Path) -> None:

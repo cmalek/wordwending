@@ -407,8 +407,9 @@ class PreparationBundleService:
         Acquire source pages and persist per-page preparation metadata.
 
         Side Effects:
-            Writes acquired sources, prepared page artifacts, and
-            ``preparation.json`` files under ``output_dir``.
+            Writes acquired sources under ``output_dir/source``, recipe artifacts
+            under ``output_dir/recipes``, prepared page images and unit PNGs under
+            ``output_dir/pages/.../prepared/...``, and ``preparation.json`` files.
 
         Args:
             source: PDF, image, image folder, or ZIP of images.
@@ -425,7 +426,7 @@ class PreparationBundleService:
 
         Raises:
             OSError: If input/output filesystem access fails.
-            ValueError: If acquisition or preparation validation fails.
+            ValueError: If acquisition, preparation, or recipe persistence fails.
             ValidationError: If persisted results fail model validation.
 
         """
@@ -448,8 +449,9 @@ class PreparationBundleService:
         Acquire source pages once and persist one variant per recipe.
 
         Side Effects:
-            Writes acquired sources, recipe artifacts, prepared page images,
-            and ``preparation.json`` files under ``output_dir``.
+            Writes acquired sources under ``output_dir/source``, recipe artifacts
+            under ``output_dir/recipes``, prepared page images and unit PNGs under
+            ``output_dir/pages/.../prepared/...``, and ``preparation.json`` files.
 
         Args:
             source: PDF, image, image folder, or ZIP of images.
@@ -461,7 +463,8 @@ class PreparationBundleService:
 
         Raises:
             OSError: If input/output filesystem access fails.
-            ValueError: If ``recipes`` is empty or validation fails.
+            ValueError: If ``recipes`` is empty, preparation fails, or a recipe
+                artifact collision is detected.
             ValidationError: If persisted results fail model validation.
 
         """
@@ -483,6 +486,11 @@ class PreparationBundleService:
         """
         Materialize sources and prepare one variant per page and recipe.
 
+        Side Effects:
+            Writes acquired sources under ``output_dir/source``, recipe artifacts
+            under ``output_dir/recipes``, prepared page images and unit PNGs, and
+            ``preparation.json`` files under ``output_dir/pages/.../prepared/...``.
+
         Args:
             source: PDF, image, image folder, or ZIP of images.
             recipes: Preparation profiles to apply to every acquired page.
@@ -495,6 +503,11 @@ class PreparationBundleService:
 
         Returns:
             Persisted preparation results in source-page then recipe order.
+
+        Raises:
+            OSError: If input/output filesystem access fails.
+            ValueError: If preparation fails or a recipe artifact collision is
+                detected.
 
         """
         source_pages = self._source_acquisition_service.materialize(
@@ -572,14 +585,18 @@ class PreparationBundleService:
 
     def _write_result(self, result: PreparationResult, output_dir: Path) -> None:
         """
-        Persist one page's preparation metadata under its page directory.
+        Persist one page's preparation metadata under its variant directory.
 
         Side Effects:
-            Creates the page output directory and writes ``preparation.json``.
+            Creates ``output_dir/pages/.../prepared/<prepared-page-id>/`` and writes
+            ``preparation.json``.
 
         Args:
             result: Preparation result to persist.
             output_dir: Bundle root receiving artifacts.
+
+        Raises:
+            OSError: If the metadata file cannot be written.
 
         """
         result_dir = (

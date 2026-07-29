@@ -272,8 +272,9 @@ def prepare_pages(  # noqa: PLR0913, PLR0917
         override_reason: Required reason when any override is set.
 
     Side Effects:
-        Writes acquired pages under ``output_dir/source`` and prepared page
-        artifacts plus ``preparation.json`` under ``output_dir/pages``.
+        Writes acquired pages under ``output_dir/source``, recipe artifacts
+        under ``output_dir/recipes``, and prepared page artifacts plus
+        ``preparation.json`` under ``output_dir/pages``.
 
     Raises:
         click.ClickException: When inputs fail validation or I/O fails.
@@ -281,6 +282,12 @@ def prepare_pages(  # noqa: PLR0913, PLR0917
     """
     try:
         preparation_recipes = [_load_preparation_recipe(path) for path in recipe]
+        _reject_multi_recipe_global_overrides(
+            len(preparation_recipes),
+            mode=mode,
+            page_class=page_class,
+            override_reason=override_reason,
+        )
         mode_override, page_class_override = _prepare_overrides(
             mode,
             page_class,
@@ -328,6 +335,38 @@ def _load_preparation_recipe(recipe: Path) -> PreparationRecipe:
 
     """
     return PreparationRecipe.model_validate_json(recipe.read_text(encoding="utf-8"))
+
+
+def _reject_multi_recipe_global_overrides(
+    recipe_count: int,
+    *,
+    mode: str | None,
+    page_class: str | None,
+    override_reason: str | None,
+) -> None:
+    """
+    Reject global CLI overrides when multiple recipes are requested.
+
+    Args:
+        recipe_count: Number of ``--recipe`` values supplied.
+
+    Keyword Args:
+        mode: Optional preparation-mode override from Click.
+        page_class: Optional page-class override from Click.
+        override_reason: Optional override reason from Click.
+
+    Raises:
+        ValueError: If any global override is set with multiple recipes.
+
+    """
+    if recipe_count <= 1:
+        return
+    if mode is not None or page_class is not None or override_reason is not None:
+        msg = (
+            "--mode, --page-class, and --override-reason are not supported "
+            "with multiple --recipe values"
+        )
+        raise ValueError(msg)
 
 
 def _prepare_overrides(

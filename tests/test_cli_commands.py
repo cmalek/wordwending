@@ -207,6 +207,55 @@ class TestCLIPrepare:
         assert len(list((output / "recipes").glob("*.json"))) == 2
         assert len(list((output / "pages/page-0001/prepared").iterdir())) == 2
 
+    def test_prepare_rejects_global_overrides_with_multiple_recipes(
+        self, runner, tmp_path
+    ) -> None:
+        source = tmp_path / "page.png"
+        Image.new("L", (600, 800), "white").save(source)
+        output = tmp_path / "bundle"
+        gray_recipe = tmp_path / "gray.json"
+        binary_recipe = tmp_path / "binary.json"
+        gray_payload = json.loads(
+            Path("tests/fixtures/preparation/recipe-v1.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        gray_payload["recipe_id"] = "gray"
+        binary_payload = {
+            **gray_payload,
+            "recipe_id": "binary",
+            "color_mode": "binary",
+            "binarize_mode": "otsu",
+        }
+        gray_recipe.write_text(json.dumps(gray_payload, indent=2), encoding="utf-8")
+        binary_recipe.write_text(
+            json.dumps(binary_payload, indent=2), encoding="utf-8"
+        )
+
+        result = runner.invoke(
+            cli,
+            [
+                "prepare",
+                str(source),
+                "--recipe",
+                str(gray_recipe),
+                "--recipe",
+                str(binary_recipe),
+                "--output-dir",
+                str(output),
+                "--mode",
+                "full-page",
+                "--override-reason",
+                "force full page",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "multiple --recipe" in result.output.lower()
+        if output.exists():
+            assert not (output / "pages").exists()
+            assert not (output / "source").exists()
+
     def test_prepare_rejects_mode_override_without_reason(
         self, runner, tmp_path
     ) -> None:
