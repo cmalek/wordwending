@@ -75,6 +75,7 @@ def text_case(
             source_artifact_id="source-1",
             image_checksum="sha256:image",
             preparation_recipe_id="prep-v1",
+            preparation_recipe_digest="digest-prep-v1",
             coordinate_space=CoordinateSpace(
                 space_id="prepared-page-1",
                 width_px=100,
@@ -310,6 +311,7 @@ def test_iou_fallback_matches_highest_same_family_span() -> None:
             source_artifact_id="source-1",
             image_checksum="sha256:image",
             preparation_recipe_id="prep-v1",
+            preparation_recipe_digest="digest-prep-v1",
             coordinate_space=CoordinateSpace(
                 space_id="prepared-page-1",
                 width_px=100,
@@ -430,6 +432,7 @@ def _prepared_page() -> PreparedPage:
         source_artifact_id="source-1",
         image_checksum="sha256:image",
         preparation_recipe_id="prep-v1",
+        preparation_recipe_digest="digest-prep-v1",
         coordinate_space=CoordinateSpace(
             space_id="prepared-page-1",
             width_px=100,
