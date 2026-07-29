@@ -9,6 +9,7 @@
     "source_artifact_id": "sources/anglo_saxon_dictionary_concise.pdf#page=100",
     "image_checksum": "sha256:fixture-page-0100-prepared",
     "preparation_recipe_id": "render-300dpi-columns-v1",
+    "preparation_recipe_digest": "digest-render-300dpi-columns-v1",
     "coordinate_space": {
       "space_id": "prepared-page-0100",
       "width_px": 2400,

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+from importlib.metadata import version
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -146,7 +147,7 @@ def test_pdf_page_records_acquisition_backend(tmp_path: Path) -> None:
     )[0]
     assert page.source_type is SourceType.PDF
     assert page.acquisition_backend == "pypdfium2"
-    assert page.acquisition_backend_version
+    assert page.acquisition_backend_version == version("pypdfium2")
 
 
 def test_single_image_records_source_type(tmp_path: Path) -> None:

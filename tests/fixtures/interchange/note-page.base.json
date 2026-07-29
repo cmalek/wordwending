@@ -9,6 +9,7 @@
     "source_artifact_id": "sources/Kiparsky-PhonologyOldEnglish-1976.pdf#page=10",
     "image_checksum": "sha256:fixture-page-0010-prepared",
     "preparation_recipe_id": "render-300dpi-note-heavy-v1",
+    "preparation_recipe_digest": "digest-render-300dpi-note-heavy-v1",
     "coordinate_space": {
       "space_id": "prepared-page-0010",
       "width_px": 1800,
