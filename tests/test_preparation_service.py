@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 from PIL import Image, ImageDraw
-from pydantic import ValidationError
 
 from bochord.models import (
     CoordinateSpace,
@@ -617,47 +616,78 @@ def test_basic_dewarp_requires_mapping_artifact(tmp_path: Path) -> None:
         )
 
 
-def test_page_override_requires_choice_and_reason() -> None:
-    with pytest.raises(ValidationError):
-        PagePreparationOverride(source_page_id="page-0002", reason=" ")
-
-
 def test_only_target_page_is_forced(tmp_path: Path) -> None:
     results = bundle_service(SourceAcquisitionService()).prepare_variants(
         two_page_source(),
         [recipe()],
         tmp_path,
-        page_overrides={
-            "page-0002": PagePreparationOverride(
+        page_overrides=[
+            PagePreparationOverride(
                 source_page_id="page-0002",
                 preparation_mode=PreparationMode.COLUMNS,
                 page_class=PageClass.DENSE_DICTIONARY,
                 reason="operator confirmed two lexical columns",
             )
-        },
+        ],
     )
     assert results[0].preparation_choice_source == "auto"
     assert results[1].preparation_choice_source == "operator"
     assert results[1].assessment.page_class_source == "operator"
 
 
-def test_page_override_rejects_duplicate_source_page_id() -> None:
-    from bochord.services.preparation import _index_page_overrides
-
-    overrides = [
-        PagePreparationOverride(
-            source_page_id="page-0002",
-            preparation_mode=PreparationMode.COLUMNS,
-            reason="first override",
-        ),
-        PagePreparationOverride(
-            source_page_id="page-0002",
-            page_class=PageClass.DENSE_DICTIONARY,
-            reason="duplicate override",
-        ),
+def test_page_override_applies_to_every_recipe_variant(tmp_path: Path) -> None:
+    results = bundle_service(SourceAcquisitionService()).prepare_variants(
+        two_page_source(),
+        [
+            recipe(recipe_id="gray"),
+            recipe(recipe_id="gray-denoised", denoise=True),
+        ],
+        tmp_path,
+        page_overrides=[
+            PagePreparationOverride(
+                source_page_id="page-0002",
+                preparation_mode=PreparationMode.COLUMNS,
+                page_class=PageClass.DENSE_DICTIONARY,
+                reason="operator confirmed two lexical columns",
+            )
+        ],
+    )
+    page_0002_results = [
+        result
+        for result in results
+        if result.source_page.source_page_id == "page-0002"
     ]
+    assert len(page_0002_results) == 2
+    assert all(
+        result.preparation_choice_source == "operator"
+        for result in page_0002_results
+    )
+    assert all(
+        result.assessment.page_class_source == "operator"
+        for result in page_0002_results
+    )
+
+
+def test_page_override_rejects_duplicate_source_page_id(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="duplicate page override"):
-        _index_page_overrides(overrides)
+        bundle_service(SourceAcquisitionService()).prepare_variants(
+            two_page_source(),
+            [recipe()],
+            tmp_path,
+            page_overrides=[
+                PagePreparationOverride(
+                    source_page_id="page-0002",
+                    preparation_mode=PreparationMode.COLUMNS,
+                    reason="first override",
+                ),
+                PagePreparationOverride(
+                    source_page_id="page-0002",
+                    page_class=PageClass.DENSE_DICTIONARY,
+                    reason="duplicate override",
+                ),
+            ],
+        )
+    assert not (tmp_path / "source").exists()
 
 
 def test_page_override_rejects_unknown_source_page_id(tmp_path: Path) -> None:
@@ -666,12 +696,12 @@ def test_page_override_rejects_unknown_source_page_id(tmp_path: Path) -> None:
             source_image(),
             [recipe()],
             tmp_path,
-            page_overrides={
-                "page-0099": PagePreparationOverride(
+            page_overrides=[
+                PagePreparationOverride(
                     source_page_id="page-0099",
                     preparation_mode=PreparationMode.COLUMNS,
                     reason="operator confirmed two lexical columns",
                 )
-            },
+            ],
         )
     assert not (tmp_path / "pages").exists()

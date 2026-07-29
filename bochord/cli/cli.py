@@ -30,7 +30,6 @@ from ..services.preparation import (
     PagePreparationService,
     PageQualityAssessor,
     PreparationBundleService,
-    _index_page_overrides,
 )
 from ..services.source_acquisition import SourceAcquisitionService
 from ..settings import Settings
@@ -363,7 +362,7 @@ def _load_preparation_recipe(recipe: Path) -> PreparationRecipe:
 
 def _load_page_overrides(
     overrides: Path | None,
-) -> dict[str, PagePreparationOverride] | None:
+) -> list[PagePreparationOverride] | None:
     """
     Load and validate a per-page override manifest.
 
@@ -371,24 +370,20 @@ def _load_page_overrides(
         overrides: Optional JSON manifest path.
 
     Returns:
-        Overrides keyed by ``source_page_id``, or ``None`` when unset.
-
-    Raises:
-        ValueError: If duplicate ``source_page_id`` values are present.
+        Validated override records, or ``None`` when unset.
 
     """
     if overrides is None:
         return None
-    items = [
+    return [
         PagePreparationOverride.model_validate(item)
         for item in json.loads(overrides.read_text(encoding="utf-8"))
     ]
-    return _index_page_overrides(items)
 
 
 def _reject_conflicting_overrides(
     *,
-    page_overrides: dict[str, PagePreparationOverride] | None,
+    page_overrides: list[PagePreparationOverride] | None,
     mode: str | None,
     page_class: str | None,
     override_reason: str | None,
