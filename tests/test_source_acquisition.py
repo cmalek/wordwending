@@ -11,7 +11,7 @@ import pypdfium2 as pdfium
 import pytest
 from PIL import Image
 
-from bochord.models import PdfPageImageMode, PreparationRecipe
+from bochord.models import PdfPageImageMode, PreparationRecipe, SourceType
 from bochord.services.source_acquisition import (
     SourceAcquisitionService,
     _image_bounds_cover_page,
@@ -35,6 +35,26 @@ def recipe(**overrides: object) -> PreparationRecipe:
     payload = json.loads(_RECIPE_PATH.read_text(encoding="utf-8"))
     payload.update(overrides)
     return PreparationRecipe.model_validate(payload)
+
+
+def pdf_fixture(tmp_path: Path | None = None) -> Path:
+    """
+    Build a one-page blank PDF for acquisition tests.
+
+    Args:
+        tmp_path: Optional pytest temp directory; uses a sibling path when omitted.
+
+    Returns:
+        Path to a saved one-page PDF.
+
+    """
+    base = tmp_path if tmp_path is not None else Path(".")
+    pdf_path = base / "blank.pdf"
+    document = pdfium.PdfDocument.new()
+    document.new_page(612.0, 792.0)
+    document.save(pdf_path)
+    document.close()
+    return pdf_path
 
 
 def write_image(path: Path) -> None:
@@ -116,3 +136,59 @@ def test_pdf_forced_render_matches_render_dpi(tmp_path: Path) -> None:
 def test_image_bounds_must_overlap_most_of_page_area() -> None:
     assert _image_bounds_cover_page(0.0, 0.0, 95.0, 95.0, 100.0, 100.0)
     assert not _image_bounds_cover_page(10.0, 10.0, 110.0, 110.0, 100.0, 100.0)
+
+
+def test_pdf_page_records_acquisition_backend(tmp_path: Path) -> None:
+    page = SourceAcquisitionService().materialize(
+        pdf_fixture(tmp_path),
+        tmp_path / "out",
+        recipe(),
+    )[0]
+    assert page.source_type is SourceType.PDF
+    assert page.acquisition_backend == "pypdfium2"
+    assert page.acquisition_backend_version
+
+
+def test_single_image_records_source_type(tmp_path: Path) -> None:
+    image = tmp_path / "page.png"
+    write_image(image)
+    page = SourceAcquisitionService().materialize(
+        image,
+        tmp_path / "out",
+        recipe(),
+    )[0]
+    assert page.source_type is SourceType.SINGLE_IMAGE
+    assert page.acquisition_backend is None
+    assert page.acquisition_backend_version is None
+
+
+def test_image_folder_records_image_set_source_type(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    write_image(source / "page-1.png")
+    write_image(source / "page-2.png")
+    pages = SourceAcquisitionService().materialize(
+        source,
+        tmp_path / "out",
+        recipe(),
+    )
+    assert all(page.source_type is SourceType.IMAGE_SET for page in pages)
+    assert all(page.acquisition_backend is None for page in pages)
+    assert all(page.acquisition_backend_version is None for page in pages)
+
+
+def test_zip_records_image_set_source_type(tmp_path: Path) -> None:
+    archive = tmp_path / "pages.zip"
+    seed = tmp_path / "seed.png"
+    write_image(seed)
+    with ZipFile(archive, "w") as output:
+        output.write(seed, "page-1.png")
+        output.write(seed, "page-2.png")
+    pages = SourceAcquisitionService().materialize(
+        archive,
+        tmp_path / "out",
+        recipe(),
+    )
+    assert all(page.source_type is SourceType.IMAGE_SET for page in pages)
+    assert all(page.acquisition_backend is None for page in pages)
+    assert all(page.acquisition_backend_version is None for page in pages)

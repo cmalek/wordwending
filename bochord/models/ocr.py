@@ -877,6 +877,8 @@ class PreparedPage(SchemaModel):
     image_checksum: str
     #: Recipe identifier or digest used to prepare this page.
     preparation_recipe_id: str
+    #: Digest binding the full preparation recipe JSON bytes.
+    preparation_recipe_digest: str
     #: Canonical coordinate identity and raster dimensions for this image.
     coordinate_space: CoordinateSpace
     #: Ordered source-to-prepared transform chain.

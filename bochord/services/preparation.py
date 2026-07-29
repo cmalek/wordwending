@@ -730,6 +730,20 @@ def _choose_preparation_mode(
     return PreparationMode.FULL_PAGE
 
 
+def _recipe_digest(recipe: PreparationRecipe) -> str:
+    """
+    Derive a stable digest from the full preparation recipe JSON.
+
+    Args:
+        recipe: Preparation profile to bind to prepared output.
+
+    Returns:
+        SHA-256 hex digest of ``recipe.model_dump_json()``.
+
+    """
+    return hashlib.sha256(recipe.model_dump_json().encode("utf-8")).hexdigest()
+
+
 def _derive_prepared_page_id(
     source_checksum: str,
     recipe: PreparationRecipe,
@@ -849,6 +863,7 @@ def _persist_prepared_page(  # noqa: PLR0913
         source_artifact_id=source_page.artifact_id,
         image_checksum=image_checksum,
         preparation_recipe_id=recipe.recipe_id,
+        preparation_recipe_digest=_recipe_digest(recipe),
         coordinate_space=_prepared_coordinate_space(
             prepared_image,
             source_page,

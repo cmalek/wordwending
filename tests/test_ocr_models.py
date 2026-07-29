@@ -98,6 +98,7 @@ def valid_bundle_page() -> BundlePage:
             source_artifact_id="source-1",
             image_checksum="sha256:image",
             preparation_recipe_id="prep-v1",
+            preparation_recipe_digest="digest-prep-v1",
             coordinate_space=CoordinateSpace(
                 space_id="prepared-page-1",
                 width_px=100,
@@ -233,6 +234,7 @@ class TestOcrModels:
                 source_artifact_id="source-page-1",
                 image_checksum="sha256:prepared",
                 preparation_recipe_id="prep-v1",
+                preparation_recipe_digest="digest-prep-v1",
                 coordinate_space=CoordinateSpace(
                     space_id="prepared-page-1",
                     width_px=2400,
@@ -548,6 +550,7 @@ class TestOcrModels:
                     source_artifact_id="source-1",
                     image_checksum="sha256:image",
                     preparation_recipe_id="prep-v1",
+                    preparation_recipe_digest="digest-prep-v1",
                     coordinate_space=CoordinateSpace(
                         space_id="prepared-page-1",
                         width_px=100,

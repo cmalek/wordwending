@@ -14,6 +14,7 @@ from bochord.models.ocr import (
     PageClass,
     PreparedPage,
     SchemaModel,
+    SourceType,
 )
 
 
@@ -154,6 +155,12 @@ class SourcePageArtifact(SchemaModel):
     checksum: str
     #: Acquisition mode used for PDF sources when applicable.
     acquisition_mode: PdfPageImageMode | None
+    #: Top-level source kind for this acquired page.
+    source_type: SourceType
+    #: Acquisition backend name when a PDF renderer or extractor was used.
+    acquisition_backend: str | None = None
+    #: Installed version of ``acquisition_backend`` when recorded.
+    acquisition_backend_version: str | None = None
     #: Coordinate identity and dimensions for the source raster.
     coordinate_space: CoordinateSpace
 

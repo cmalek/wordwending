@@ -7,6 +7,7 @@ import hashlib
 import io
 import re
 import shutil
+from importlib.metadata import version
 from pathlib import Path, PurePosixPath
 from zipfile import ZipFile, ZipInfo
 
@@ -20,6 +21,7 @@ from bochord.models import (
     PdfPageImageMode,
     PreparationRecipe,
     SourcePageArtifact,
+    SourceType,
 )
 
 #: Image suffixes accepted for single files, folders, and ZIP members.
@@ -72,12 +74,14 @@ class SourceAcquisitionService:
             return self._materialize_image_paths(
                 _image_paths_in_directory(source),
                 pages_dir,
+                SourceType.IMAGE_SET,
             )
         suffix = source.suffix.casefold()
         if suffix in _IMAGE_EXTENSIONS:
             return self._materialize_image_paths(
                 [source],
                 pages_dir,
+                SourceType.SINGLE_IMAGE,
             )
         if suffix == ".zip":
             return self._materialize_zip(source, pages_dir)
@@ -90,6 +94,7 @@ class SourceAcquisitionService:
         self,
         paths: list[Path],
         pages_dir: Path,
+        source_type: SourceType,
     ) -> list[SourcePageArtifact]:
         """
         Copy image paths into ``pages_dir`` in the given order.
@@ -100,6 +105,7 @@ class SourceAcquisitionService:
         Args:
             paths: Ordered source image paths.
             pages_dir: Destination directory for page files.
+            source_type: Top-level source kind for the acquired pages.
 
         Returns:
             Ordered source page artifacts.
@@ -121,6 +127,9 @@ class SourceAcquisitionService:
                     page_number=index,
                     source_filename=path.name,
                     acquisition_mode=None,
+                    source_type=source_type,
+                    acquisition_backend=None,
+                    acquisition_backend_version=None,
                     dpi=_image_dpi(destination),
                 )
             )
@@ -178,6 +187,9 @@ class SourceAcquisitionService:
                         page_number=index,
                         source_filename=PurePosixPath(name).name,
                         acquisition_mode=None,
+                        source_type=SourceType.IMAGE_SET,
+                        acquisition_backend=None,
+                        acquisition_backend_version=None,
                         dpi=_image_dpi(destination),
                     )
                 )
@@ -209,6 +221,8 @@ class SourceAcquisitionService:
 
         """
         document = pdfium.PdfDocument(pdf_path)
+        backend = "pypdfium2"
+        backend_version = version(backend)
         artifacts: list[SourcePageArtifact] = []
         try:
             for index in range(len(document)):
@@ -224,6 +238,9 @@ class SourceAcquisitionService:
                             page_number=page_number,
                             source_filename=pdf_path.name,
                             acquisition_mode=mode,
+                            source_type=SourceType.PDF,
+                            acquisition_backend=backend,
+                            acquisition_backend_version=backend_version,
                             dpi=dpi,
                         )
                     )
@@ -383,12 +400,15 @@ def _page_ids(source_checksum: str, page_number: int) -> tuple[str, str, str]:
         f"space-{digest}",
     )
 
-def _artifact_from_raster(
+def _artifact_from_raster(  # noqa: PLR0913
     *,
     destination: Path,
     page_number: int,
     source_filename: str,
     acquisition_mode: PdfPageImageMode | None,
+    source_type: SourceType,
+    acquisition_backend: str | None,
+    acquisition_backend_version: str | None,
     dpi: float | None,
 ) -> SourcePageArtifact:
     """
@@ -399,6 +419,9 @@ def _artifact_from_raster(
         page_number: One-based source page order.
         source_filename: Original source basename when available.
         acquisition_mode: PDF acquisition mode, or ``None`` for image sources.
+        source_type: Top-level source kind for the acquired page.
+        acquisition_backend: Backend name when a PDF renderer or extractor was used.
+        acquisition_backend_version: Installed backend version when recorded.
         dpi: Effective raster DPI when known.
 
     Returns:
@@ -421,6 +444,9 @@ def _artifact_from_raster(
         source_filename=source_filename,
         checksum=checksum,
         acquisition_mode=acquisition_mode,
+        source_type=source_type,
+        acquisition_backend=acquisition_backend,
+        acquisition_backend_version=acquisition_backend_version,
         coordinate_space=CoordinateSpace(
             space_id=space_id,
             width_px=width_px,

@@ -21,6 +21,7 @@ from bochord.models import (
     PreparationRecipe,
     QualitySignal,
     SourcePageArtifact,
+    SourceType,
 )
 from bochord.services.preparation import (
     PageClassifier,
@@ -74,6 +75,17 @@ def _write_source_png(image: Image.Image, destination: Path) -> str:
     return f"sha256:{digest}"
 
 
+def preparation_service() -> PagePreparationService:
+    """
+    Build the default page-preparation service for tests.
+
+    Returns:
+        Page preparation service with stock assessor and classifier.
+
+    """
+    return PagePreparationService(PageQualityAssessor(), PageClassifier())
+
+
 def source_page(
     *,
     dpi: float | None = 400.0,
@@ -104,6 +116,9 @@ def source_page(
         source_filename="0001.png",
         checksum=checksum,
         acquisition_mode=None,
+        source_type=SourceType.SINGLE_IMAGE,
+        acquisition_backend=None,
+        acquisition_backend_version=None,
         coordinate_space=CoordinateSpace(
             space_id="space-page-1",
             width_px=width,
@@ -330,6 +345,14 @@ def test_table_rule_page_is_suggested_as_table_heavy() -> None:
     assert rules.value is not None
     assert rules.value >= 6
     assert PageClassifier().suggest(signals) is PageClass.TABLE_HEAVY
+
+
+def test_prepared_page_binds_full_recipe_digest(tmp_path: Path) -> None:
+    result = preparation_service().prepare(source_page(), recipe(), tmp_path)
+    expected = hashlib.sha256(
+        recipe().model_dump_json().encode("utf-8")
+    ).hexdigest()
+    assert result.prepared_page.preparation_recipe_digest == expected
 
 
 def test_same_input_and_recipe_produce_same_checksum(tmp_path: Path) -> None:
