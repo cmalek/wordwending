@@ -22,6 +22,7 @@ from bochord.models import (
     FlagSeverity,
     InputKind,
     PageClass,
+    PagePreparationOverride,
     PreparationAssessment,
     PreparationMode,
     PreparationRecipe,
@@ -444,6 +445,8 @@ class PreparationBundleService:
         source: Path,
         recipes: list[PreparationRecipe],
         output_dir: Path,
+        *,
+        page_overrides: dict[str, PagePreparationOverride] | None = None,
     ) -> list[PreparationResult]:
         """
         Acquire source pages once and persist one variant per recipe.
@@ -458,20 +461,30 @@ class PreparationBundleService:
             recipes: Preparation profiles to apply to every acquired page.
             output_dir: Bundle root receiving source and prepared artifacts.
 
+        Keyword Args:
+            page_overrides: Optional per-page operator overrides keyed by
+                ``source_page_id``.
+
         Returns:
             Persisted preparation results in source-page then recipe order.
 
         Raises:
             OSError: If input/output filesystem access fails.
-            ValueError: If ``recipes`` is empty, preparation fails, or a recipe
-                artifact collision is detected.
+            ValueError: If ``recipes`` is empty, preparation fails, a recipe
+                artifact collision is detected, or an override references an
+                unknown page.
             ValidationError: If persisted results fail model validation.
 
         """
         if not recipes:
             msg = "recipes must not be empty"
             raise ValueError(msg)
-        return self._prepare_variants(source, recipes, output_dir)
+        return self._prepare_variants(
+            source,
+            recipes,
+            output_dir,
+            page_overrides=page_overrides,
+        )
 
     def _prepare_variants(  # noqa: PLR0913
         self,
@@ -482,6 +495,7 @@ class PreparationBundleService:
         mode_override: PreparationMode | None = None,
         page_class_override: PageClass | None = None,
         override_reason: str | None = None,
+        page_overrides: dict[str, PagePreparationOverride] | None = None,
     ) -> list[PreparationResult]:
         """
         Materialize sources and prepare one variant per page and recipe.
@@ -500,14 +514,16 @@ class PreparationBundleService:
             mode_override: Operator-forced subdivision mode for single-recipe runs.
             page_class_override: Operator-forced page class for single-recipe runs.
             override_reason: Required reason when any override is set.
+            page_overrides: Optional per-page operator overrides keyed by
+                ``source_page_id``.
 
         Returns:
             Persisted preparation results in source-page then recipe order.
 
         Raises:
             OSError: If input/output filesystem access fails.
-            ValueError: If preparation fails or a recipe artifact collision is
-                detected.
+            ValueError: If preparation fails, a recipe artifact collision is
+                detected, or an override references an unknown page.
 
         """
         source_pages = self._source_acquisition_service.materialize(
@@ -515,21 +531,41 @@ class PreparationBundleService:
             output_dir / "source",
             recipes[0],
         )
+        if page_overrides:
+            _validate_page_override_ids(page_overrides, source_pages)
         for recipe in recipes:
             _persist_recipe(recipe, output_dir)
-        apply_overrides = len(recipes) == 1
+        apply_global_overrides = len(recipes) == 1 and page_overrides is None
         results: list[PreparationResult] = []
         for source_page in source_pages:
+            page_override = (
+                page_overrides.get(source_page.source_page_id)
+                if page_overrides is not None
+                else None
+            )
             for recipe in recipes:
+                mode: PreparationMode | None
+                page_class: PageClass | None
+                reason: str | None
+                if page_override is not None:
+                    mode = page_override.preparation_mode
+                    page_class = page_override.page_class
+                    reason = page_override.reason
+                elif apply_global_overrides:
+                    mode = mode_override
+                    page_class = page_class_override
+                    reason = override_reason
+                else:
+                    mode = None
+                    page_class = None
+                    reason = None
                 result = self._prepare_page(
                     source_page,
                     recipe,
                     output_dir,
-                    mode_override=mode_override if apply_overrides else None,
-                    page_class_override=(
-                        page_class_override if apply_overrides else None
-                    ),
-                    override_reason=override_reason if apply_overrides else None,
+                    mode_override=mode,
+                    page_class_override=page_class,
+                    override_reason=reason,
                 )
                 self._write_result(result, output_dir)
                 results.append(result)
@@ -611,6 +647,53 @@ class PreparationBundleService:
             result.model_dump_json(indent=2),
             encoding="utf-8",
         )
+
+
+def _index_page_overrides(
+    overrides: list[PagePreparationOverride],
+) -> dict[str, PagePreparationOverride]:
+    """
+    Index page overrides by ``source_page_id``.
+
+    Args:
+        overrides: Validated page override records.
+
+    Returns:
+        Overrides keyed by ``source_page_id``.
+
+    Raises:
+        ValueError: If duplicate ``source_page_id`` values are present.
+
+    """
+    indexed: dict[str, PagePreparationOverride] = {}
+    for override in overrides:
+        if override.source_page_id in indexed:
+            msg = f"duplicate page override: {override.source_page_id}"
+            raise ValueError(msg)
+        indexed[override.source_page_id] = override
+    return indexed
+
+
+def _validate_page_override_ids(
+    page_overrides: dict[str, PagePreparationOverride],
+    source_pages: list[SourcePageArtifact],
+) -> None:
+    """
+    Reject override ids that are absent from the acquired source.
+
+    Args:
+        page_overrides: Per-page operator overrides keyed by page id.
+        source_pages: Acquired source pages for the current run.
+
+    Raises:
+        ValueError: If an override references an unknown page id.
+
+    """
+    acquired_ids = {page.source_page_id for page in source_pages}
+    for page_id in page_overrides:
+        if page_id not in acquired_ids:
+            msg = f"unknown page override: {page_id}"
+            raise ValueError(msg)
 
 
 def _persist_recipe(recipe: PreparationRecipe, output_dir: Path) -> None:

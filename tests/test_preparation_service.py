@@ -12,12 +12,14 @@ from typing import TYPE_CHECKING
 
 import pytest
 from PIL import Image, ImageDraw
+from pydantic import ValidationError
 
 from bochord.models import (
     CoordinateSpace,
     DewarpMode,
     FlagSeverity,
     PageClass,
+    PagePreparationOverride,
     PreparationMode,
     PreparationRecipe,
     QualitySignal,
@@ -107,6 +109,20 @@ def source_image() -> Path:
     path = Path(tempfile.mkdtemp(prefix="bochord-bundle-")) / "page.png"
     Image.new("L", (600, 800), "white").save(path)
     return path
+
+
+def two_page_source() -> Path:
+    """
+    Write a two-page image folder for multi-page bundle tests.
+
+    Returns:
+        Path to a temporary folder with two ordered page images.
+
+    """
+    folder = Path(tempfile.mkdtemp(prefix="bochord-two-page-"))
+    Image.new("L", (600, 800), "white").save(folder / "page-1.png")
+    dense_two_column_image(text_height=12).save(folder / "page-2.png")
+    return folder
 
 
 def bundle_service(
@@ -599,3 +615,63 @@ def test_basic_dewarp_requires_mapping_artifact(tmp_path: Path) -> None:
             recipe(dewarp_mode=DewarpMode.BASIC),
             tmp_path,
         )
+
+
+def test_page_override_requires_choice_and_reason() -> None:
+    with pytest.raises(ValidationError):
+        PagePreparationOverride(source_page_id="page-0002", reason=" ")
+
+
+def test_only_target_page_is_forced(tmp_path: Path) -> None:
+    results = bundle_service(SourceAcquisitionService()).prepare_variants(
+        two_page_source(),
+        [recipe()],
+        tmp_path,
+        page_overrides={
+            "page-0002": PagePreparationOverride(
+                source_page_id="page-0002",
+                preparation_mode=PreparationMode.COLUMNS,
+                page_class=PageClass.DENSE_DICTIONARY,
+                reason="operator confirmed two lexical columns",
+            )
+        },
+    )
+    assert results[0].preparation_choice_source == "auto"
+    assert results[1].preparation_choice_source == "operator"
+    assert results[1].assessment.page_class_source == "operator"
+
+
+def test_page_override_rejects_duplicate_source_page_id() -> None:
+    from bochord.services.preparation import _index_page_overrides
+
+    overrides = [
+        PagePreparationOverride(
+            source_page_id="page-0002",
+            preparation_mode=PreparationMode.COLUMNS,
+            reason="first override",
+        ),
+        PagePreparationOverride(
+            source_page_id="page-0002",
+            page_class=PageClass.DENSE_DICTIONARY,
+            reason="duplicate override",
+        ),
+    ]
+    with pytest.raises(ValueError, match="duplicate page override"):
+        _index_page_overrides(overrides)
+
+
+def test_page_override_rejects_unknown_source_page_id(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="unknown page override"):
+        bundle_service(SourceAcquisitionService()).prepare_variants(
+            source_image(),
+            [recipe()],
+            tmp_path,
+            page_overrides={
+                "page-0099": PagePreparationOverride(
+                    source_page_id="page-0099",
+                    preparation_mode=PreparationMode.COLUMNS,
+                    reason="operator confirmed two lexical columns",
+                )
+            },
+        )
+    assert not (tmp_path / "pages").exists()

@@ -20,6 +20,7 @@ from ..models import (
     GoldDocument,
     MetricProfile,
     PageClass,
+    PagePreparationOverride,
     PreparationMode,
     PreparationRecipe,
 )
@@ -29,6 +30,7 @@ from ..services.preparation import (
     PagePreparationService,
     PageQualityAssessor,
     PreparationBundleService,
+    _index_page_overrides,
 )
 from ..services.source_acquisition import SourceAcquisitionService
 from ..settings import Settings
@@ -252,6 +254,12 @@ def eval_page(
     default=None,
     help="Required reason when --mode or --page-class is set.",
 )
+@click.option(
+    "--overrides",
+    default=None,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="JSON manifest of per-page operator overrides.",
+)
 def prepare_pages(  # noqa: PLR0913, PLR0917
     source: Path,
     recipe: tuple[Path, ...],
@@ -259,6 +267,7 @@ def prepare_pages(  # noqa: PLR0913, PLR0917
     mode: str | None,
     page_class: str | None,
     override_reason: str | None,
+    overrides: Path | None,
 ) -> None:
     """
     Acquire and prepare source pages into a reproducible output bundle.
@@ -270,6 +279,7 @@ def prepare_pages(  # noqa: PLR0913, PLR0917
         mode: Optional operator preparation-mode override.
         page_class: Optional operator page-class override.
         override_reason: Required reason when any override is set.
+        overrides: Optional JSON manifest of per-page operator overrides.
 
     Side Effects:
         Writes acquired pages under ``output_dir/source``, recipe artifacts
@@ -282,6 +292,13 @@ def prepare_pages(  # noqa: PLR0913, PLR0917
     """
     try:
         preparation_recipes = [_load_preparation_recipe(path) for path in recipe]
+        page_overrides = _load_page_overrides(overrides)
+        _reject_conflicting_overrides(
+            page_overrides=page_overrides,
+            mode=mode,
+            page_class=page_class,
+            override_reason=override_reason,
+        )
         _reject_multi_recipe_global_overrides(
             len(preparation_recipes),
             mode=mode,
@@ -297,7 +314,14 @@ def prepare_pages(  # noqa: PLR0913, PLR0917
             SourceAcquisitionService(),
             PagePreparationService(PageQualityAssessor(), PageClassifier()),
         )
-        if len(preparation_recipes) == 1:
+        if page_overrides is not None:
+            results = service.prepare_variants(
+                source,
+                preparation_recipes,
+                output_dir,
+                page_overrides=page_overrides,
+            )
+        elif len(preparation_recipes) == 1:
             results = service.prepare_bundle(
                 source,
                 preparation_recipes[0],
@@ -335,6 +359,61 @@ def _load_preparation_recipe(recipe: Path) -> PreparationRecipe:
 
     """
     return PreparationRecipe.model_validate_json(recipe.read_text(encoding="utf-8"))
+
+
+def _load_page_overrides(
+    overrides: Path | None,
+) -> dict[str, PagePreparationOverride] | None:
+    """
+    Load and validate a per-page override manifest.
+
+    Args:
+        overrides: Optional JSON manifest path.
+
+    Returns:
+        Overrides keyed by ``source_page_id``, or ``None`` when unset.
+
+    Raises:
+        ValueError: If duplicate ``source_page_id`` values are present.
+
+    """
+    if overrides is None:
+        return None
+    items = [
+        PagePreparationOverride.model_validate(item)
+        for item in json.loads(overrides.read_text(encoding="utf-8"))
+    ]
+    return _index_page_overrides(items)
+
+
+def _reject_conflicting_overrides(
+    *,
+    page_overrides: dict[str, PagePreparationOverride] | None,
+    mode: str | None,
+    page_class: str | None,
+    override_reason: str | None,
+) -> None:
+    """
+    Reject mixing per-page overrides with legacy global CLI overrides.
+
+    Keyword Args:
+        page_overrides: Optional per-page override manifest.
+        mode: Optional preparation-mode override from Click.
+        page_class: Optional page-class override from Click.
+        override_reason: Optional override reason from Click.
+
+    Raises:
+        ValueError: If per-page and global overrides are both supplied.
+
+    """
+    if page_overrides is None:
+        return
+    if mode is not None or page_class is not None or override_reason is not None:
+        msg = (
+            "--overrides cannot be used together with --mode, --page-class, "
+            "or --override-reason"
+        )
+        raise ValueError(msg)
 
 
 def _reject_multi_recipe_global_overrides(

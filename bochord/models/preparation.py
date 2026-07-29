@@ -12,6 +12,7 @@ from bochord.models.ocr import (
     CoordinateSpace,
     FlagSeverity,
     PageClass,
+    PreparationMode,
     PreparedPage,
     SchemaModel,
     SourceType,
@@ -223,6 +224,39 @@ class PreparationAssessment(SchemaModel):
                 "operator_override_reason is required when "
                 "page_class_source is operator"
             )
+            raise ValueError(msg)
+        return self
+
+
+class PagePreparationOverride(SchemaModel):
+    """Operator override for one acquired source page."""
+
+    #: Stable source-page identifier within the document.
+    source_page_id: str
+    #: Operator-forced subdivision mode when set.
+    preparation_mode: PreparationMode | None = None
+    #: Operator-forced page class when set.
+    page_class: PageClass | None = None
+    #: Operator explanation for the override.
+    reason: str
+
+    @model_validator(mode="after")
+    def validate_choice(self) -> PagePreparationOverride:
+        """
+        Require at least one override choice and a non-empty reason.
+
+        Returns:
+            The validated page preparation override.
+
+        Raises:
+            ValueError: If no choice is set or the reason is blank.
+
+        """
+        if self.preparation_mode is None and self.page_class is None:
+            msg = "page override requires preparation_mode or page_class"
+            raise ValueError(msg)
+        if not self.reason.strip():
+            msg = "page override reason must not be empty"
             raise ValueError(msg)
         return self
 

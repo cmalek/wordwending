@@ -676,6 +676,13 @@ def test_prepared_unit_rejects_missing_or_empty_lineage_fields(
         )
 
 
+def test_page_override_requires_choice_and_reason() -> None:
+    from bochord.models import PagePreparationOverride
+
+    with pytest.raises(ValidationError):
+        PagePreparationOverride(source_page_id="page-0002", reason=" ")
+
+
 def test_operator_override_requires_reason() -> None:
     with pytest.raises(ValidationError):
         PreparationAssessment(

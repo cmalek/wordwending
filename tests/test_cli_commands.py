@@ -6,10 +6,25 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from bochord.cli.cli import cli
 from bochord.models import PreparationResult
+
+
+def _dense_two_column_image() -> Image.Image:
+    width, height = 1000, 1400
+    image = Image.new("RGB", (width, height), (255, 255, 255))
+    draw = ImageDraw.Draw(image)
+    text_height = 12
+    left_x0, left_x1 = 60, 440
+    right_x0, right_x1 = 560, 940
+    y = 80
+    while y + text_height < height - 80:
+        draw.rectangle((left_x0, y, left_x1, y + text_height - 1), fill=(20, 20, 20))
+        draw.rectangle((right_x0, y, right_x1, y + text_height - 1), fill=(20, 20, 20))
+        y += text_height + 10
+    return image
 
 
 class TestCLIVersion:
@@ -280,6 +295,109 @@ class TestCLIPrepare:
 
         assert result.exit_code != 0
         assert "override-reason" in result.output.lower()
+        if output.exists():
+            assert not (output / "pages").exists()
+            assert not (output / "source").exists()
+
+    def test_prepare_accepts_page_overrides_manifest(self, runner, tmp_path) -> None:
+        source = tmp_path / "pages"
+        source.mkdir()
+        Image.new("L", (600, 800), "white").save(source / "page-1.png")
+        _dense_two_column_image().save(source / "page-2.png")
+        output = tmp_path / "bundle"
+
+        result = runner.invoke(
+            cli,
+            [
+                "prepare",
+                str(source),
+                "--recipe",
+                "tests/fixtures/preparation/recipe-v1.json",
+                "--output-dir",
+                str(output),
+                "--overrides",
+                "tests/fixtures/preparation/page-overrides.json",
+            ],
+        )
+
+        assert result.exit_code == 0
+        first_path = next(
+            (output / "pages/page-0001/prepared").glob("*/preparation.json")
+        )
+        second_path = next(
+            (output / "pages/page-0002/prepared").glob("*/preparation.json")
+        )
+        first = json.loads(first_path.read_text(encoding="utf-8"))
+        second = json.loads(second_path.read_text(encoding="utf-8"))
+        assert first["preparation_choice_source"] == "auto"
+        assert second["preparation_choice_source"] == "operator"
+        assert second["assessment"]["page_class_source"] == "operator"
+
+    def test_prepare_rejects_overrides_with_global_mode(
+        self, runner, tmp_path
+    ) -> None:
+        source = tmp_path / "page.png"
+        Image.new("L", (600, 800), "white").save(source)
+        output = tmp_path / "bundle"
+
+        result = runner.invoke(
+            cli,
+            [
+                "prepare",
+                str(source),
+                "--recipe",
+                "tests/fixtures/preparation/recipe-v1.json",
+                "--output-dir",
+                str(output),
+                "--overrides",
+                "tests/fixtures/preparation/page-overrides.json",
+                "--mode",
+                "full-page",
+                "--override-reason",
+                "conflicting global override",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "override" in result.output.lower()
+        if output.exists():
+            assert not (output / "pages").exists()
+            assert not (output / "source").exists()
+
+    def test_prepare_rejects_invalid_overrides_before_acquisition(
+        self, runner, tmp_path
+    ) -> None:
+        source = tmp_path / "page.png"
+        Image.new("L", (600, 800), "white").save(source)
+        output = tmp_path / "bundle"
+        overrides = tmp_path / "overrides.json"
+        overrides.write_text(
+            json.dumps(
+                [
+                    {
+                        "source_page_id": "page-0001",
+                        "reason": "missing choice",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        result = runner.invoke(
+            cli,
+            [
+                "prepare",
+                str(source),
+                "--recipe",
+                "tests/fixtures/preparation/recipe-v1.json",
+                "--output-dir",
+                str(output),
+                "--overrides",
+                str(overrides),
+            ],
+        )
+
+        assert result.exit_code != 0
         if output.exists():
             assert not (output / "pages").exists()
             assert not (output / "source").exists()
