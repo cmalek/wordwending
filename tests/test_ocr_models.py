@@ -860,6 +860,14 @@ def test_spec_0013_batch_fixtures_round_trip_by_status() -> None:
         ),
         (
             "batch",
+            {
+                "result_status": "succeeded",
+                "failure_item_ids": ["item-1"],
+            },
+            "succeeded batches cannot contain failed items",
+        ),
+        (
+            "batch",
             {"result_status": "partial", "failure_item_ids": []},
             "partial batches require some but not all items to fail",
         ),
