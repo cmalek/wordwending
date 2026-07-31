@@ -22,11 +22,6 @@ FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "runner"
 PREPARED_INPUTS_PATH = FIXTURE_ROOT / "prepared-inputs.json"
 
 
-def fixture_root() -> Path:
-    """Return the runner fixture directory."""
-    return FIXTURE_ROOT
-
-
 def _write_test_images(root: Path, artifacts: list[PreparedArtifactRef]) -> None:
     for artifact in artifacts:
         destination = root / artifact.artifact_path
@@ -133,4 +128,15 @@ def test_direct_packaging_rejects_multi_item_batch(
             PackagingStrategy.DIRECT,
             bundle_root,
             tmp_path,
+        )
+
+
+def test_pdf_packaging_raises_when_source_image_missing(tmp_path: Path) -> None:
+    batch = planned_batch(3)
+    with pytest.raises(FileNotFoundError, match="missing prepared artifact"):
+        RunnerInputPackager().package(
+            batch,
+            PackagingStrategy.UNIT_TO_PDF_BATCH,
+            tmp_path,
+            tmp_path / "output",
         )

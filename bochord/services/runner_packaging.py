@@ -41,12 +41,35 @@ def _page_numbers(batch: PlannedRunnerBatch) -> list[int]:
 
     """
     page_numbers: list[int] = []
-    for index, artifact in enumerate(batch.artifacts, start=1):
+    for artifact in batch.artifacts:
         if artifact.order is None:
             msg = f"artifact {artifact.artifact_id} is missing order metadata"
             raise ValueError(msg)
-        page_numbers.append(artifact.order if artifact.order >= 1 else index)
+        page_numbers.append(artifact.order)
     return page_numbers
+
+
+def _load_rgb_images(source_paths: list[Path]) -> list[Image.Image]:
+    """
+    Open source images as RGB, closing partial loads on failure.
+
+    Args:
+        source_paths: Prepared artifact paths relative to the bundle root.
+
+    Returns:
+        Open RGB Pillow images that the caller must close.
+
+    """
+    images: list[Image.Image] = []
+    try:
+        for path in source_paths:
+            with Image.open(path) as opened:
+                images.append(opened.convert("RGB"))
+    except Exception:
+        for image in images:
+            image.close()
+        raise
+    return images
 
 
 def _write_pdf(images: list[Image.Image], destination: Path) -> None:
@@ -166,7 +189,7 @@ class RunnerInputPackager:
                 msg = f"missing prepared artifact at {source_path}"
                 raise FileNotFoundError(msg)
 
-        images = [Image.open(path).convert("RGB") for path in source_paths]
+        images = _load_rgb_images(source_paths)
         try:
             _write_pdf(images, destination)
         finally:
