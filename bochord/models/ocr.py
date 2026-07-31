@@ -5,9 +5,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+if TYPE_CHECKING:
+    from bochord.models.merge import AlternateCandidate
 
 
 class SchemaModel(BaseModel):
@@ -805,6 +808,8 @@ class ObjectProvenance(SchemaModel):
     merge_confidence: float | None = Field(default=None, ge=0, le=1)
     #: Short disagreement note when sources materially conflicted.
     disagreement_note: str | None = None
+    #: Alternate interpretations rejected or deferred during merge.
+    alternate_candidates: list[AlternateCandidate] = Field(default_factory=list)
 
 
 class ReviewSummary(SchemaModel):

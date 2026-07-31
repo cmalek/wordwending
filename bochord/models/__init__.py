@@ -8,6 +8,15 @@ from bochord.models.evaluation import (
     MetricProfile,
     PageEvaluationRecord,
 )
+from bochord.models.merge import (
+    AlternateCandidate,
+    MergeFlag,
+    MergeFlagType,
+    MergePageInput,
+    MergePageResult,
+    MergePolicy,
+    PassWitnessPage,
+)
 from bochord.models.ocr import (
     AcceptReviewEvent,
     AcquisitionProvenance,
@@ -135,6 +144,7 @@ from bochord.models.text_normalization import (
 __all__ = [
     "AcceptReviewEvent",
     "AcquisitionProvenance",
+    "AlternateCandidate",
     "AnchoredGoldAnnotation",
     "AssessmentThresholds",
     "BaselineShift",
@@ -184,6 +194,11 @@ __all__ = [
     "LineRecord",
     "LinkNoteReviewEvent",
     "MarkIllegibleReviewEvent",
+    "MergeFlag",
+    "MergeFlagType",
+    "MergePageInput",
+    "MergePageResult",
+    "MergePolicy",
     "MergeRegionReviewEvent",
     "MetricProfile",
     "MetricScore",
@@ -199,6 +214,7 @@ __all__ = [
     "PageEvaluationSummary",
     "PageOverlay",
     "PagePreparationOverride",
+    "PassWitnessPage",
     "PdfPageImageMode",
     "PlannedRunnerBatch",
     "Point",

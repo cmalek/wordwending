@@ -152,15 +152,15 @@ class MergePageResult(SchemaModel):
     abstained: bool = False
 ```
 
-- [ ] **Step 1: Write failing model tests** for alternate candidates, empty-precedence policy default, and `PassWitnessPage` round-trip.
+- [x] **Step 1: Write failing model tests** for alternate candidates, empty-precedence policy default, and `PassWitnessPage` round-trip.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
-- [ ] **Step 3: Implement models** (additive provenance field; keep old fixtures valid via default empty list)
+- [x] **Step 3: Implement models** (additive provenance field; keep old fixtures valid via default empty list)
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
-- [ ] **Step 5: Quality gate + commit**
+- [x] **Step 5: Quality gate + commit**
 
 ```bash
 git commit -m "$(cat <<'EOF'

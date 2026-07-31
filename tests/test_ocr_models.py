@@ -95,6 +95,37 @@ def _provenance() -> ObjectProvenance:
     )
 
 
+def test_object_provenance_defaults_empty_alternate_candidates() -> None:
+    """Existing provenance fixtures stay valid without alternate candidates."""
+    provenance = _provenance()
+    assert provenance.alternate_candidates == []
+
+
+def test_object_provenance_accepts_alternate_candidates() -> None:
+    """Alternate merge interpretations live in provenance, not duplicate nodes."""
+    from bochord.models import AlternateCandidate
+
+    alternate = AlternateCandidate(
+        witness_id="wit-2",
+        runner_id="other-runner",
+        value_kind="text",
+        value={"text_diplomatic": "variant reading"},
+        machine_confidence=0.75,
+    )
+    provenance = ObjectProvenance(
+        source_page_id="page-0001",
+        witness_ids=["wit-1"],
+        runner_ids=["olmocr"],
+        alternate_candidates=[alternate],
+        disagreement_note="normalized text differed",
+    )
+    assert len(provenance.alternate_candidates) == 1
+    assert provenance.alternate_candidates[0].value_kind == "text"
+    assert provenance.alternate_candidates[0].value["text_diplomatic"] == (
+        "variant reading"
+    )
+
+
 def valid_bundle_page() -> BundlePage:
     """Return a minimal valid page graph for join-reference tests."""
     provenance = _provenance()
