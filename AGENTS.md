@@ -1,12 +1,29 @@
 # AGENTS.md
 
+- use .venv/bin/python as python
+- use .venv/bin/pytest as pytest
+- use .venv/bin/ruff as ruff
+- use .venv/bin/mypy as mypy
+- use `uv add <package>` to add a core package
+- use `uv add --group=test <package>` to add a test package
+- use `uv add --group=docs <package>` to add a docs package
+- use `uv add --group=dev <package>` to add a dev-only package
+
 ## Tooling Preflight (Required)
 
 Before planning or implementation, show concise evidence of:
 
-1. At least one `code-index` call (search/find/symbol/summary as useful)
-2. At least one `codegraph` call (knowledge graph)
+1. `graphify` for prior context and codebase exploration
+2. At least one `code-index` call (search/find/symbol/summary as useful)
 3. `context7` and/or `package-registry-mcp` when external library/package behavior, versioning, or package details matter
+
+In an early progress update: tool names used + one line per result. If a tool is not relevant, say so in one line.
+
+During planning, please use `graphify` and `code-index` often to flesh out plans.
+
+## ADRs
+
+Write all ADRs to the filesystem as restructuredtext and put them in `doc/source/adr/`.
 
 ## Python Environment (Required)
 
@@ -29,7 +46,7 @@ Do not assume the global interpreter matches the project environment.
 
 During Planning:
 
-- Use `code-index` and `codegraph` to find files and function calls
+- Use `code-index` and `graphify` to find files and function calls
 
 In an early progress update: tool names used + one line per result. If a tool is not relevant, say so in one line.
 
@@ -100,3 +117,14 @@ Do not add placeholder sections or empty/`None`-semantic sections.
 **Napoleon `#:` comments** on class attributes, `__init__` instance attributes, and module-level globals.
 
 Enforcement: `make napoleon-gate` (no new violations vs baseline); `make napoleon-gate-strict` when explicitly requested.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
