@@ -1,0 +1,146 @@
+[
+  {
+    "run_id": "run-1",
+    "document_id": "bosworth-demo",
+    "page_id": "page-0001",
+    "page_class": "ordinary-prose",
+    "preparation_mode": "full-page",
+    "prepared_page_id": "prepared-page-1",
+    "runner_id": "olmocr",
+    "summary": {
+      "text": {
+        "metrics": [
+          {
+            "metric_id": "character_error_rate",
+            "value": 0.05,
+            "numerator": 1.0,
+            "denominator": 20.0
+          }
+        ],
+        "flags": []
+      },
+      "structure": {
+        "metrics": [],
+        "flags": []
+      },
+      "style": {
+        "typography": {
+          "metrics": [],
+          "flags": []
+        },
+        "note_linkage": {
+          "metrics": [],
+          "flags": []
+        }
+      }
+    }
+  },
+  {
+    "run_id": "run-1",
+    "document_id": "bosworth-demo",
+    "page_id": "page-0002",
+    "page_class": "dense-dictionary",
+    "preparation_mode": "columns",
+    "prepared_page_id": "prepared-page-2",
+    "runner_id": "kraken",
+    "summary": {
+      "text": {
+        "metrics": [
+          {
+            "metric_id": "character_error_rate",
+            "value": 0.12,
+            "numerator": 3.0,
+            "denominator": 25.0
+          }
+        ],
+        "flags": []
+      },
+      "structure": {
+        "metrics": [],
+        "flags": []
+      },
+      "style": {
+        "typography": {
+          "metrics": [],
+          "flags": []
+        },
+        "note_linkage": {
+          "metrics": [],
+          "flags": []
+        }
+      }
+    }
+  },
+  {
+    "run_id": "run-1",
+    "document_id": "wright-demo",
+    "page_id": "page-0001",
+    "page_class": "dense-dictionary",
+    "preparation_mode": "columns",
+    "prepared_page_id": "prepared-page-3",
+    "runner_id": "olmocr",
+    "summary": {
+      "text": {
+        "metrics": [
+          {
+            "metric_id": "character_error_rate",
+            "value": 0.08,
+            "numerator": 2.0,
+            "denominator": 25.0
+          }
+        ],
+        "flags": []
+      },
+      "structure": {
+        "metrics": [],
+        "flags": []
+      },
+      "style": {
+        "typography": {
+          "metrics": [],
+          "flags": []
+        },
+        "note_linkage": {
+          "metrics": [],
+          "flags": []
+        }
+      }
+    }
+  },
+  {
+    "run_id": "run-1",
+    "document_id": "wright-demo",
+    "page_id": "page-0002",
+    "page_class": "ordinary-prose",
+    "preparation_mode": "full-page",
+    "prepared_page_id": "prepared-page-4",
+    "runner_id": "kraken",
+    "summary": {
+      "text": {
+        "metrics": [
+          {
+            "metric_id": "character_error_rate",
+            "value": 0.03,
+            "numerator": 1.0,
+            "denominator": 30.0
+          }
+        ],
+        "flags": []
+      },
+      "structure": {
+        "metrics": [],
+        "flags": []
+      },
+      "style": {
+        "typography": {
+          "metrics": [],
+          "flags": []
+        },
+        "note_linkage": {
+          "metrics": [],
+          "flags": []
+        }
+      }
+    }
+  }
+]

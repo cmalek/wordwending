@@ -1,7 +1,13 @@
 # Copyright (C) 2026 Chris Malek.
 """Exported data models for bochord."""
 
-from bochord.models.evaluation import MetricProfile
+from bochord.models.evaluation import (
+    EvaluationCohortKey,
+    EvaluationCohortReport,
+    EvaluationCohortSummary,
+    MetricProfile,
+    PageEvaluationRecord,
+)
 from bochord.models.ocr import (
     AcceptReviewEvent,
     AcquisitionProvenance,
@@ -134,6 +140,9 @@ __all__ = [
     "DewarpMode",
     "DocumentBundle",
     "DocumentEvaluationSummary",
+    "EvaluationCohortKey",
+    "EvaluationCohortReport",
+    "EvaluationCohortSummary",
     "EvaluationFamilySummary",
     "EvaluationFlag",
     "ExportSummary",
@@ -163,6 +172,7 @@ __all__ = [
     "OverlayState",
     "PackagingStrategy",
     "PageClass",
+    "PageEvaluationRecord",
     "PageEvaluationSummary",
     "PageOverlay",
     "PagePreparationOverride",

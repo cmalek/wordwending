@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 from pydantic import TypeAdapter, ValidationError
@@ -22,6 +24,9 @@ from bochord.models import (
     CoordinateSpace,
     DocumentBundle,
     DocumentEvaluationSummary,
+    EvaluationCohortKey,
+    EvaluationCohortReport,
+    EvaluationCohortSummary,
     EvaluationFamilySummary,
     ExportSummary,
     FontSlant,
@@ -39,6 +44,7 @@ from bochord.models import (
     OverlayState,
     PackagingStrategy,
     PageClass,
+    PageEvaluationRecord,
     PageEvaluationSummary,
     PageOverlay,
     PreparationAssessment,
@@ -710,3 +716,94 @@ def test_page_evaluation_has_exactly_three_top_level_families() -> None:
     summary = PageEvaluationSummary()
     assert set(summary.model_dump()) == {"text", "structure", "style"}
     assert set(summary.style.model_dump()) == {"typography", "note_linkage"}
+
+
+def test_page_evaluation_record_carries_comparison_context() -> None:
+    record = PageEvaluationRecord(
+        run_id="run-1",
+        document_id="bt",
+        page_id="page-0001",
+        page_class=PageClass.DENSE_DICTIONARY,
+        preparation_mode=PreparationMode.COLUMNS,
+        prepared_page_id="prepared-a",
+        runner_id="olmocr",
+        summary=PageEvaluationSummary(),
+    )
+    assert record.page_class is PageClass.DENSE_DICTIONARY
+    assert record.preparation_mode is PreparationMode.COLUMNS
+
+
+def test_cohort_records_fixture_validates() -> None:
+    fixture_path = (
+        Path(__file__).parent / "fixtures" / "evaluation" / "cohort-records.json"
+    )
+    records = TypeAdapter(list[PageEvaluationRecord]).validate_python(
+        json.loads(fixture_path.read_text())
+    )
+    assert len(records) >= 2
+    document_ids = {record.document_id for record in records}
+    page_classes = {record.page_class for record in records}
+    preparation_modes = {record.preparation_mode for record in records}
+    runner_ids = {record.runner_id for record in records}
+    assert len(document_ids) >= 2
+    assert PageClass.ORDINARY_PROSE in page_classes
+    assert PageClass.DENSE_DICTIONARY in page_classes
+    assert PreparationMode.FULL_PAGE in preparation_modes
+    assert PreparationMode.COLUMNS in preparation_modes
+    assert "olmocr" in runner_ids
+    assert "kraken" in runner_ids
+    metrics = [
+        metric
+        for record in records
+        for family in (
+            record.summary.text,
+            record.summary.structure,
+            record.summary.style.typography,
+            record.summary.style.note_linkage,
+        )
+        for metric in family.metrics
+    ]
+    assert any(
+        metric.denominator is not None and metric.denominator > 1 for metric in metrics
+    )
+
+
+def test_evaluation_cohort_models_accept_fixed_report_shape() -> None:
+    summary = PageEvaluationSummary()
+    cohort_summary = EvaluationCohortSummary(
+        key=EvaluationCohortKey(page_class=PageClass.ORDINARY_PROSE),
+        document_ids=["doc-a"],
+        page_ids=["page-0001"],
+        summary=summary,
+    )
+    report = EvaluationCohortReport(
+        by_page_class=[cohort_summary],
+        by_page_class_and_preparation_mode=[
+            EvaluationCohortSummary(
+                key=EvaluationCohortKey(
+                    page_class=PageClass.ORDINARY_PROSE,
+                    preparation_mode=PreparationMode.FULL_PAGE,
+                ),
+                document_ids=["doc-a"],
+                page_ids=["page-0001"],
+                summary=summary,
+            )
+        ],
+        by_page_class_and_runner=[
+            EvaluationCohortSummary(
+                key=EvaluationCohortKey(
+                    page_class=PageClass.ORDINARY_PROSE,
+                    runner_id="olmocr",
+                ),
+                document_ids=["doc-a"],
+                page_ids=["page-0001"],
+                summary=summary,
+            )
+        ],
+    )
+    assert report.by_page_class[0].key.page_class is PageClass.ORDINARY_PROSE
+    assert (
+        report.by_page_class_and_preparation_mode[0].key.preparation_mode
+        is PreparationMode.FULL_PAGE
+    )
+    assert report.by_page_class_and_runner[0].key.runner_id == "olmocr"

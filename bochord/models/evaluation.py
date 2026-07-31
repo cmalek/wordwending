@@ -1,7 +1,16 @@
 # Copyright (C) 2026 Chris Malek.
 """Evaluation policy and metric contract models."""
 
+from __future__ import annotations
+
 from pydantic import BaseModel, ConfigDict, Field
+
+from bochord.models.ocr import (
+    PageClass,
+    PageEvaluationSummary,
+    PreparationMode,
+    SchemaModel,
+)
 
 
 class MetricProfile(BaseModel):
@@ -29,3 +38,59 @@ class MetricProfile(BaseModel):
     exclude_illegible: bool = True
     #: Treat unknown style facets as incorrect rather than ignored.
     unknown_style_is_incorrect: bool = True
+
+
+class PageEvaluationRecord(SchemaModel):
+    """One evaluated page with run, preparation, and runner context."""
+
+    #: Run identifier that produced this evaluation.
+    run_id: str
+    #: Document identifier within the evaluation corpus.
+    document_id: str
+    #: Page identifier within the document.
+    page_id: str
+    #: Final page-class label used for cohort grouping.
+    page_class: PageClass
+    #: Preparation mode applied before OCR.
+    preparation_mode: PreparationMode
+    #: Prepared-page identifier used for this evaluation.
+    prepared_page_id: str
+    #: Runner identifier that produced the scored witness.
+    runner_id: str
+    #: Per-page grouped evaluation output.
+    summary: PageEvaluationSummary
+
+
+class EvaluationCohortKey(SchemaModel):
+    """Grouping key for one fixed evaluation cohort view."""
+
+    #: Page-class label shared by every record in the cohort.
+    page_class: PageClass
+    #: Optional preparation-mode dimension for the cohort.
+    preparation_mode: PreparationMode | None = None
+    #: Optional runner dimension for the cohort.
+    runner_id: str | None = None
+
+
+class EvaluationCohortSummary(SchemaModel):
+    """Aggregated evaluation output for one cohort."""
+
+    #: Grouping key identifying this cohort.
+    key: EvaluationCohortKey
+    #: Document identifiers represented in the cohort.
+    document_ids: list[str]
+    #: Page identifiers represented in the cohort.
+    page_ids: list[str]
+    #: Weighted evaluation summary for the cohort.
+    summary: PageEvaluationSummary
+
+
+class EvaluationCohortReport(SchemaModel):
+    """Fixed cohort views emitted by evaluation aggregation."""
+
+    #: Summaries grouped by page class only.
+    by_page_class: list[EvaluationCohortSummary]
+    #: Summaries grouped by page class and preparation mode.
+    by_page_class_and_preparation_mode: list[EvaluationCohortSummary]
+    #: Summaries grouped by page class and runner.
+    by_page_class_and_runner: list[EvaluationCohortSummary]
