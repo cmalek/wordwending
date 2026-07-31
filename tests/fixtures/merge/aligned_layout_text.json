@@ -1,0 +1,156 @@
+{
+  "page_id": "page-0001",
+  "page_number": 1,
+  "prepared_page": {
+    "prepared_page_id": "prepared-page-1",
+    "preparation_mode": "full-page",
+    "page_class": "ordinary-prose",
+    "image_path": "page.png",
+    "source_artifact_id": "source-1",
+    "image_checksum": "sha256:image",
+    "preparation_recipe_id": "prep-v1",
+    "preparation_recipe_digest": "digest-prep-v1",
+    "coordinate_space": {
+      "space_id": "prepared-page-1",
+      "width_px": 100,
+      "height_px": 100
+    }
+  },
+  "witnesses": [
+    {
+      "witness_id": "wit-a",
+      "runner_id": "runner-a",
+      "prepared_page_id": "prepared-page-1",
+      "coordinate_space": {
+        "space_id": "prepared-page-1",
+        "width_px": 100,
+        "height_px": 100
+      },
+      "regions": [
+        {
+          "region_id": "region-a-1",
+          "region_kind": "body",
+          "reading_order_index": 1,
+          "bounding_box": {"x0": 0, "y0": 0, "x1": 80, "y1": 40},
+          "line_ids": ["line-a-1"],
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-a"],
+            "runner_ids": ["runner-a"],
+            "machine_confidence": 0.9
+          }
+        }
+      ],
+      "lines": [
+        {
+          "line_id": "line-a-1",
+          "region_id": "region-a-1",
+          "line_order": 1,
+          "bounding_box": {"x0": 0, "y0": 0, "x1": 80, "y1": 10},
+          "span_ids": ["span-a-1"],
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-a"],
+            "runner_ids": ["runner-a"],
+            "machine_confidence": 0.9
+          }
+        }
+      ],
+      "spans": [
+        {
+          "span_id": "span-a-1",
+          "line_id": "line-a-1",
+          "text_diplomatic": "alpha",
+          "text_normalized": "alpha",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-a"],
+            "runner_ids": ["runner-a"],
+            "machine_confidence": 0.9
+          }
+        }
+      ],
+      "machine_confidence": 0.9
+    },
+    {
+      "witness_id": "wit-b",
+      "runner_id": "runner-b",
+      "prepared_page_id": "prepared-page-1",
+      "coordinate_space": {
+        "space_id": "prepared-page-1",
+        "width_px": 100,
+        "height_px": 100
+      },
+      "regions": [
+        {
+          "region_id": "region-b-1",
+          "region_kind": "body",
+          "reading_order_index": 1,
+          "bounding_box": {"x0": 1, "y0": 1, "x1": 79, "y1": 39},
+          "line_ids": ["line-b-1"],
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-b"],
+            "runner_ids": ["runner-b"],
+            "machine_confidence": 0.88
+          }
+        }
+      ],
+      "lines": [
+        {
+          "line_id": "line-b-1",
+          "region_id": "region-b-1",
+          "line_order": 1,
+          "bounding_box": {"x0": 1, "y0": 1, "x1": 79, "y1": 9},
+          "span_ids": ["span-b-1"],
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-b"],
+            "runner_ids": ["runner-b"],
+            "machine_confidence": 0.88
+          }
+        },
+        {
+          "line_id": "line-b-2",
+          "region_id": "region-b-1",
+          "line_order": 2,
+          "bounding_box": {"x0": 1, "y0": 12, "x1": 79, "y1": 20},
+          "span_ids": ["span-b-2"],
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-b"],
+            "runner_ids": ["runner-b"],
+            "machine_confidence": 0.88
+          }
+        }
+      ],
+      "spans": [
+        {
+          "span_id": "span-b-1",
+          "line_id": "line-b-1",
+          "text_diplomatic": "beta",
+          "text_normalized": "beta",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-b"],
+            "runner_ids": ["runner-b"],
+            "machine_confidence": 0.88
+          }
+        },
+        {
+          "span_id": "span-b-2",
+          "line_id": "line-b-2",
+          "text_diplomatic": "second",
+          "text_normalized": "second",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-b"],
+            "runner_ids": ["runner-b"],
+            "machine_confidence": 0.88
+          }
+        }
+      ],
+      "machine_confidence": 0.88
+    }
+  ]
+}

@@ -225,17 +225,17 @@ Scaffold selection:
 
 Coordinate step: require all witnesses share `prepared_page_id` with `MergePageInput.prepared_page`; otherwise exclude cross-variant witnesses and record them only as skipped alternate evidence (do not invent cross-variant transforms in v1).
 
-- [ ] **Step 1: Write failing tests** for scaffold preference, cross-variant exclusion, structure conflict flag.
+- [x] **Step 1: Write failing tests** for scaffold preference, cross-variant exclusion, structure conflict flag.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
-- [ ] **Step 3: Implement orchestrator steps 1–4 (through layout align)**
+- [x] **Step 3: Implement orchestrator steps 1–4 (through layout align)**
 
 Leave text/typography/notes as stubs returning empty accepted spans if needed, but keep method order in `run()` matching Spec 0009 sequence (stubs OK until Task 3).
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
-- [ ] **Step 5: Quality gate + commit**
+- [x] **Step 5: Quality gate + commit**
 
 ```bash
 git commit -m "$(cat <<'EOF'
