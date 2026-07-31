@@ -507,6 +507,8 @@ class RunnerReference(SchemaModel):
     model_name: str | None = None
     #: Underlying model revision or digest when relevant.
     model_revision: str | None = None
+    #: Hardware class used for model-backed execution when relevant.
+    hardware_class: str | None = None
     #: Runtime or hosting backend, such as ``huggingface-endpoint``.
     runtime_name: str | None = None
     #: Container, runtime, or endpoint revision used for execution.
@@ -530,13 +532,17 @@ class RunnerReference(SchemaModel):
         """
         required = (
             self.model_revision,
+            self.hardware_class,
             self.runtime_name,
             self.runtime_revision,
             self.config_digest,
             self.prompt_digest,
         )
         if self.model_name is not None and any(value is None for value in required):
-            msg = "model-backed runners require model, runtime, and config revisions"
+            msg = (
+                "model-backed runners require model, hardware, runtime, "
+                "and config revisions"
+            )
             raise ValueError(msg)
         if self.model_name is not None and (
             self.runtime_name is None
@@ -675,6 +681,8 @@ class RunnerExecutionBatch(SchemaModel):
     run_id: str
     #: Document identifier under processing.
     document_id: str
+    #: Execution policy identifier governing this invocation.
+    execution_policy_id: str
     #: Runner identity used for this invocation.
     runner: RunnerReference
     #: Declared capability contract used by this invocation.
@@ -701,6 +709,10 @@ class RunnerExecutionBatch(SchemaModel):
     output_artifacts: list[RunnerOutputArtifact] = Field(default_factory=list)
     #: Warnings or non-fatal execution notes.
     warnings: list[str] = Field(default_factory=list)
+    #: Whether this batch was a warmup invocation excluded from throughput.
+    warmup: bool = False
+    #: Hosted request identifiers associated with this invocation.
+    request_ids: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_batch_consistency(self) -> RunnerExecutionBatch:

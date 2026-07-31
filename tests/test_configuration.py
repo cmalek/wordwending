@@ -10,6 +10,7 @@ from types import NoneType
 from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
 
 from bochord.settings import Settings
 
@@ -243,3 +244,44 @@ class TestConfiguration:
             assert settings.quiet_mode is False
             assert settings.log_level == "INFO"
             assert settings.log_file is None
+
+    def test_settings_accept_huggingface_api_key_and_endpoint_map(
+        self,
+        tmp_path,
+        monkeypatch,
+    ):
+        """Hugging Face credentials and endpoint URLs load from settings."""
+        monkeypatch.chdir(tmp_path)
+        with patch("bochord.settings.Path.home", return_value=tmp_path / "home"):
+            settings = Settings(
+                huggingface_api_key="hf_test_token",
+                huggingface_model_endpoints={
+                    "olmocr-production": (
+                        "https://example.endpoints.huggingface.cloud/v1"
+                    ),
+                },
+            )
+        assert settings.huggingface_api_key is not None
+        assert settings.huggingface_api_key.get_secret_value() == "hf_test_token"
+        assert str(
+            settings.huggingface_model_endpoints["olmocr-production"]
+        ) == "https://example.endpoints.huggingface.cloud/v1"
+
+    def test_settings_reject_non_https_huggingface_endpoints(
+        self,
+        tmp_path,
+        monkeypatch,
+    ):
+        """Hugging Face endpoint URLs must use HTTPS."""
+        monkeypatch.chdir(tmp_path)
+        with (
+            patch("bochord.settings.Path.home", return_value=tmp_path / "home"),
+            pytest.raises(ValidationError, match="must use an https URL"),
+        ):
+            Settings(
+                huggingface_model_endpoints={
+                    "olmocr-production": (
+                        "http://example.endpoints.huggingface.cloud/v1"
+                    ),
+                },
+            )

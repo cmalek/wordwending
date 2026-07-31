@@ -7,12 +7,11 @@ import os
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import AnyHttpUrl, Field, SecretStr, field_validator
 from pydantic_settings import (
     BaseSettings,
-    EnvSettingsSource,
-    SettingsConfigDict,
     PydanticBaseSettingsSource,
+    SettingsConfigDict,
     TomlConfigSettingsSource,
 )
 
@@ -30,35 +29,77 @@ class Settings(BaseSettings):
 
     """
 
+    #: Pydantic settings configuration for env prefix and extra-field policy.
     model_config = SettingsConfigDict(
         extra="ignore",
         env_prefix="BOCHORD_",
     )
 
-    # Application settings (readonly - cannot be overridden via configuration)
+    #: Readonly application name exposed by the CLI and logs.
     app_name: str = Field(
         default="bochord",
         description="Application name",
         frozen=True,
     )
+    #: Readonly application version exposed by the CLI and logs.
     app_version: str = Field(
         default="0.1.0", description="Application version", frozen=True
     )
 
-    # Write-able settings
-
-    # Output settings
+    #: Default CLI output format when the user does not override it.
     default_output_format: Literal["table", "json", "text"] = Field(
         default="table", description="Default output format"
     )
+    #: Whether Rich-style colored terminal output is enabled.
     enable_colors: bool = Field(default=True, description="Enable colored output")
+    #: Whether the CLI suppresses non-essential output.
     quiet_mode: bool = Field(default=False, description="Enable quiet mode")
 
-    # Logging settings
+    #: Root logging level for application diagnostics.
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = Field(
         default="INFO", description="Logging level"
     )
+    #: Optional filesystem path for persistent log output.
     log_file: str | None = Field(default=None, description="Log file path")
+
+    #: Hugging Face API token for hosted inference endpoints.
+    huggingface_api_key: SecretStr | None = Field(
+        default=None,
+        description="Hugging Face API token for hosted inference endpoints",
+    )
+    #: Named Hugging Face endpoint URLs keyed by endpoint identifier.
+    huggingface_model_endpoints: dict[str, AnyHttpUrl] = Field(
+        default_factory=dict,
+        description="Named Hugging Face endpoint URLs keyed by endpoint identifier",
+    )
+
+    @field_validator("huggingface_model_endpoints")
+    @classmethod
+    def validate_https_huggingface_endpoints(
+        cls,
+        endpoints: dict[str, AnyHttpUrl],
+    ) -> dict[str, AnyHttpUrl]:
+        """
+        Require HTTPS for every configured Hugging Face endpoint URL.
+
+        Args:
+            endpoints: Endpoint name to URL mapping from settings input.
+
+        Returns:
+            The validated endpoint mapping.
+
+        Raises:
+            ValueError: If any endpoint URL does not use HTTPS.
+
+        """
+        for endpoint_name, endpoint_url in endpoints.items():
+            if endpoint_url.scheme != "https":
+                msg = (
+                    f"huggingface_model_endpoints[{endpoint_name!r}] "
+                    "must use an https URL"
+                )
+                raise ValueError(msg)
+        return endpoints
 
     @classmethod
     def settings_customise_sources(
@@ -121,7 +162,13 @@ class Settings(BaseSettings):
         if config_paths:
             # Use the last (highest precedence) config file
             config_file_path = config_paths[-1]
-            return (TomlConfigSettingsSource(settings_cls, config_file_path.resolve()),)
+            return (
+                init_settings,
+                TomlConfigSettingsSource(settings_cls, config_file_path.resolve()),
+                env_settings,
+                dotenv_settings,
+                file_secret_settings,
+            )
 
         # Fallback: return the defaults you were passed in, preserving SettingsConfigDict behavior
         return (

@@ -1,0 +1,55 @@
+{
+  "artifacts": [
+    {
+      "artifact_id": "unit-page-0001-001",
+      "kind": "prepared-unit",
+      "page_id": "page-0001",
+      "prepared_unit_id": "unit-page-0001-001",
+      "artifact_path": "prepared/page-0001/units/unit-page-0001-001.png",
+      "parent_prepared_page_id": "prepared-page-0001",
+      "checksum": "sha256:unit-page-0001-001",
+      "order": 1,
+      "bounding_box": {
+        "x0": 0,
+        "y0": 0,
+        "x1": 100,
+        "y1": 100,
+        "coordinate_space_id": "prepared-page-0001"
+      }
+    },
+    {
+      "artifact_id": "unit-page-0001-002",
+      "kind": "prepared-unit",
+      "page_id": "page-0001",
+      "prepared_unit_id": "unit-page-0001-002",
+      "artifact_path": "prepared/page-0001/units/unit-page-0001-002.png",
+      "parent_prepared_page_id": "prepared-page-0001",
+      "checksum": "sha256:unit-page-0001-002",
+      "order": 2,
+      "bounding_box": {
+        "x0": 0,
+        "y0": 0,
+        "x1": 100,
+        "y1": 100,
+        "coordinate_space_id": "prepared-page-0001"
+      }
+    },
+    {
+      "artifact_id": "unit-page-0001-003",
+      "kind": "prepared-unit",
+      "page_id": "page-0001",
+      "prepared_unit_id": "unit-page-0001-003",
+      "artifact_path": "prepared/page-0001/units/unit-page-0001-003.png",
+      "parent_prepared_page_id": "prepared-page-0001",
+      "checksum": "sha256:unit-page-0001-003",
+      "order": 3,
+      "bounding_box": {
+        "x0": 0,
+        "y0": 0,
+        "x1": 100,
+        "y1": 100,
+        "coordinate_space_id": "prepared-page-0001"
+      }
+    }
+  ]
+}

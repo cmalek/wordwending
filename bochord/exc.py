@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Chris Malek.
 from __future__ import annotations
 
 
@@ -11,3 +12,7 @@ class ConfigurationError(BochordError):
 
 class FileError(BochordError):
     """Raised when file I/O operations fail."""
+
+
+class RunnerEndpointUnavailable(BochordError):
+    """Raised when a hosted runner endpoint is not ready for inference."""
