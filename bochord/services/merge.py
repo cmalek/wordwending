@@ -152,10 +152,18 @@ class MergeOrchestrator:
         candidates = [
             witness
             for witness in self._eligible_witnesses
-            if witness.regions or witness.lines
+            if witness.regions
         ]
         if not candidates:
             self._scaffold_witness = None
+            self._abstained = True
+            self._add_flag(
+                MergeFlagType.INSUFFICIENT_EVIDENCE,
+                target_object_ids=[],
+                message=(
+                    "No witness supplies region structure for scaffold selection."
+                ),
+            )
             return
 
         if self._policy.structure_scaffold_runner_ids:
@@ -451,26 +459,27 @@ def _detect_structure_conflict(
             runner_id=runner_id,
         )
 
-    used: set[int] = set()
-    for scaffold_region in scaffold_sorted:
-        if scaffold_region.bounding_box is None:
+    for scaffold_region, witness_region in zip(
+        scaffold_sorted,
+        witness_sorted,
+        strict=True,
+    ):
+        scaffold_box = scaffold_region.bounding_box
+        witness_box = witness_region.bounding_box
+        if scaffold_box is None and witness_box is None:
             continue
-        best_index: int | None = None
-        best_iou = 0.0
-        for index, witness_region in enumerate(witness_sorted):
-            if index in used or witness_region.bounding_box is None:
-                continue
-            iou = _box_iou(scaffold_region.bounding_box, witness_region.bounding_box)
-            if iou >= iou_threshold and iou > best_iou:
-                best_iou = iou
-                best_index = index
-        if best_index is None:
+        if scaffold_box is None or witness_box is None:
             return True, _geometry_alternates_for_regions(
                 witness_sorted,
                 witness_id=witness_id,
                 runner_id=runner_id,
             )
-        used.add(best_index)
+        if _box_iou(scaffold_box, witness_box) < iou_threshold:
+            return True, _geometry_alternates_for_regions(
+                witness_sorted,
+                witness_id=witness_id,
+                runner_id=runner_id,
+            )
     return False, []
 
 

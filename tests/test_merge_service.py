@@ -402,3 +402,209 @@ def test_aligned_layout_fixture_produces_valid_bundle_page() -> None:
     assert len(result.page.lines) == 2
     assert len(result.page.spans) == 2
     assert result.page.regions[0].region_id == "region-b-1"
+
+
+def test_lines_only_witness_not_chosen_when_regions_available() -> None:
+    """Lines-only witnesses are ineligible; region-bearing witness wins scaffold."""
+    lines_only = _witness_page(
+        witness_id="wit-lines",
+        runner_id="runner-lines",
+        lines=[
+            _line(
+                "line-only-1",
+                region_id="missing-region",
+                line_order=1,
+                span_ids=["span-only-1"],
+                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+            ),
+            _line(
+                "line-only-2",
+                region_id="missing-region",
+                line_order=2,
+                span_ids=["span-only-2"],
+                baseline=[(0.0, 20.0), (80.0, 20.0)],
+            ),
+        ],
+        spans=[
+            _span("span-only-1", line_id="line-only-1", text="one"),
+            _span("span-only-2", line_id="line-only-2", text="two"),
+        ],
+    )
+    with_regions = _witness_page(
+        witness_id="wit-regions",
+        runner_id="runner-regions",
+        regions=[
+            _region(
+                "region-with-structure",
+                reading_order_index=1,
+                line_ids=["line-regions"],
+            )
+        ],
+        lines=[
+            _line(
+                "line-regions",
+                region_id="region-with-structure",
+                line_order=1,
+                span_ids=["span-regions"],
+            )
+        ],
+        spans=[_span("span-regions", line_id="line-regions", text="regions")],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[lines_only, with_regions],
+    )
+    policy = MergePolicy(policy_id="merge-v1", version="1.0.0")
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    assert result.page.regions[0].region_id == "region-with-structure"
+    assert result.page.lines[0].line_id == "line-regions"
+    assert result.abstained is False
+
+
+def test_lines_only_witnesses_abstain_insufficient_evidence() -> None:
+    """When no witness has regions, merge abstains without crashing."""
+    lines_only_a = _witness_page(
+        witness_id="wit-a",
+        runner_id="runner-a",
+        lines=[
+            _line(
+                "line-a",
+                region_id="orphan-a",
+                line_order=1,
+                span_ids=["span-a"],
+                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+            )
+        ],
+        spans=[_span("span-a", line_id="line-a", text="alpha")],
+    )
+    lines_only_b = _witness_page(
+        witness_id="wit-b",
+        runner_id="runner-b",
+        lines=[
+            _line(
+                "line-b",
+                region_id="orphan-b",
+                line_order=1,
+                span_ids=["span-b"],
+                baseline=[(0.0, 10.0), (80.0, 10.0)],
+            )
+        ],
+        spans=[_span("span-b", line_id="line-b", text="beta")],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[lines_only_a, lines_only_b],
+    )
+    policy = MergePolicy(policy_id="merge-v1", version="1.0.0")
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    assert result.abstained is True
+    assert result.page.regions == []
+    assert result.page.lines == []
+    assert any(
+        flag.flag_type == MergeFlagType.INSUFFICIENT_EVIDENCE for flag in result.flags
+    )
+
+
+def test_reversed_reading_order_flags_structure_conflict() -> None:
+    """Same geometry with reversed reading order is a structure scaffold conflict."""
+    top_box = BoundingBox(x0=0, y0=0, x1=100, y1=40)
+    bottom_box = BoundingBox(x0=0, y0=50, x1=100, y1=90)
+    scaffold = _witness_page(
+        witness_id="wit-scaffold",
+        runner_id="runner-scaffold",
+        regions=[
+            _region(
+                "region-top",
+                reading_order_index=1,
+                line_ids=["line-top"],
+                bounding_box=top_box,
+            ),
+            _region(
+                "region-bottom",
+                reading_order_index=2,
+                line_ids=["line-bottom"],
+                bounding_box=bottom_box,
+            ),
+        ],
+        lines=[
+            _line(
+                "line-top",
+                region_id="region-top",
+                line_order=1,
+                span_ids=["span-top"],
+            ),
+            _line(
+                "line-bottom",
+                region_id="region-bottom",
+                line_order=1,
+                span_ids=["span-bottom"],
+            ),
+        ],
+        spans=[
+            _span("span-top", line_id="line-top", text="top"),
+            _span("span-bottom", line_id="line-bottom", text="bottom"),
+        ],
+    )
+    reversed_order = _witness_page(
+        witness_id="wit-reversed",
+        runner_id="runner-reversed",
+        regions=[
+            _region(
+                "region-top-alt",
+                reading_order_index=2,
+                line_ids=["line-top-alt"],
+                bounding_box=top_box,
+            ),
+            _region(
+                "region-bottom-alt",
+                reading_order_index=1,
+                line_ids=["line-bottom-alt"],
+                bounding_box=bottom_box,
+            ),
+        ],
+        lines=[
+            _line(
+                "line-top-alt",
+                region_id="region-top-alt",
+                line_order=1,
+                span_ids=["span-top-alt"],
+            ),
+            _line(
+                "line-bottom-alt",
+                region_id="region-bottom-alt",
+                line_order=1,
+                span_ids=["span-bottom-alt"],
+            ),
+        ],
+        spans=[
+            _span("span-top-alt", line_id="line-top-alt", text="top"),
+            _span("span-bottom-alt", line_id="line-bottom-alt", text="bottom"),
+        ],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[scaffold, reversed_order],
+    )
+    policy = MergePolicy(
+        policy_id="merge-v1",
+        version="1.0.0",
+        structure_scaffold_runner_ids=["runner-scaffold"],
+    )
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    assert result.abstained is True
+    assert any(
+        flag.flag_type == MergeFlagType.STRUCTURE_SCAFFOLD_CONFLICT
+        for flag in result.flags
+    )
