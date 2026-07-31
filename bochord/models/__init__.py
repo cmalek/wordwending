@@ -122,6 +122,14 @@ from bochord.models.runner_execution import (
     RunnerExecutionPolicy,
     RunnerThroughputSummary,
 )
+from bochord.models.text_normalization import (
+    LineJoinKind,
+    LineJoinRecord,
+    NoteMarkerNormalizedForm,
+    SuperscriptNormalizedForm,
+    TextNormalizationPolicy,
+    UnicodeNormalizationForm,
+)
 
 #: Public OCR contract model exports.
 __all__ = [
@@ -171,6 +179,8 @@ __all__ = [
     "HostedEndpointPolicy",
     "HostedInvocationResult",
     "InputKind",
+    "LineJoinKind",
+    "LineJoinRecord",
     "LineRecord",
     "LinkNoteReviewEvent",
     "MarkIllegibleReviewEvent",
@@ -178,6 +188,7 @@ __all__ = [
     "MetricProfile",
     "MetricScore",
     "NoteKind",
+    "NoteMarkerNormalizedForm",
     "NoteRecord",
     "ObjectProvenance",
     "OverlayState",
@@ -232,10 +243,13 @@ __all__ = [
     "SplitRegionReviewEvent",
     "StitchedChunk",
     "StyleEvaluationSummary",
+    "SuperscriptNormalizedForm",
+    "TextNormalizationPolicy",
     "TextRole",
     "TransformKind",
     "TrustState",
     "Typography",
+    "UnicodeNormalizationForm",
     "UnlinkNoteReviewEvent",
     "WitnessReference",
 ]
