@@ -197,7 +197,7 @@ Fixture `capability-v1.json` example:
 
 Each batch fixture includes required Spec 0013 fields, Spec 0012 `execution_policy_id` (plus `warmup` / `request_ids`), and a valid `RunnerReference` with immutable revision.
 
-- [ ] **Step 1: Write failing round-trip and invariant tests**
+- [x] **Step 1: Write failing round-trip and invariant tests**
 
 ```python
 def test_spec_0013_capability_fixture_round_trips() -> None:
@@ -220,7 +220,7 @@ def test_spec_0013_batch_fixtures_round_trip_by_status() -> None:
 
 Add one parametrized negative test covering the invariant table rows not already covered by existing tests. Reuse helpers from `tests/test_ocr_models.py` where present; do not duplicate identical assertions.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 pytest tests/test_ocr_models.py -k spec_0013 -v
@@ -228,11 +228,11 @@ pytest tests/test_ocr_models.py -k spec_0013 -v
 
 Expected: FAIL on missing fixtures / missing tests.
 
-- [ ] **Step 3: Add fixtures (and finish any remaining negative cases)**
+- [x] **Step 3: Add fixtures (and finish any remaining negative cases)**
 
 Write the four JSON fixtures. Keep timestamps UTC ISO-8601. Keep paths relative. No secrets.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 pytest tests/test_ocr_models.py -k "spec_0013 or runner_reference or RunnerCapability or RunnerExecutionBatch" -q
@@ -240,7 +240,7 @@ pytest tests/test_ocr_models.py -k "spec_0013 or runner_reference or RunnerCapab
 
 Expected: PASS.
 
-- [ ] **Step 5: Quality gate + commit**
+- [x] **Step 5: Quality gate + commit**
 
 ```bash
 ruff check tests/test_ocr_models.py

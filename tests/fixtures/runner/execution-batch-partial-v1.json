@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0.0",
+  "batch_id": "batch-partial-v1",
+  "run_id": "run-spec-0013",
+  "document_id": "doc-spec-0013",
+  "execution_policy_id": "olmocr-hf-fixed-v1",
+  "runner": {
+    "runner_id": "olmocr",
+    "runner_version": "0.4.27",
+    "model_name": "allenai/olmOCR-7B",
+    "model_revision": "abcdef0123456789",
+    "hardware_class": "nvidia-l40s",
+    "runtime_name": "huggingface-endpoint",
+    "runtime_revision": "container-digest-sha256",
+    "config_digest": "sha256:runner-config",
+    "prompt_digest": "sha256:prompt"
+  },
+  "capability": {
+    "accepted_input_kinds": [
+      "image",
+      "pdf"
+    ],
+    "preferred_input_kind": "pdf",
+    "supports_multi_item_batching": true,
+    "batch_unit_kind": "prepared-unit",
+    "packaging_strategy": "unit-to-pdf-batch"
+  },
+  "packaging_artifact_id": "pkg-spec-0013",
+  "batch_size": 2,
+  "items": [
+    {
+      "item_id": "item-1",
+      "source_page_id": "page-0001",
+      "prepared_unit_id": null,
+      "artifact_id": "art-1"
+    },
+    {
+      "item_id": "item-2",
+      "source_page_id": "page-0002",
+      "prepared_unit_id": null,
+      "artifact_id": "art-2"
+    }
+  ],
+  "started_at_utc": "2026-07-31T12:00:00Z",
+  "finished_at_utc": "2026-07-31T12:05:00Z",
+  "retry_of_batch_id": null,
+  "retry_strategy": null,
+  "result_status": "partial",
+  "failure_item_ids": [
+    "item-2"
+  ],
+  "output_artifacts": [
+    {
+      "artifact_id": "wit-1",
+      "artifact_kind": "text",
+      "artifact_path": "pages/page-0001/witnesses/text/olmocr.json",
+      "media_type": "application/json",
+      "batch_item_ids": [
+        "item-1"
+      ]
+    }
+  ],
+  "warnings": [],
+  "warmup": false,
+  "request_ids": [
+    "req-spec-0013"
+  ]
+}

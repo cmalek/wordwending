@@ -81,6 +81,8 @@ from bochord.models import (
     Typography,
 )
 
+FIXTURES = Path(__file__).parent / "fixtures" / "runner"
+
 
 def _provenance() -> ObjectProvenance:
     """Return valid single-page object provenance."""
@@ -656,6 +658,64 @@ def model_runner_payload(**overrides: object) -> dict[str, object]:
     return payload
 
 
+def capability_payload(**overrides: object) -> dict[str, object]:
+    """Return a valid runner capability payload with optional overrides."""
+    payload: dict[str, object] = {
+        "accepted_input_kinds": ["image", "pdf"],
+        "preferred_input_kind": "pdf",
+        "supports_multi_item_batching": True,
+        "batch_unit_kind": "prepared-unit",
+        "packaging_strategy": "unit-to-pdf-batch",
+    }
+    payload.update(overrides)
+    return payload
+
+
+def execution_batch_payload(**overrides: object) -> dict[str, object]:
+    """Return a valid runner execution batch payload with optional overrides."""
+    payload: dict[str, object] = {
+        "schema_version": "1.0.0",
+        "batch_id": "batch-spec-0013",
+        "run_id": "run-spec-0013",
+        "document_id": "doc-spec-0013",
+        "execution_policy_id": "olmocr-hf-fixed-v1",
+        "runner": model_runner_payload(model_revision="abcdef0123456789"),
+        "capability": capability_payload(),
+        "packaging_artifact_id": "pkg-spec-0013",
+        "batch_size": 2,
+        "items": [
+            {
+                "item_id": "item-1",
+                "source_page_id": "page-0001",
+                "artifact_id": "art-1",
+            },
+            {
+                "item_id": "item-2",
+                "source_page_id": "page-0002",
+                "artifact_id": "art-2",
+            },
+        ],
+        "started_at_utc": "2026-07-31T12:00:00+00:00",
+        "finished_at_utc": "2026-07-31T12:05:00+00:00",
+        "result_status": "succeeded",
+        "failure_item_ids": [],
+        "output_artifacts": [
+            {
+                "artifact_id": "wit-1",
+                "artifact_kind": "text",
+                "artifact_path": "pages/page-0001/witnesses/text/olmocr.json",
+                "media_type": "application/json",
+                "batch_item_ids": ["item-1", "item-2"],
+            }
+        ],
+        "warnings": [],
+        "warmup": False,
+        "request_ids": ["req-spec-0013"],
+    }
+    payload.update(overrides)
+    return payload
+
+
 def runner_policy_payload(**overrides: object) -> dict[str, object]:
     """Return a valid runner execution policy payload with optional overrides."""
     payload: dict[str, object] = {
@@ -746,12 +806,114 @@ def test_packaged_runner_input_rejects_mismatched_item_page_lengths() -> None:
 
 
 def test_runner_policy_fixture_validates() -> None:
-    fixture_path = (
-        Path(__file__).parent / "fixtures" / "runner" / "olmocr-policy-v1.json"
+    policy = RunnerExecutionPolicy.model_validate_json(
+        FIXTURES.joinpath("olmocr-policy-v1.json").read_text()
     )
-    policy = RunnerExecutionPolicy.model_validate_json(fixture_path.read_text())
     assert policy.policy_id == "olmocr-hf-fixed-v1"
     assert policy.endpoint.hardware_class == "nvidia-l40s"
+
+
+def test_spec_0013_capability_fixture_round_trips() -> None:
+    payload = json.loads(FIXTURES.joinpath("capability-v1.json").read_text())
+    capability = RunnerCapability.model_validate(payload)
+    assert capability.model_dump(mode="json") == payload
+
+
+def test_spec_0013_batch_fixtures_round_trip_by_status() -> None:
+    for name in (
+        "execution-batch-succeeded-v1.json",
+        "execution-batch-partial-v1.json",
+        "execution-batch-failed-v1.json",
+    ):
+        payload = json.loads(FIXTURES.joinpath(name).read_text())
+        batch = RunnerExecutionBatch.model_validate(payload)
+        assert batch.model_dump(mode="json") == payload
+        assert batch.batch_size == len(batch.items)
+
+
+@pytest.mark.parametrize(
+    ("model_kind", "overrides", "match"),
+    [
+        (
+            "capability",
+            {"accepted_input_kinds": []},
+            "accepted_input_kinds must not be empty",
+        ),
+        (
+            "batch",
+            {
+                "batch_size": 2,
+                "items": [
+                    {
+                        "item_id": "item-1",
+                        "source_page_id": "page-0001",
+                        "artifact_id": "art-1",
+                    },
+                    {
+                        "item_id": "item-1",
+                        "source_page_id": "page-0002",
+                        "artifact_id": "art-2",
+                    },
+                ],
+            },
+            "batch item ids must be unique",
+        ),
+        (
+            "batch",
+            {"result_status": "partial", "failure_item_ids": []},
+            "partial batches require some but not all items to fail",
+        ),
+        (
+            "batch",
+            {
+                "result_status": "partial",
+                "failure_item_ids": ["item-1", "item-2"],
+            },
+            "partial batches require some but not all items to fail",
+        ),
+        (
+            "batch",
+            {"result_status": "failed", "failure_item_ids": ["item-1"]},
+            "failed batches must identify every submitted item as failed",
+        ),
+        (
+            "batch",
+            {
+                "started_at_utc": "2026-07-31T12:05:00+00:00",
+                "finished_at_utc": "2026-07-31T12:00:00+00:00",
+            },
+            "finished_at_utc cannot precede started_at_utc",
+        ),
+        (
+            "batch",
+            {
+                "output_artifacts": [
+                    {
+                        "artifact_id": "wit-1",
+                        "artifact_kind": "text",
+                        "artifact_path": "pages/page-0001/witnesses/text/olmocr.json",
+                        "media_type": "application/json",
+                        "batch_item_ids": ["item-1", "unknown-item"],
+                    }
+                ],
+            },
+            "output artifacts must identify submitted batch items",
+        ),
+    ],
+)
+def test_spec_0013_runner_invariants_reject_invalid_payloads(
+    model_kind: str,
+    overrides: dict[str, object],
+    match: str,
+) -> None:
+    if model_kind == "capability":
+        payload = capability_payload(**overrides)
+        validator = RunnerCapability.model_validate
+    else:
+        payload = execution_batch_payload(**overrides)
+        validator = RunnerExecutionBatch.model_validate
+    with pytest.raises(ValidationError, match=match):
+        validator(payload)
 
 
 def test_throughput_summary_rejects_inconsistent_items_per_second() -> None:

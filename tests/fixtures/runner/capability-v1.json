@@ -1,0 +1,10 @@
+{
+  "accepted_input_kinds": [
+    "image",
+    "pdf"
+  ],
+  "preferred_input_kind": "pdf",
+  "supports_multi_item_batching": true,
+  "batch_unit_kind": "prepared-unit",
+  "packaging_strategy": "unit-to-pdf-batch"
+}
