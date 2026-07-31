@@ -76,7 +76,7 @@ _MUTABLE_MODEL_REVISIONS = frozenset({"main", "master", "latest", "HEAD"})
 
 Reject case-insensitively after strip. Keep existing required-field and `huggingface*` runtime checks.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```python
 def test_runner_reference_rejects_mutable_model_revision() -> None:
@@ -107,7 +107,7 @@ def test_runner_reference_accepts_immutable_digest_revision() -> None:
     assert ref.model_revision == "abcdef0123456789"
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 source .venv/bin/activate
@@ -117,7 +117,7 @@ pytest tests/test_ocr_models.py::test_runner_reference_rejects_mutable_model_rev
 
 Expected: FAIL because mutable revisions are still accepted.
 
-- [ ] **Step 3: Implement minimal rejection**
+- [x] **Step 3: Implement minimal rejection**
 
 Inside `validate_model_reproducibility`, after required-field checks:
 
@@ -131,7 +131,7 @@ if self.model_name is not None and self.model_revision is not None:
 
 Module-level `#:` frozenset constant near other model constants.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 pytest tests/test_ocr_models.py::test_runner_reference_rejects_mutable_model_revision \
@@ -140,7 +140,7 @@ pytest tests/test_ocr_models.py::test_runner_reference_rejects_mutable_model_rev
 
 Expected: PASS.
 
-- [ ] **Step 5: Quality gate + commit**
+- [x] **Step 5: Quality gate + commit**
 
 ```bash
 ruff check bochord/models/ocr.py tests/test_ocr_models.py

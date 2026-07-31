@@ -157,6 +157,10 @@ class InputKind(StrEnum):
     PDF = "pdf"
 
 
+#: Model revision labels that move over time and cannot be replayed faithfully.
+_MUTABLE_MODEL_REVISIONS = frozenset({"main", "master", "latest", "HEAD"})
+
+
 class BatchUnitKind(StrEnum):
     """Batch grouping units for runner execution."""
 
@@ -544,6 +548,13 @@ class RunnerReference(SchemaModel):
                 "and config revisions"
             )
             raise ValueError(msg)
+        if self.model_name is not None and self.model_revision is not None:
+            revision = self.model_revision.strip()
+            if revision.casefold() in {
+                item.casefold() for item in _MUTABLE_MODEL_REVISIONS
+            }:
+                msg = "mutable model revisions such as main are not reproducible"
+                raise ValueError(msg)
         if self.model_name is not None and (
             self.runtime_name is None
             or not self.runtime_name.startswith("huggingface")

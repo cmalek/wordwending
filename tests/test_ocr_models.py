@@ -686,6 +686,34 @@ def runner_policy_payload(**overrides: object) -> dict[str, object]:
     return payload
 
 
+def test_runner_reference_rejects_mutable_model_revision() -> None:
+    with pytest.raises(ValidationError, match="mutable"):
+        RunnerReference(
+            runner_id="olmocr",
+            model_name="allenai/olmOCR-7B",
+            model_revision="main",
+            hardware_class="nvidia-l40s",
+            runtime_name="huggingface-endpoint",
+            runtime_revision="ep-rev-1",
+            config_digest="cfg",
+            prompt_digest="prompt",
+        )
+
+
+def test_runner_reference_accepts_immutable_digest_revision() -> None:
+    ref = RunnerReference(
+        runner_id="olmocr",
+        model_name="allenai/olmOCR-7B",
+        model_revision="abcdef0123456789",
+        hardware_class="nvidia-l40s",
+        runtime_name="huggingface-endpoint",
+        runtime_revision="ep-rev-1",
+        config_digest="cfg",
+        prompt_digest="prompt",
+    )
+    assert ref.model_revision == "abcdef0123456789"
+
+
 def test_model_backed_runner_requires_hardware_class() -> None:
     payload = model_runner_payload(hardware_class=None)
     with pytest.raises(ValidationError):
