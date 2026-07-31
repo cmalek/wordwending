@@ -23,13 +23,23 @@ def record(  # noqa: PLR0913
     document_id: str,
     *,
     page_id: str | None = None,
-    numerator: float = 0.0,
+    numerator: float | None = 0.0,
     denominator: float = 0.0,
+    value: float | None = None,
+    note: str | None = None,
     mode: PreparationMode = PreparationMode.FULL_PAGE,
     runner: str = "olmocr",
     page_class: PageClass = PageClass.ORDINARY_PROSE,
 ) -> PageEvaluationRecord:
     """Build one page evaluation record with a single macron_recall metric."""
+    if value is None:
+        metric_value = (
+            0.0
+            if numerator is None or denominator == 0.0
+            else numerator / denominator
+        )
+    else:
+        metric_value = value
     return PageEvaluationRecord(
         run_id="run-1",
         document_id=document_id,
@@ -43,9 +53,10 @@ def record(  # noqa: PLR0913
                 metrics=[
                     MetricScore(
                         metric_id="macron_recall",
-                        value=numerator / denominator if denominator else 0.0,
+                        value=metric_value,
                         numerator=numerator,
                         denominator=denominator,
+                        note=note,
                     )
                 ]
             )
@@ -82,3 +93,38 @@ def test_empty_input_returns_three_empty_lists() -> None:
     assert report.by_page_class == []
     assert report.by_page_class_and_preparation_mode == []
     assert report.by_page_class_and_runner == []
+
+
+def test_zero_denominator_unit_error_aggregates_as_unit_error() -> None:
+    report = EvaluationCohortService().summarize(
+        [
+            record(
+                "doc-a",
+                numerator=None,
+                denominator=0.0,
+                value=1.0,
+            ),
+            record("doc-b", numerator=0.0, denominator=0.0, value=0.0),
+        ]
+    )
+    score = metric(report.by_page_class[0].summary.text, "macron_recall")
+    assert score.value == 1.0
+    assert score.numerator is None
+    assert score.denominator == 0.0
+    assert score.note == (
+        "one or more empty-reference predictions produced unit error"
+    )
+
+
+def test_zero_denominator_without_unit_error_aggregates_to_zero() -> None:
+    report = EvaluationCohortService().summarize(
+        [
+            record("doc-a", numerator=0.0, denominator=0.0, value=0.0),
+            record("doc-b", numerator=0.0, denominator=0.0, value=0.0),
+        ]
+    )
+    score = metric(report.by_page_class[0].summary.text, "macron_recall")
+    assert score.value == 0.0
+    assert score.numerator == 0.0
+    assert score.denominator == 0.0
+    assert score.note is None
