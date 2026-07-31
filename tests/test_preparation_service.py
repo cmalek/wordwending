@@ -415,6 +415,40 @@ def test_table_rule_page_is_suggested_as_table_heavy() -> None:
     assert PageClassifier().suggest(signals) is PageClass.TABLE_HEAVY
 
 
+@pytest.mark.parametrize(
+    ("page_class", "expected"),
+    [
+        (PageClass.ORDINARY_PROSE, ["prefer-full-page"]),
+        (PageClass.DENSE_DICTIONARY, ["consider-column-subdivision"]),
+        (
+            PageClass.NOTE_HEAVY,
+            ["preserve-note-regions", "review-note-linkage"],
+        ),
+        (
+            PageClass.TABLE_HEAVY,
+            ["preserve-table-regions", "avoid-prose-flattening"],
+        ),
+        (
+            PageClass.MIXED_COMPLEX,
+            ["preserve-layout-conservatively", "require-stronger-review"],
+        ),
+    ],
+)
+def test_final_page_class_emits_stable_preparation_actions(
+    page_class: PageClass,
+    expected: list[str],
+    tmp_path: Path,
+) -> None:
+    result = preparation_service().prepare(
+        source_page(),
+        recipe(),
+        tmp_path,
+        page_class_override=page_class,
+        override_reason="operator classified page",
+    )
+    assert result.assessment.recommended_actions == expected
+
+
 def test_prepared_page_binds_full_recipe_digest(tmp_path: Path) -> None:
     result = preparation_service().prepare(source_page(), recipe(), tmp_path)
     expected = hashlib.sha256(

@@ -98,6 +98,17 @@ _COLUMNS_VALLEYS_MISSING_WARNING = (
     "columns were requested but vertical valleys were not detected; "
     "fell back to full-page preparation"
 )
+#: Stable machine-readable preparation guidance keyed by final page class.
+_PAGE_CLASS_ACTIONS: dict[PageClass, list[str]] = {
+    PageClass.ORDINARY_PROSE: ["prefer-full-page"],
+    PageClass.DENSE_DICTIONARY: ["consider-column-subdivision"],
+    PageClass.NOTE_HEAVY: ["preserve-note-regions", "review-note-linkage"],
+    PageClass.TABLE_HEAVY: ["preserve-table-regions", "avoid-prose-flattening"],
+    PageClass.MIXED_COMPLEX: [
+        "preserve-layout-conservatively",
+        "require-stronger-review",
+    ],
+}
 
 
 class PageQualityAssessor:
@@ -1798,7 +1809,7 @@ def _build_assessment(  # noqa: PLR0913
         prepared_page_id=prepared_page_id,
         signals=signals,
         flags=flags,
-        recommended_actions=[],
+        recommended_actions=list(_PAGE_CLASS_ACTIONS[page_class_final]),
         warnings=warnings,
         page_class_suggested=page_class_suggested,
         page_class_final=page_class_final,
