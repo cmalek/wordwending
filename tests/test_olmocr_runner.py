@@ -3,9 +3,10 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from unittest.mock import patch
 
 import httpx
@@ -23,11 +24,11 @@ from bochord.models.runner_execution import (
     RunnerExecutionPolicy,
 )
 from bochord.services.olmocr_runner import HuggingFaceOlmocrRunner
-from tests.test_ocr_models import model_runner_payload, runner_policy_payload
 from tests.test_runner_packaging import planned_batch as packaging_planned_batch
 
 ENDPOINT_URL = "https://example.endpoints.huggingface.cloud/v1"
 TOKEN = "hf_test_token"  # noqa: S105
+POLICY_FIXTURE = Path(__file__).parent / "fixtures" / "runner" / "olmocr-policy-v1.json"
 
 
 def olmocr_response(text: str) -> dict[str, Any]:
@@ -53,16 +54,20 @@ class MockHttpxClient:
         *,
         get_status: int = 200,
         get_json: dict[str, Any] | None = None,
+        get_error: BaseException | None = None,
         post_responses: list[httpx.Response | BaseException] | None = None,
     ) -> None:
         self.get_status = get_status
         self.get_json = get_json if get_json is not None else {"data": [{"id": "model"}]}
+        self.get_error = get_error
         self.post_responses = list(post_responses or [])
         self.get_calls: list[tuple[str, dict[str, Any]]] = []
         self.post_calls: list[tuple[str, dict[str, Any]]] = []
 
     def get(self, url: str, **kwargs: Any) -> httpx.Response:
         self.get_calls.append((url, kwargs))
+        if self.get_error is not None:
+            raise self.get_error
         return httpx.Response(self.get_status, json=self.get_json)
 
     def post(self, url: str, **kwargs: Any) -> httpx.Response:
@@ -83,12 +88,35 @@ def mock_client(**kwargs: Any) -> MockHttpxClient:
 
 def policy(**overrides: object) -> RunnerExecutionPolicy:
     """Return a default runner execution policy with optional overrides."""
-    return RunnerExecutionPolicy.model_validate(runner_policy_payload(**overrides))
+    payload = json.loads(POLICY_FIXTURE.read_text())
+    payload.update(overrides)
+    return RunnerExecutionPolicy.model_validate(payload)
 
 
 def runner_reference(**overrides: object) -> RunnerReference:
     """Return a default olmOCR runner reference with optional overrides."""
-    return RunnerReference.model_validate(model_runner_payload(**overrides))
+    payload: dict[str, object] = {
+        "runner_id": "olmocr",
+        "runner_version": "0.4.27",
+        "model_name": "allenai/olmOCR",
+        "model_revision": "model-revision",
+        "hardware_class": "nvidia-l40s",
+        "runtime_name": "huggingface-endpoint",
+        "runtime_revision": "container-digest",
+        "config_digest": "sha256:runner-config",
+        "prompt_digest": "sha256:prompt",
+    }
+    payload.update(overrides)
+    return RunnerReference.model_validate(payload)
+
+
+def policy_with_endpoint(**endpoint_overrides: object) -> RunnerExecutionPolicy:
+    """Return a policy whose endpoint block includes ``endpoint_overrides``."""
+    payload = json.loads(POLICY_FIXTURE.read_text())
+    endpoint = dict(cast("dict[str, object]", payload["endpoint"]))
+    endpoint.update(endpoint_overrides)
+    payload["endpoint"] = endpoint
+    return RunnerExecutionPolicy.model_validate(payload)
 
 
 def hosted_runner(
@@ -153,9 +181,15 @@ def packaged_input(item_count: int, output_dir: Path) -> PackagedRunnerInput:
     return _write_pdf_image(output_dir, batch)
 
 
-def test_health_check_requires_models_readiness(tmp_path: Path) -> None:
+def test_health_check_requires_models_readiness() -> None:
     client = mock_client(get_status=503)
     with pytest.raises(RunnerEndpointUnavailable):
+        hosted_runner(client).health_check()
+
+
+def test_health_check_network_failure_raises_unavailable() -> None:
+    client = mock_client(get_error=httpx.ConnectError("connection refused"))
+    with pytest.raises(RunnerEndpointUnavailable, match="connection refused"):
         hosted_runner(client).health_check()
 
 
@@ -251,6 +285,35 @@ def test_no_local_fallback_or_subprocess_call(tmp_path: Path) -> None:
     mock_call.assert_not_called()
 
 
+def test_connection_error_on_second_item_preserves_first_artifact(
+    tmp_path: Path,
+) -> None:
+    batch = planned_batch(2, batch_id="batch-connect")
+    client = mock_client(
+        post_responses=[
+            httpx.Response(
+                200,
+                json=olmocr_response("first"),
+                headers={"x-request-id": "req-1"},
+            ),
+            httpx.ConnectError("connection refused"),
+        ]
+    )
+    result = hosted_runner(client).invoke(
+        batch,
+        _write_pdf_image(tmp_path, batch),
+        tmp_path,
+    )
+    assert result.failure_item_ids == [batch.items[1].item_id]
+    assert len(result.output_artifacts) == 1
+    assert result.output_artifacts[0].batch_item_ids == [batch.items[0].item_id]
+    assert result.request_ids == ["req-1"]
+    assert any("connection refused" in warning for warning in result.warnings)
+    witness_root = tmp_path / "witnesses" / batch.batch_id
+    assert (witness_root / f"{batch.items[0].item_id}.json").exists()
+    assert not (witness_root / f"{batch.items[1].item_id}.json").exists()
+
+
 def test_partial_batch_preserves_successful_item_artifacts(tmp_path: Path) -> None:
     batch = planned_batch(2, batch_id="batch-partial")
     client = mock_client(
@@ -290,12 +353,7 @@ def test_scale_up_timeout_header_uses_policy_value(tmp_path: Path) -> None:
     )
     runner = HuggingFaceOlmocrRunner(
         runner=runner_reference(),
-        policy=policy(
-            endpoint={
-                **runner_policy_payload()["endpoint"],  # type: ignore[index]
-                "cold_start_timeout_seconds": 600,
-            },
-        ),
+        policy=policy_with_endpoint(cold_start_timeout_seconds=600),
         endpoint_url=ENDPOINT_URL,
         token=TOKEN,
         client=client,  # type: ignore[arg-type]

@@ -131,6 +131,46 @@ def _load_image_from_pdf(pdf_path: Path, page_number: int) -> Image.Image:
         document.close()
 
 
+def _transport_failure_warning(item_id: str, exc: httpx.RequestError) -> str:
+    """
+    Build a warning message for one hosted transport-layer failure.
+
+    Args:
+        item_id: Batch item identifier for the failed request.
+        exc: Transport or network error raised by httpx.
+
+    Returns:
+        Non-fatal warning text for the hosted invocation result.
+
+    """
+    if isinstance(exc, httpx.TimeoutException):
+        return f"hosted request for {item_id} timed out"
+    return f"hosted request for {item_id} failed: {exc}"
+
+
+def _failed_item_result(
+    *,
+    request_id: str | None,
+    warning: str,
+) -> _ItemInvokeResult:
+    """
+    Build one failed hosted item result.
+
+    Keyword Args:
+        request_id: Hosted request identifier when present.
+        warning: Non-fatal warning describing the failure.
+
+    Returns:
+        Failed per-item invocation outcome.
+
+    """
+    return {
+        "artifact": None,
+        "request_id": request_id,
+        "warning": warning,
+    }
+
+
 def _load_direct_image(image_path: Path) -> Image.Image:
     """
     Open one direct image input as RGB.
@@ -205,14 +245,18 @@ class HuggingFaceOlmocrRunner:
             Issues one GET request to the hosted ``/models`` endpoint.
 
         Raises:
-            RunnerEndpointUnavailable: If the endpoint is not ready.
+            RunnerEndpointUnavailable: If the endpoint is not ready or unreachable.
 
         """
-        response = self._client.get(
-            f"{self._endpoint_url}/models",
-            headers=self._auth_headers(),
-            timeout=self._policy.endpoint.request_timeout_seconds,
-        )
+        try:
+            response = self._client.get(
+                f"{self._endpoint_url}/models",
+                headers=self._auth_headers(),
+                timeout=self._policy.endpoint.request_timeout_seconds,
+            )
+        except httpx.RequestError as exc:
+            msg = f"hosted endpoint models check failed: {exc}"
+            raise RunnerEndpointUnavailable(msg) from exc
         if response.status_code != httpx.codes.OK:
             msg = (
                 "hosted endpoint models check failed with status "
@@ -242,14 +286,9 @@ class HuggingFaceOlmocrRunner:
             Hosted invocation result with per-item failures and artifacts.
 
         Raises:
-            ConfigurationError: If the runner token is missing.
             FileNotFoundError: If a packaged input path is missing locally.
 
         """
-        if not self._token:
-            msg = "missing hosted inference token"
-            raise ConfigurationError(msg)
-
         failure_item_ids: list[str] = []
         output_artifacts: list[RunnerOutputArtifact] = []
         request_ids: list[str] = []
@@ -325,51 +364,121 @@ class HuggingFaceOlmocrRunner:
                 json=payload,
                 timeout=self._policy.endpoint.request_timeout_seconds,
             )
-
-            request_id = response.headers.get("x-request-id")
-            if response.status_code in self._policy.endpoint.retryable_status_codes:
-                warning = (
-                    f"hosted request for {item_id} failed with retryable "
-                    f"status {response.status_code}"
-                )
-                return {
-                    "artifact": None,
-                    "request_id": request_id,
-                    "warning": warning,
-                }
-            if response.status_code != httpx.codes.OK:
-                warning = (
-                    f"hosted request for {item_id} failed with status "
-                    f"{response.status_code}"
-                )
-                return {
-                    "artifact": None,
-                    "request_id": request_id,
-                    "warning": warning,
-                }
-
-            witness_path = self._witness_path(output_dir, batch.batch_id, item_id)
-            witness_path.parent.mkdir(parents=True, exist_ok=True)
-            witness_path.write_bytes(response.content)
-
-            rel_path = witness_path.relative_to(output_dir).as_posix()
-            return {
-                "artifact": RunnerOutputArtifact(
-                    artifact_id=f"witness-{item_id}",
-                    artifact_kind="text",
-                    artifact_path=rel_path,
-                    media_type="application/json",
-                    batch_item_ids=[item_id],
-                ),
-                "request_id": request_id,
-                "warning": None,
-            }
-        except httpx.TimeoutException:
-            warning = f"hosted request for {item_id} timed out"
-            return {"artifact": None, "request_id": None, "warning": warning}
+            return self._result_from_response(
+                response=response,
+                output_dir=output_dir,
+                batch_id=batch.batch_id,
+                item_id=item_id,
+            )
+        except httpx.RequestError as exc:
+            warning = _transport_failure_warning(item_id, exc)
+            return _failed_item_result(request_id=None, warning=warning)
         finally:
             if image is not None:
                 image.close()
+
+    def _result_from_response(
+        self,
+        *,
+        response: httpx.Response,
+        output_dir: Path,
+        batch_id: str,
+        item_id: str,
+    ) -> _ItemInvokeResult:
+        """
+        Classify one hosted response and persist a witness on success.
+
+        Keyword Args:
+            response: Raw hosted completion response.
+            output_dir: Output root for witness files.
+            batch_id: Planned batch identifier.
+            item_id: Batch item identifier for this invocation.
+
+        Returns:
+            Per-item hosted invocation outcome.
+
+        """
+        request_id = response.headers.get("x-request-id")
+        warning = self._response_failure_warning(response, item_id)
+        if warning is not None:
+            return _failed_item_result(request_id=request_id, warning=warning)
+        return self._success_witness_result(
+            response=response,
+            output_dir=output_dir,
+            batch_id=batch_id,
+            item_id=item_id,
+            request_id=request_id,
+        )
+
+    def _response_failure_warning(
+        self,
+        response: httpx.Response,
+        item_id: str,
+    ) -> str | None:
+        """
+        Return a warning when ``response`` represents a hosted item failure.
+
+        Args:
+            response: Raw hosted completion response.
+            item_id: Batch item identifier for this invocation.
+
+        Returns:
+            Warning text when the response failed, otherwise ``None``.
+
+        """
+        if response.status_code in self._policy.endpoint.retryable_status_codes:
+            return (
+                f"hosted request for {item_id} failed with retryable "
+                f"status {response.status_code}"
+            )
+        if response.status_code != httpx.codes.OK:
+            return (
+                f"hosted request for {item_id} failed with status "
+                f"{response.status_code}"
+            )
+        return None
+
+    def _success_witness_result(
+        self,
+        *,
+        response: httpx.Response,
+        output_dir: Path,
+        batch_id: str,
+        item_id: str,
+        request_id: str | None,
+    ) -> _ItemInvokeResult:
+        """
+        Persist one successful hosted response witness.
+
+        Side Effects:
+            Writes raw response bytes under ``output_dir/witnesses/``.
+
+        Keyword Args:
+            response: Successful hosted completion response.
+            output_dir: Output root for witness files.
+            batch_id: Planned batch identifier.
+            item_id: Batch item identifier for this invocation.
+            request_id: Hosted request identifier when present.
+
+        Returns:
+            Successful per-item hosted invocation outcome.
+
+        """
+        witness_path = self._witness_path(output_dir, batch_id, item_id)
+        witness_path.parent.mkdir(parents=True, exist_ok=True)
+        witness_path.write_bytes(response.content)
+        rel_path = witness_path.relative_to(output_dir).as_posix()
+        return {
+            "artifact": RunnerOutputArtifact(
+                artifact_id=f"witness-{item_id}",
+                artifact_kind="text",
+                artifact_path=rel_path,
+                media_type="application/json",
+                batch_item_ids=[item_id],
+            ),
+            "request_id": request_id,
+            "warning": None,
+        }
 
     def _load_item_image(
         self,
