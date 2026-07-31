@@ -43,6 +43,7 @@ Read in this order:
    spec_0012_runner_execution_and_batching
    spec_0013_pass_runner_interface_schema
    spec_0008_text_normalization
+   text_normalization_policy_v1
    spec_0009_merge_policy
    spec_0002_bundle_layout
    spec_0005_human_markup

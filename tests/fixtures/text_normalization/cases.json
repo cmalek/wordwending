@@ -1,0 +1,79 @@
+[
+  {
+    "id": "historical_chars_preserved",
+    "method": "normalize_span_text",
+    "input_diplomatic": "  ǣ þ ð æ ō  ",
+    "policy_overrides": {},
+    "expected_normalized": "ǣ þ ð æ ō"
+  },
+  {
+    "id": "whitespace_collapsed",
+    "method": "normalize_span_text",
+    "input_diplomatic": "hello\t\n  world",
+    "policy_overrides": {},
+    "expected_normalized": "hello world"
+  },
+  {
+    "id": "soft_hyphen_hyphen_join",
+    "method": "join_line_texts",
+    "left_diplomatic": "word\u00ad",
+    "right_diplomatic": "break",
+    "left_line_id": "line-1",
+    "right_line_id": "line-2",
+    "join_kind": "hyphen-join",
+    "policy_overrides": {},
+    "expected_normalized": "wordbreak",
+    "expected_removed_hyphen": true
+  },
+  {
+    "id": "ascii_hyphen_hyphen_join",
+    "method": "join_line_texts",
+    "left_diplomatic": "word-",
+    "right_diplomatic": "break",
+    "left_line_id": "line-1",
+    "right_line_id": "line-2",
+    "join_kind": "hyphen-join",
+    "policy_overrides": {},
+    "expected_normalized": "wordbreak",
+    "expected_removed_hyphen": true
+  },
+  {
+    "id": "direct_join_keeps_hyphen",
+    "method": "join_line_texts",
+    "left_diplomatic": "word-",
+    "right_diplomatic": "break",
+    "left_line_id": "line-1",
+    "right_line_id": "line-2",
+    "join_kind": "direct",
+    "policy_overrides": {},
+    "expected_normalized": "word-break",
+    "expected_removed_hyphen": false
+  },
+  {
+    "id": "placeholder_note_markers",
+    "method": "normalize_note_text",
+    "input_diplomatic": "See note*†",
+    "policy_overrides": {
+      "note_marker_form": "placeholder"
+    },
+    "expected_normalized": "See note[n][n]"
+  },
+  {
+    "id": "flatten_superscript_digits",
+    "method": "normalize_span_text",
+    "input_diplomatic": "x²y³",
+    "policy_overrides": {
+      "superscript_form": "flatten"
+    },
+    "expected_normalized": "x2y3"
+  },
+  {
+    "id": "span_skips_note_marker_placeholder",
+    "method": "normalize_span_text",
+    "input_diplomatic": "See*",
+    "policy_overrides": {
+      "note_marker_form": "placeholder"
+    },
+    "expected_normalized": "See*"
+  }
+]
