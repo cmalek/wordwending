@@ -11,6 +11,8 @@ import pytest
 from PIL import Image
 from pydantic import ValidationError
 
+import httpx
+
 from bochord.exc import ConfigurationError, RunnerEndpointUnavailable
 from bochord.models.ocr import (
     BatchResultStatus,
@@ -29,7 +31,7 @@ from bochord.services.olmocr_runner import OLMOCR_CAPABILITY
 from bochord.services.runner_batching import RunnerBatchPlanner
 from bochord.services.runner_execution import RunnerExecutionService
 from bochord.services.runner_packaging import RunnerInputPackager
-from tests.test_olmocr_runner import hosted_runner, mock_client
+from tests.test_olmocr_runner import hosted_runner, mock_client, olmocr_response
 from tests.test_runner_batching import artifacts as batching_artifacts
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "runner"
@@ -210,6 +212,42 @@ def test_execution_service_accepts_real_runner_public_contract() -> None:
     assert service._runner.policy is runner.policy
     assert service._runner.runner_ref is runner.runner_ref
     assert service._runner.capability is runner.capability
+
+
+def test_hosted_runner_across_two_batches_with_high_source_orders(
+    tmp_path: Path,
+) -> None:
+    artifacts = [
+        artifact.model_copy(update={"order": index + 5})
+        for index, artifact in enumerate(prepared_artifacts(8))
+    ]
+    bundle = fixture_root(tmp_path / "bundle")
+    post_responses = [
+        httpx.Response(
+            200,
+            json=olmocr_response(f"item-{index}"),
+            headers={"x-request-id": f"req-{index}"},
+        )
+        for index in range(1, 9)
+    ]
+    service = RunnerExecutionService(
+        RunnerBatchPlanner(),
+        RunnerInputPackager(),
+        hosted_runner(mock_client(post_responses=post_responses)),
+    )
+    batches, summary = service.run(
+        "run-1",
+        "bt",
+        artifacts,
+        bundle,
+        tmp_path,
+    )
+    assert summary.failed_item_count == 0
+    assert summary.measured_item_count == 4
+    assert len(batches) == 2
+    assert batches[0].warmup is True
+    assert batches[1].warmup is False
+    assert all("out of range" not in " ".join(batch.warnings) for batch in batches)
 
 
 def test_partial_batch_persists_before_failed_item_retry(tmp_path: Path) -> None:

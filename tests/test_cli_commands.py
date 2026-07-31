@@ -85,6 +85,17 @@ class TestCLISettings:
         result = runner.invoke(cli, ["--config-file", str(config_file), "settings"])
         assert result.exit_code == 0
 
+    def test_settings_command_redacts_huggingface_api_key(self, runner, monkeypatch):
+        """Settings output must not expose the raw Hugging Face token."""
+        secret = "hf_secret_token_xyz"
+        monkeypatch.setenv("BOCHORD_HUGGINGFACE_API_KEY", secret)
+        for output_format in ("json", "text", "table"):
+            result = runner.invoke(cli, ["--output", output_format, "settings"])
+            assert result.exit_code == 0
+            assert secret not in result.output
+        data = json.loads(runner.invoke(cli, ["--output", "json", "settings"]).output)
+        assert data["huggingface_api_key"] == "**********"
+
 
 class TestCLIGlobalOptions:
     """Test global CLI options."""

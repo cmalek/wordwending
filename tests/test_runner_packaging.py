@@ -17,6 +17,7 @@ from bochord.models.ocr import (
 )
 from bochord.models.runner_execution import PlannedRunnerBatch
 from bochord.services.runner_packaging import RunnerInputPackager
+from tests.test_runner_batching import artifacts as batching_artifacts
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "runner"
 PREPARED_INPUTS_PATH = FIXTURE_ROOT / "prepared-inputs.json"
@@ -29,13 +30,29 @@ def _write_test_images(root: Path, artifacts: list[PreparedArtifactRef]) -> None
         Image.new("RGB", (8, 8), color=(128, 64, 32)).save(destination)
 
 
-def planned_batch(item_count: int, *, batch_id: str = "batch-test") -> PlannedRunnerBatch:
+def planned_batch(
+    item_count: int,
+    *,
+    batch_id: str = "batch-test",
+    orders: list[int] | None = None,
+) -> PlannedRunnerBatch:
     """Build a planned batch aligned with ``prepared-inputs.json``."""
     payload = json.loads(PREPARED_INPUTS_PATH.read_text())
-    artifacts = [
-        PreparedArtifactRef.model_validate(entry)
-        for entry in payload["artifacts"][:item_count]
+    fixture_artifacts = [
+        PreparedArtifactRef.model_validate(entry) for entry in payload["artifacts"]
     ]
+    if item_count <= len(fixture_artifacts):
+        artifacts = fixture_artifacts[:item_count]
+    else:
+        artifacts = batching_artifacts(item_count)
+    if orders is not None:
+        if len(orders) != item_count:
+            msg = "orders length must match item_count"
+            raise ValueError(msg)
+        artifacts = [
+            artifact.model_copy(update={"order": order})
+            for artifact, order in zip(artifacts, orders, strict=True)
+        ]
     items = [
         BatchItemRef(
             item_id=f"{batch_id}-item-{index:03d}",
@@ -58,6 +75,7 @@ def bundle_root(tmp_path: Path) -> Path:
     payload = json.loads(PREPARED_INPUTS_PATH.read_text())
     artifacts = [PreparedArtifactRef.model_validate(entry) for entry in payload["artifacts"]]
     _write_test_images(tmp_path, artifacts)
+    _write_test_images(tmp_path, batching_artifacts(8))
     return tmp_path
 
 
@@ -140,3 +158,54 @@ def test_pdf_packaging_raises_when_source_image_missing(tmp_path: Path) -> None:
             tmp_path,
             tmp_path / "output",
         )
+
+
+def test_pdf_packaging_uses_positional_page_numbers_not_source_order(
+    bundle_root: Path,
+    tmp_path: Path,
+) -> None:
+    batch = planned_batch(4, orders=[5, 6, 7, 8])
+    packaged = RunnerInputPackager().package(
+        batch,
+        PackagingStrategy.UNIT_TO_PDF_BATCH,
+        bundle_root,
+        tmp_path,
+    )
+    assert packaged.page_numbers == [1, 2, 3, 4]
+    assert packaged.batch_item_ids == [item.item_id for item in batch.items]
+
+
+def test_retry_packaging_uses_page_one_for_single_failed_item(
+    bundle_root: Path,
+    tmp_path: Path,
+) -> None:
+    batch = planned_batch(1, batch_id="batch-retry", orders=[8])
+    packaged = RunnerInputPackager().package(
+        batch,
+        PackagingStrategy.UNIT_TO_PDF_BATCH,
+        bundle_root,
+        tmp_path,
+    )
+    assert packaged.page_numbers == [1]
+    assert len(packaged.batch_item_ids) == 1
+
+
+def test_retry_packaging_for_non_first_failed_item_uses_page_one(
+    bundle_root: Path,
+    tmp_path: Path,
+) -> None:
+    original = planned_batch(4, batch_id="batch-original", orders=[5, 6, 7, 8])
+    failed_index = 2
+    retry_batch = PlannedRunnerBatch(
+        batch_id="batch-retry",
+        items=[original.items[failed_index]],
+        artifacts=[original.artifacts[failed_index]],
+    )
+    packaged = RunnerInputPackager().package(
+        retry_batch,
+        PackagingStrategy.UNIT_TO_PDF_BATCH,
+        bundle_root,
+        tmp_path,
+    )
+    assert packaged.page_numbers == [1]
+    assert packaged.batch_item_ids == [original.items[failed_index].item_id]

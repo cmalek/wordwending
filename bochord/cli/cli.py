@@ -131,8 +131,9 @@ def show_settings(ctx: click.Context):
     verbose = ctx.obj.get("verbose", False)
     settings = ctx.obj.get("settings")
 
+    settings_dump = settings.model_dump(mode="json")
     if output_format == "json":
-        click.echo(json.dumps(settings.model_dump()))
+        click.echo(json.dumps(settings_dump))
     elif output_format == "table":
         table = Table(
             title="Settings", show_header=True, header_style="bold magenta"
@@ -140,12 +141,12 @@ def show_settings(ctx: click.Context):
         table.add_column("Setting Name", style="cyan")
         table.add_column("Value", style="green")
 
-        for setting_name, setting_value in settings.model_dump().items():
+        for setting_name, setting_value in settings_dump.items():
             table.add_row(setting_name, str(setting_value))
 
         console.print(table)
     else:  # text format
-        for setting_name, setting_value in settings.model_dump().items():
+        for setting_name, setting_value in settings_dump.items():
             click.echo(f"{setting_name}: {setting_value}")
             click.echo()
 
@@ -612,7 +613,8 @@ def run_runner(  # noqa: PLR0913, PLR0917
         raise click.ClickException(str(exc)) from exc
 
     settings: Settings = ctx.obj["settings"]
-    token = settings.huggingface_api_key
+    api_key = settings.huggingface_api_key
+    token = api_key.get_secret_value() if api_key is not None else None
     if not token:
         msg = "missing settings value huggingface_api_key"
         raise click.ClickException(msg)

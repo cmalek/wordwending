@@ -28,25 +28,21 @@ def _sha256_label(payload: bytes) -> str:
 
 def _page_numbers(batch: PlannedRunnerBatch) -> list[int]:
     """
-    Derive one page number per batch item from artifact order metadata.
+    Derive one-based page indexes for each item in a packaged PDF.
+
+    Hosted runners treat ``page_numbers`` as positional indexes into the
+    packaged PDF (``1..n``), not source reading-order metadata from
+    ``PreparedArtifactRef.order``. Source attribution stays on
+    ``batch_item_ids``.
 
     Args:
-        batch: Planned batch whose artifacts supply reading-order positions.
+        batch: Planned batch whose item order defines PDF page positions.
 
     Returns:
-        One-based page numbers aligned with batch items.
-
-    Raises:
-        ValueError: If an artifact lacks ``order`` metadata.
+        Positional one-based page numbers aligned with batch items.
 
     """
-    page_numbers: list[int] = []
-    for artifact in batch.artifacts:
-        if artifact.order is None:
-            msg = f"artifact {artifact.artifact_id} is missing order metadata"
-            raise ValueError(msg)
-        page_numbers.append(artifact.order)
-    return page_numbers
+    return list(range(1, len(batch.items) + 1))
 
 
 def _load_rgb_images(source_paths: list[Path]) -> list[Image.Image]:

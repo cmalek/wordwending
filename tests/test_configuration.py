@@ -261,7 +261,8 @@ class TestConfiguration:
                     ),
                 },
             )
-        assert settings.huggingface_api_key == "hf_test_token"
+        assert settings.huggingface_api_key is not None
+        assert settings.huggingface_api_key.get_secret_value() == "hf_test_token"
         assert str(
             settings.huggingface_model_endpoints["olmocr-production"]
         ) == "https://example.endpoints.huggingface.cloud/v1"

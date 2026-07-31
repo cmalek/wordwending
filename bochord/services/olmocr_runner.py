@@ -318,9 +318,6 @@ class HuggingFaceOlmocrRunner:
         Returns:
             Hosted invocation result with per-item failures and artifacts.
 
-        Raises:
-            FileNotFoundError: If a packaged input path is missing locally.
-
         """
         failure_item_ids: list[str] = []
         output_artifacts: list[RunnerOutputArtifact] = []
@@ -372,7 +369,7 @@ class HuggingFaceOlmocrRunner:
             packaged: Packaged input artifact for the whole batch.
             output_dir: Output root for witness files.
             item_id: Batch item identifier for this invocation.
-            page_number: Source page number within the packaged input.
+            page_number: One-based page index within the packaged input.
 
         Returns:
             Mapping with optional artifact, request id, and warning text.
@@ -403,6 +400,9 @@ class HuggingFaceOlmocrRunner:
                 batch_id=batch.batch_id,
                 item_id=item_id,
             )
+        except FileNotFoundError as exc:
+            warning = f"hosted request for {item_id} failed: {exc}"
+            return _failed_item_result(request_id=None, warning=warning)
         except httpx.RequestError as exc:
             warning = _transport_failure_warning(item_id, exc)
             return _failed_item_result(request_id=None, warning=warning)

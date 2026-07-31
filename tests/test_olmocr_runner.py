@@ -135,9 +135,14 @@ def hosted_runner(
     )
 
 
-def planned_batch(item_count: int, *, batch_id: str = "batch-test") -> PlannedRunnerBatch:
+def planned_batch(
+    item_count: int,
+    *,
+    batch_id: str = "batch-test",
+    orders: list[int] | None = None,
+) -> PlannedRunnerBatch:
     """Build a planned batch for hosted runner tests."""
-    return packaging_planned_batch(item_count, batch_id=batch_id)
+    return packaging_planned_batch(item_count, batch_id=batch_id, orders=orders)
 
 
 def _write_direct_image(output_dir: Path, batch: PlannedRunnerBatch) -> PackagedRunnerInput:
@@ -158,6 +163,7 @@ def _write_direct_image(output_dir: Path, batch: PlannedRunnerBatch) -> Packaged
 def _write_pdf_image(output_dir: Path, batch: PlannedRunnerBatch) -> PackagedRunnerInput:
     from bochord.models.ocr import PackagingStrategy
     from bochord.services.runner_packaging import RunnerInputPackager
+    from tests.test_runner_batching import artifacts as batching_artifacts
 
     bundle_root = output_dir / "bundle"
     bundle_root.mkdir()
@@ -165,6 +171,11 @@ def _write_pdf_image(output_dir: Path, batch: PlannedRunnerBatch) -> PackagedRun
         destination = bundle_root / artifact.artifact_path
         destination.parent.mkdir(parents=True, exist_ok=True)
         Image.new("RGB", (64, 32), color=(200, 100, 50)).save(destination)
+    for artifact in batching_artifacts(8):
+        destination = bundle_root / artifact.artifact_path
+        if not destination.exists():
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            Image.new("RGB", (64, 32), color=(200, 100, 50)).save(destination)
     return RunnerInputPackager().package(
         batch,
         PackagingStrategy.UNIT_TO_PDF_BATCH,
@@ -385,3 +396,34 @@ def test_olmocr_capability_matches_spec() -> None:
         InputKind.PREPARED_UNIT,
         InputKind.PDF,
     }
+
+
+def test_packaged_pdf_invoke_uses_positional_page_numbers(tmp_path: Path) -> None:
+    batch = planned_batch(4, orders=[5, 6, 7, 8])
+    client = mock_client(
+        post_responses=[
+            httpx.Response(200, json=olmocr_response(f"page-{index}"))
+            for index in range(1, 5)
+        ]
+    )
+    result = hosted_runner(client).invoke(
+        batch,
+        _write_pdf_image(tmp_path, batch),
+        tmp_path,
+    )
+    assert result.failure_item_ids == []
+    assert len(result.output_artifacts) == 4
+
+
+def test_missing_packaged_input_captures_failed_item(tmp_path: Path) -> None:
+    batch = planned_batch(1)
+    packaged = _write_direct_image(tmp_path, batch)
+    missing_path = tmp_path / packaged.artifact_path
+    missing_path.unlink()
+    client = mock_client(
+        post_responses=[httpx.Response(200, json=olmocr_response("ok"))]
+    )
+    result = hosted_runner(client).invoke(batch, packaged, tmp_path)
+    assert result.failure_item_ids == [batch.items[0].item_id]
+    assert result.output_artifacts == []
+    assert any("missing packaged input" in warning for warning in result.warnings)

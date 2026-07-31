@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Literal
 
-from pydantic import AnyHttpUrl, Field, field_validator
+from pydantic import AnyHttpUrl, Field, SecretStr, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     log_file: str | None = Field(default=None, description="Log file path")
 
     #: Hugging Face API token for hosted inference endpoints.
-    huggingface_api_key: str | None = Field(
+    huggingface_api_key: SecretStr | None = Field(
         default=None,
         description="Hugging Face API token for hosted inference endpoints",
     )
