@@ -45,9 +45,9 @@
     "semantic_hash": "8df17ef54effa6ceca3857a1acb53dc6"
   },
   "bochord/models/__init__.py": {
-    "mtime": 1785519933.160318,
-    "ast_hash": "bf449eb3ace54c55c598f9f229210925",
-    "semantic_hash": "bf449eb3ace54c55c598f9f229210925"
+    "mtime": 1785537198.1207914,
+    "ast_hash": "f0afdae7174c906e5ad4d4b699727303",
+    "semantic_hash": ""
   },
   "bochord/models/evaluation.py": {
     "mtime": 1785472171.9807067,
@@ -55,9 +55,9 @@
     "semantic_hash": "965fb65d9783278048adb6e53affc510"
   },
   "bochord/models/ocr.py": {
-    "mtime": 1785519933.1609306,
-    "ast_hash": "93c81c3ae0a9db2753a11e4ef5b86f19",
-    "semantic_hash": "93c81c3ae0a9db2753a11e4ef5b86f19"
+    "mtime": 1785535561.1585233,
+    "ast_hash": "72875b4a1eed25e4e679b1bc2327dce2",
+    "semantic_hash": ""
   },
   "bochord/models/preparation.py": {
     "mtime": 1785302418.2734494,
@@ -75,9 +75,9 @@
     "semantic_hash": "7cbefb9ec8c02457cbe24283e8d6e4aa"
   },
   "bochord/services/page_interchange.py": {
-    "mtime": 1785037861.8697844,
-    "ast_hash": "44aee1226e96567105a6c1045709a04e",
-    "semantic_hash": "44aee1226e96567105a6c1045709a04e"
+    "mtime": 1785537721.3975222,
+    "ast_hash": "1da12007458a7f84076ab85576295aa2",
+    "semantic_hash": ""
   },
   "bochord/services/preparation.py": {
     "mtime": 1785472171.9817526,
@@ -200,14 +200,14 @@
     "semantic_hash": "126c8c90aa3a38af615b0227e0bf1bc1"
   },
   "tests/test_ocr_models.py": {
-    "mtime": 1785519933.1659093,
-    "ast_hash": "a743df0f075ed2e47813685d11b0c7e9",
-    "semantic_hash": "a743df0f075ed2e47813685d11b0c7e9"
+    "mtime": 1785535561.1607826,
+    "ast_hash": "734baf3224bd3537f605ecea007f0188",
+    "semantic_hash": ""
   },
   "tests/test_page_interchange.py": {
-    "mtime": 1785035080.6279018,
-    "ast_hash": "0bc592201acb2b243ba1f375591185b5",
-    "semantic_hash": "0bc592201acb2b243ba1f375591185b5"
+    "mtime": 1785537711.9386241,
+    "ast_hash": "2bb6e9bb4018722789e32d04f8d058a0",
+    "semantic_hash": ""
   },
   "tests/test_preparation_service.py": {
     "mtime": 1785472171.9834843,
@@ -230,9 +230,9 @@
     "semantic_hash": "90da982ff202b4353ccf42d348361fb5"
   },
   "AGENTS.md": {
-    "mtime": 1785473232.2181573,
-    "ast_hash": "67d3eeba807103662258faf9dd8a61a7",
-    "semantic_hash": "67d3eeba807103662258faf9dd8a61a7"
+    "mtime": 1785521067.0955818,
+    "ast_hash": "b3e17503ff27e7309659d636f326166a",
+    "semantic_hash": ""
   },
   "AUTHORS.txt": {
     "mtime": 1784991716.2313895,
@@ -310,9 +310,9 @@
     "semantic_hash": "2d1c98876e3326d6ab862c08e624a9a0"
   },
   "doc/source/architecture/index.rst": {
-    "mtime": 1785034105.6091743,
-    "ast_hash": "91c878da57a53c7c1c526d57f8241288",
-    "semantic_hash": "91c878da57a53c7c1c526d57f8241288"
+    "mtime": 1785537453.2386882,
+    "ast_hash": "b70bc752a0c1864c7ee7603ee2915340",
+    "semantic_hash": ""
   },
   "doc/source/architecture/spec_0001_system_architecture.rst": {
     "mtime": 1785013753.420593,
@@ -708,5 +708,70 @@
     "mtime": 1785519933.1669204,
     "ast_hash": "69522558f320f7d9bbc385bceb19bba5",
     "semantic_hash": "69522558f320f7d9bbc385bceb19bba5"
+  },
+  "tests/fixtures/runner/capability-v1.json": {
+    "mtime": 1785535561.1593487,
+    "ast_hash": "c15ca5310377e70f86e83286c05dde2a",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/runner/execution-batch-failed-v1.json": {
+    "mtime": 1785535561.1596432,
+    "ast_hash": "28bd357ea2cf510cb6e0b40e3fc4267b",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/runner/execution-batch-partial-v1.json": {
+    "mtime": 1785535561.160107,
+    "ast_hash": "ee7aa358213a10ccb33e398ba6409899",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/runner/execution-batch-succeeded-v1.json": {
+    "mtime": 1785535561.1603138,
+    "ast_hash": "760d763cc231ff330a06dd12ac2f3866",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-07-31-spec-0002-bundle-layout.md": {
+    "mtime": 1785529952.465962,
+    "ast_hash": "e28c9b094c50a81ad1641d1188967ec9",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-07-31-spec-0008-text-normalization.md": {
+    "mtime": 1785537973.8785446,
+    "ast_hash": "e8a05877de30fb269826c0a9cca0d1e1",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-07-31-spec-0009-merge-policy.md": {
+    "mtime": 1785529882.1903024,
+    "ast_hash": "08473b161b15bfc9ff5fb950770c41ab",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-07-31-spec-0013-pass-runner-interface-schema.md": {
+    "mtime": 1785535561.158971,
+    "ast_hash": "0fe7b38a63ac5391d33acd4c06953e04",
+    "semantic_hash": ""
+  },
+  "bochord/models/text_normalization.py": {
+    "mtime": 1785537201.708263,
+    "ast_hash": "148303ea7d2e62c3a7a72aff93924cf8",
+    "semantic_hash": ""
+  },
+  "bochord/services/text_normalization.py": {
+    "mtime": 1785537621.730098,
+    "ast_hash": "bf5ba3bc28a5b980239e8d4eee027ea1",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/text_normalization/cases.json": {
+    "mtime": 1785537613.4962306,
+    "ast_hash": "b9348af7f0ad4e6e44e8f1589041cf31",
+    "semantic_hash": ""
+  },
+  "tests/test_text_normalization.py": {
+    "mtime": 1785537613.974584,
+    "ast_hash": "5e655be17e81840e65cce0af3a4ca4d0",
+    "semantic_hash": ""
+  },
+  "doc/source/architecture/text_normalization_policy_v1.rst": {
+    "mtime": 1785537623.126279,
+    "ast_hash": "b80a1101b1d0fc8a6a159fe0c9447016",
+    "semantic_hash": ""
   }
 }
