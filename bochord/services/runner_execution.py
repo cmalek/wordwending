@@ -8,22 +8,18 @@ from datetime import UTC, datetime
 from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
-from bochord.exc import RunnerEndpointUnavailable
+from bochord.exc import ConfigurationError, RunnerEndpointUnavailable
 from bochord.models.ocr import (
     BatchResultStatus,
     PreparedArtifactRef,
-    RunnerCapability,
     RunnerExecutionBatch,
-    RunnerReference,
 )
 from bochord.models.runner_execution import (
     HostedInvocationResult,
     PlannedRunnerBatch,
     RetryMode,
-    RunnerExecutionPolicy,
     RunnerThroughputSummary,
 )
-from bochord.services.olmocr_runner import OLMOCR_CAPABILITY
 from bochord.services.runner_batching import RunnerBatchPlanner  # noqa: TC001
 from bochord.services.runner_packaging import RunnerInputPackager  # noqa: TC001
 
@@ -34,57 +30,6 @@ if TYPE_CHECKING:
 RUNNER_BATCH_SCHEMA_VERSION = "1.0.0"
 #: Retry strategy label persisted on failed-item retry batches.
 FAILED_ITEMS_RETRY_STRATEGY = "failed-items"
-
-
-def _execution_policy(runner: object) -> RunnerExecutionPolicy:
-    """
-    Return the frozen execution policy bound to ``runner``.
-
-    Args:
-        runner: Hosted runner facade or test double.
-
-    Returns:
-        Runner execution policy for the current run.
-
-    """
-    policy = getattr(runner, "policy", None)
-    if policy is not None:
-        return policy
-    return runner._policy  # type: ignore[attr-defined]  # noqa: SLF001
-
-
-def _runner_reference(runner: object) -> RunnerReference:
-    """
-    Return the runner identity bound to ``runner``.
-
-    Args:
-        runner: Hosted runner facade or test double.
-
-    Returns:
-        Runner reference metadata for persisted batches.
-
-    """
-    runner_ref = getattr(runner, "runner_ref", None)
-    if runner_ref is not None:
-        return runner_ref
-    return runner._runner  # type: ignore[attr-defined]  # noqa: SLF001
-
-
-def _runner_capability(runner: object) -> RunnerCapability:
-    """
-    Return the capability contract used by ``runner``.
-
-    Args:
-        runner: Hosted runner facade or test double.
-
-    Returns:
-        Declared runner capability for persisted batches.
-
-    """
-    capability = getattr(runner, "capability", None)
-    if capability is not None:
-        return capability
-    return OLMOCR_CAPABILITY
 
 
 def _retry_batch_id(original_batch_id: str, failure_item_ids: list[str]) -> str:
@@ -204,11 +149,11 @@ class RunnerExecutionOrchestrator:
         #: Output root for batches, inputs, and witnesses.
         self._output_dir = output_dir
         #: Frozen execution policy for the run.
-        self._policy = _execution_policy(runner)
+        self._policy = runner.policy
         #: Runner identity persisted on each batch record.
-        self._runner_ref = _runner_reference(runner)
+        self._runner_ref = runner.runner_ref
         #: Declared capability contract for the run.
-        self._capability = _runner_capability(runner)
+        self._capability = runner.capability
         #: Persisted batch records emitted during the run.
         self._batches: list[RunnerExecutionBatch] = []
         #: Final failed item ids among measured non-warmup original items.
@@ -218,7 +163,10 @@ class RunnerExecutionOrchestrator:
         #: Accumulated measured wall-clock duration in seconds.
         self._measured_duration_seconds = 0.0
 
-    def run(self, artifacts: list[PreparedArtifactRef]) -> list[RunnerExecutionBatch]:
+    def run(
+        self,
+        artifacts: list[PreparedArtifactRef],
+    ) -> tuple[list[RunnerExecutionBatch], RunnerThroughputSummary]:
         """
         Execute planned batches, optional retries, and throughput persistence.
 
@@ -226,9 +174,15 @@ class RunnerExecutionOrchestrator:
             artifacts: Ordered prepared artifacts ready for runner execution.
 
         Returns:
-            Persisted runner execution batches in submission order.
+            Persisted runner execution batches and measured throughput summary.
+
+        Raises:
+            ConfigurationError: If the execution policy requests unsupported retry.
 
         """
+        if self._policy.retry_mode is RetryMode.WHOLE_BATCH:
+            msg = "whole-batch retry is not supported"
+            raise ConfigurationError(msg)
         planned_batches = self._planner.plan(
             artifacts,
             self._capability,
@@ -240,14 +194,15 @@ class RunnerExecutionOrchestrator:
             return self._persist_health_failure(planned_batches, str(exc))
         for planned in planned_batches:
             self._execute_planned_batch(planned)
-        self._persist_throughput(self._build_throughput())
-        return self._batches
+        summary = self._build_throughput()
+        self._persist_throughput(summary)
+        return self._batches, summary
 
     def _persist_health_failure(
         self,
         planned_batches: list[PlannedRunnerBatch],
         warning: str,
-    ) -> list[RunnerExecutionBatch]:
+    ) -> tuple[list[RunnerExecutionBatch], RunnerThroughputSummary]:
         """
         Persist failed batch records when the hosted endpoint is unavailable.
 
@@ -256,7 +211,7 @@ class RunnerExecutionOrchestrator:
             warning: Health-check warning to attach to every persisted batch.
 
         Returns:
-            Failed batch records written under ``output_dir/batches/``.
+            Failed batch records and measured throughput summary.
 
         """
         timestamp = datetime.now(tz=UTC)
@@ -281,8 +236,9 @@ class RunnerExecutionOrchestrator:
             )
             self._persist_batch(batch)
             self._batches.append(batch)
-        self._persist_throughput(self._build_throughput())
-        return self._batches
+        summary = self._build_throughput()
+        self._persist_throughput(summary)
+        return self._batches, summary
 
     def _execute_planned_batch(self, planned: PlannedRunnerBatch) -> None:
         """
@@ -610,9 +566,5 @@ class RunnerExecutionService:
             bundle_root=bundle_root,
             output_dir=output_dir,
         )
-        batches = orchestrator.run(artifacts)
-        throughput_path = output_dir / "throughput.json"
-        summary = RunnerThroughputSummary.model_validate_json(
-            throughput_path.read_text(encoding="utf-8")
-        )
+        batches, summary = orchestrator.run(artifacts)
         return batches, summary

@@ -237,6 +237,39 @@ class HuggingFaceOlmocrRunner:
         #: Shared HTTP client used for health checks and invocations.
         self._client = client
 
+    @property
+    def policy(self) -> RunnerExecutionPolicy:
+        """
+        Return the frozen execution policy bound to this runner.
+
+        Returns:
+            Runner execution policy for hosted invocations.
+
+        """
+        return self._policy
+
+    @property
+    def runner_ref(self) -> RunnerReference:
+        """
+        Return the runner identity used for hosted requests.
+
+        Returns:
+            Model-backed runner reference metadata.
+
+        """
+        return self._runner
+
+    @property
+    def capability(self) -> RunnerCapability:
+        """
+        Return the declared olmOCR input and batching contract.
+
+        Returns:
+            Hosted olmOCR runner capability metadata.
+
+        """
+        return OLMOCR_CAPABILITY
+
     def health_check(self) -> None:
         """
         Verify the hosted endpoint reports model readiness.

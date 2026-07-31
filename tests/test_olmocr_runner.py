@@ -363,6 +363,15 @@ def test_scale_up_timeout_header_uses_policy_value(tmp_path: Path) -> None:
     assert headers["X-Scale-Up-Timeout"] == "600"
 
 
+def test_runner_exposes_execution_contract() -> None:
+    """Hosted runner public properties match orchestrator expectations."""
+    client = mock_client()
+    runner = hosted_runner(client)
+    assert runner.policy.policy_id == "olmocr-hf-fixed-v1"
+    assert runner.runner_ref.runner_id == "olmocr"
+    assert runner.capability.supports_multi_item_batching is True
+
+
 def test_olmocr_capability_matches_spec() -> None:
     from bochord.models.ocr import BatchUnitKind, PackagingStrategy
     from bochord.services.olmocr_runner import OLMOCR_CAPABILITY

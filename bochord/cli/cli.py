@@ -16,6 +16,7 @@ from rich.table import Table
 
 import bochord
 
+from ..exc import ConfigurationError
 from ..models import (
     BundlePage,
     GoldDocument,
@@ -647,7 +648,7 @@ def run_runner(  # noqa: PLR0913, PLR0917
             bundle_root,
             output_dir,
         )
-    except (OSError, ValidationError, ValueError) as exc:
+    except (OSError, ValidationError, ValueError, ConfigurationError) as exc:
         raise click.ClickException(str(exc)) from exc
     finally:
         client.close()
@@ -656,3 +657,7 @@ def run_runner(  # noqa: PLR0913, PLR0917
     click.echo(f"failed_items: {summary.failed_item_count}")
     click.echo(f"items_per_second: {summary.items_per_second:.4f}")
     click.echo(f"output: {output_dir}")
+    if summary.failed_item_count > 0:
+        count = summary.failed_item_count
+        msg = f"runner execution finished with {count} failed item(s)"
+        raise click.ClickException(msg)

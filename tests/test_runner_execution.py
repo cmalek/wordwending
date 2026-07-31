@@ -7,9 +7,11 @@ import json
 from collections.abc import Callable
 from pathlib import Path
 
+import pytest
 from PIL import Image
+from pydantic import ValidationError
 
-from bochord.exc import RunnerEndpointUnavailable
+from bochord.exc import ConfigurationError, RunnerEndpointUnavailable
 from bochord.models.ocr import (
     BatchResultStatus,
     PreparedArtifactRef,
@@ -27,6 +29,7 @@ from bochord.services.olmocr_runner import OLMOCR_CAPABILITY
 from bochord.services.runner_batching import RunnerBatchPlanner
 from bochord.services.runner_execution import RunnerExecutionService
 from bochord.services.runner_packaging import RunnerInputPackager
+from tests.test_olmocr_runner import hosted_runner, mock_client
 from tests.test_runner_batching import artifacts as batching_artifacts
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "runner"
@@ -70,9 +73,9 @@ def prepared_artifacts(count: int) -> list[PreparedArtifactRef]:
     return batching_artifacts(count)
 
 
-def fixture_root(tmp_path: Path | None = None) -> Path:
+def fixture_root(tmp_path: Path) -> Path:
     """Create a bundle root with PNG inputs for execution tests."""
-    root = tmp_path if tmp_path is not None else Path("/unused")
+    root = tmp_path
     if (FIXTURE_ROOT / "prepared-inputs.json").exists():
         payload = json.loads(PREPARED_INPUTS_PATH.read_text())
         refs = [
@@ -193,6 +196,22 @@ def _fail_second_item(batch: PlannedRunnerBatch) -> HostedInvocationResult:
     return hosted_result(failed=[batch.items[1].item_id])
 
 
+def _fail_all_items(batch: PlannedRunnerBatch) -> HostedInvocationResult:
+    return hosted_result(failed=[item.item_id for item in batch.items])
+
+
+def test_execution_service_accepts_real_runner_public_contract() -> None:
+    runner = hosted_runner(mock_client())
+    service = RunnerExecutionService(
+        RunnerBatchPlanner(),
+        RunnerInputPackager(),
+        runner,
+    )
+    assert service._runner.policy is runner.policy
+    assert service._runner.runner_ref is runner.runner_ref
+    assert service._runner.capability is runner.capability
+
+
 def test_partial_batch_persists_before_failed_item_retry(tmp_path: Path) -> None:
     bundle = fixture_root(tmp_path / "bundle")
     service = execution_service(
@@ -294,22 +313,45 @@ def test_no_retry_when_policy_disables_retries(tmp_path: Path) -> None:
     assert summary.failed_item_count == 1
 
 
-def test_max_one_retry_even_when_max_retries_exceeds_one(tmp_path: Path) -> None:
+def test_max_retries_above_one_rejected_by_policy_model() -> None:
+    with pytest.raises(ValidationError, match="max_retries"):
+        policy(max_retries=3)
+
+
+def test_whole_batch_retry_mode_is_rejected(tmp_path: Path) -> None:
     bundle = fixture_root(tmp_path / "bundle")
     service = execution_service(
         warmup_batch_count=0,
-        max_retries=3,
-        first_result=_fail_second_item,
-        retry_result=hosted_result(failed=[]),
+        retry_mode=RetryMode.WHOLE_BATCH,
     )
-    batches, _summary = service.run(
+    with pytest.raises(ConfigurationError, match="whole-batch retry"):
+        service.run(
+            "run-1",
+            "bt",
+            prepared_artifacts(2),
+            bundle,
+            tmp_path,
+        )
+
+
+def test_retry_failure_keeps_final_failed_item_count(tmp_path: Path) -> None:
+    bundle = fixture_root(tmp_path / "bundle")
+    service = execution_service(
+        warmup_batch_count=0,
+        first_result=_fail_second_item,
+        retry_result=_fail_all_items,
+    )
+    batches, summary = service.run(
         "run-1",
         "bt",
         prepared_artifacts(2),
         bundle,
         tmp_path,
     )
-    assert len(batches) == 2
+    assert batches[0].result_status is BatchResultStatus.PARTIAL
+    assert batches[1].result_status is BatchResultStatus.FAILED
+    assert summary.failed_item_count == 1
+    assert len(list((tmp_path / "batches").glob("*.json"))) == 2
 
 
 def test_batch_timestamps_are_monotonic(tmp_path: Path) -> None:

@@ -524,6 +524,35 @@ class TestCLIRun:
         assert "items_per_second: 2.0000" in result.output
         assert "hf_test_token" not in result.output
 
+    @patch("bochord.cli.cli.RunnerExecutionService.run")
+    def test_run_command_exits_nonzero_when_items_failed(
+        self,
+        mock_run,
+        runner,
+        tmp_path,
+    ) -> None:
+        mock_run.return_value = (
+            [],
+            RunnerThroughputSummary(
+                measured_item_count=2,
+                failed_item_count=1,
+                measured_duration_seconds=1.0,
+                items_per_second=2.0,
+            ),
+        )
+        configured = Settings(
+            huggingface_api_key="hf_test_token",
+            huggingface_model_endpoints={
+                "olmocr-production": "https://example.endpoints.huggingface.cloud/v1",
+            },
+        )
+        with patch("bochord.cli.cli.Settings", return_value=configured):
+            result = runner.invoke(cli, _run_cli_args(tmp_path))
+
+        assert result.exit_code != 0
+        assert "failed_items: 1" in result.output
+        assert "failed item" in result.output.lower()
+
 
 class TestCLIErrorHandling:
     """Test CLI error handling."""

@@ -77,7 +77,7 @@ class RunnerExecutionPolicy(SchemaModel):
     #: Retry strategy for failed invocations.
     retry_mode: RetryMode = RetryMode.FAILED_ITEMS
     #: Maximum retry attempts after the initial invocation.
-    max_retries: int = Field(default=1, ge=0)
+    max_retries: int = Field(default=1, ge=0, le=1)
     #: Hosted endpoint contract for this policy.
     endpoint: HostedEndpointPolicy
 
