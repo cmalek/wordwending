@@ -9,7 +9,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 from bochord.cli.cli import cli
-from bochord.models import PreparationResult
+from bochord.models import EvaluationCohortReport, PreparationResult
 
 
 def _dense_two_column_image() -> Image.Image:
@@ -401,6 +401,24 @@ class TestCLIPrepare:
         if output.exists():
             assert not (output / "pages").exists()
             assert not (output / "source").exists()
+
+
+def test_eval_cohorts_writes_all_fixed_views(runner, tmp_path: Path) -> None:
+    output = tmp_path / "cohorts.json"
+    result = runner.invoke(
+        cli,
+        [
+            "eval-cohorts",
+            "tests/fixtures/evaluation/cohort-records.json",
+            "--output-json",
+            str(output),
+        ],
+    )
+    assert result.exit_code == 0
+    report = EvaluationCohortReport.model_validate_json(output.read_text())
+    assert report.by_page_class
+    assert report.by_page_class_and_preparation_mode
+    assert report.by_page_class_and_runner
 
 
 class TestCLIErrorHandling:

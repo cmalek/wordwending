@@ -10,7 +10,7 @@ from importlib.metadata import Distribution
 from pathlib import Path
 
 import click
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 from rich.table import Table
 
 import bochord
@@ -20,11 +20,13 @@ from ..models import (
     GoldDocument,
     MetricProfile,
     PageClass,
+    PageEvaluationRecord,
     PagePreparationOverride,
     PreparationMode,
     PreparationRecipe,
 )
 from ..services.evaluation import EvaluationService
+from ..services.evaluation_cohorts import EvaluationCohortService
 from ..services.preparation import (
     PageClassifier,
     PagePreparationService,
@@ -214,6 +216,46 @@ def eval_page(
 
     try:
         output_json.write_text(summary.model_dump_json(indent=2), encoding="utf-8")
+    except OSError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
+@cli.command("eval-cohorts")
+@click.argument(
+    "records",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+)
+@click.option(
+    "--output-json",
+    required=True,
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="Destination path for EvaluationCohortReport JSON.",
+)
+def eval_cohorts(records: Path, output_json: Path) -> None:
+    """
+    Summarize page evaluation records into fixed cohort views.
+
+    Args:
+        records: JSON array of PageEvaluationRecord objects.
+        output_json: Destination path for EvaluationCohortReport JSON.
+
+    Side Effects:
+        Writes cohort summary JSON to ``output_json``.
+
+    Raises:
+        click.ClickException: When inputs fail validation or I/O fails.
+
+    """
+    try:
+        payload = json.loads(records.read_text(encoding="utf-8"))
+        page_records = TypeAdapter(list[PageEvaluationRecord]).validate_python(payload)
+    except (OSError, ValidationError, ValueError, json.JSONDecodeError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    report = EvaluationCohortService().summarize(page_records)
+
+    try:
+        output_json.write_text(report.model_dump_json(indent=2), encoding="utf-8")
     except OSError as exc:
         raise click.ClickException(str(exc)) from exc
 
