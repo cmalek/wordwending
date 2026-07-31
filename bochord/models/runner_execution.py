@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import math
 from decimal import Decimal
 from enum import StrEnum
 
@@ -176,3 +177,35 @@ class RunnerThroughputSummary(SchemaModel):
     measured_duration_seconds: float = Field(ge=0)
     #: Derived throughput in items per second.
     items_per_second: float = Field(ge=0)
+
+    @model_validator(mode="after")
+    def validate_throughput_coherence(self) -> RunnerThroughputSummary:
+        """
+        Keep failure counts and derived throughput internally coherent.
+
+        Returns:
+            The validated throughput summary.
+
+        Raises:
+            ValueError: If counts or throughput disagree with measured facts.
+
+        """
+        if self.failed_item_count > self.measured_item_count:
+            msg = "failed_item_count must not exceed measured_item_count"
+            raise ValueError(msg)
+        if (
+            self.measured_duration_seconds > 0
+            and self.measured_item_count > 0
+            and not math.isclose(
+                self.items_per_second,
+                self.measured_item_count / self.measured_duration_seconds,
+                rel_tol=1e-9,
+                abs_tol=1e-9,
+            )
+        ):
+            msg = (
+                "items_per_second must equal measured_item_count / "
+                "measured_duration_seconds"
+            )
+            raise ValueError(msg)
+        return self

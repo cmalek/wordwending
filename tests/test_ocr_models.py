@@ -71,6 +71,7 @@ from bochord.models import (
     RunnerExecutionPolicy,
     RunnerOutputArtifact,
     RunnerReference,
+    RunnerThroughputSummary,
     SourceDescriptor,
     SourceType,
     SpanRecord,
@@ -723,6 +724,26 @@ def test_runner_policy_fixture_validates() -> None:
     policy = RunnerExecutionPolicy.model_validate_json(fixture_path.read_text())
     assert policy.policy_id == "olmocr-hf-fixed-v1"
     assert policy.endpoint.hardware_class == "nvidia-l40s"
+
+
+def test_throughput_summary_rejects_inconsistent_items_per_second() -> None:
+    with pytest.raises(ValidationError, match="items_per_second must equal"):
+        RunnerThroughputSummary(
+            measured_item_count=10,
+            failed_item_count=2,
+            measured_duration_seconds=5.0,
+            items_per_second=999.0,
+        )
+
+
+def test_throughput_summary_accepts_coherent_values() -> None:
+    summary = RunnerThroughputSummary(
+        measured_item_count=10,
+        failed_item_count=2,
+        measured_duration_seconds=5.0,
+        items_per_second=2.0,
+    )
+    assert summary.items_per_second == 2.0
 
 
 def recipe_payload(**overrides: object) -> dict[str, object]:

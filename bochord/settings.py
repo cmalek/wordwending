@@ -162,7 +162,13 @@ class Settings(BaseSettings):
         if config_paths:
             # Use the last (highest precedence) config file
             config_file_path = config_paths[-1]
-            return (TomlConfigSettingsSource(settings_cls, config_file_path.resolve()),)
+            return (
+                init_settings,
+                TomlConfigSettingsSource(settings_cls, config_file_path.resolve()),
+                env_settings,
+                dotenv_settings,
+                file_secret_settings,
+            )
 
         # Fallback: return the defaults you were passed in, preserving SettingsConfigDict behavior
         return (
