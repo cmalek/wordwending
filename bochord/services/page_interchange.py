@@ -19,6 +19,10 @@ from bochord.models import (
     SpanRecord,
     Typography,
 )
+from bochord.services.text_normalization import (
+    DEFAULT_TEXT_NORMALIZATION_POLICY,
+    TextNormalizer,
+)
 
 #: PAGE 2019-07-15 XML namespace used for review-package interchange.
 PAGE_NS = "http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15"
@@ -34,7 +38,29 @@ class PageXmlInterchangeService:
     Exports a review ZIP plus JSON sidecar for eScriptorium, then merges
     PAGE-supported corrections back onto the sidecar without inventing
     unsupported graph objects.
+
+    Args:
+        text_normalizer: Normalizer used when merging PAGE Unicode text.
+            Defaults to ``TextNormalizer(DEFAULT_TEXT_NORMALIZATION_POLICY)``.
+
     """
+
+    def __init__(
+        self,
+        text_normalizer: TextNormalizer | None = None,
+    ) -> None:
+        """
+        Initialize interchange with optional text-normalization override.
+
+        Args:
+            text_normalizer: Normalizer used when merging PAGE Unicode text.
+                Defaults to ``TextNormalizer(DEFAULT_TEXT_NORMALIZATION_POLICY)``.
+
+        """
+        #: Normalizer applied when PAGE Unicode updates diplomatic span text.
+        self._text_normalizer = text_normalizer or TextNormalizer(
+            DEFAULT_TEXT_NORMALIZATION_POLICY
+        )
 
     def export_review_package(
         self,
@@ -679,13 +705,14 @@ class PageXmlInterchangeService:
             span.typography,
         )
         bounding_box = self._bbox_from_coords(coords, space_id)
-        return span.model_copy(
+        merged = span.model_copy(
             update={
                 "text_diplomatic": text_diplomatic,
                 "typography": typography,
                 "bounding_box": bounding_box or span.bounding_box,
             },
         )
+        return self._text_normalizer.apply_to_span(merged)
 
     def _typography_from_text_style(
         self,

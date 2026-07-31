@@ -11,6 +11,10 @@ import pytest
 
 from bochord.models import BaselineShift, BundlePage, FontSlant
 from bochord.services.page_interchange import PAGE_NS, PageXmlInterchangeService
+from bochord.services.text_normalization import (
+    DEFAULT_TEXT_NORMALIZATION_POLICY,
+    TextNormalizer,
+)
 
 FIXTURE_DIR = Path("tests/fixtures/interchange")
 NOTE_FIXTURE = FIXTURE_DIR / "note-page.base.json"
@@ -147,6 +151,33 @@ def test_corrected_page_xml_updates_only_page_fields(tmp_path: Path) -> None:
     assert returned.spans[0].text_diplomatic == "drēorig"
     assert returned.spans[0].provenance == base.spans[0].provenance
     assert returned.prepared_page.transforms == base.prepared_page.transforms
+
+
+def test_import_correct_text_regenerates_normalized(tmp_path: Path) -> None:
+    """PAGE diplomatic corrections should regenerate normalized span text."""
+    base = BundlePage.model_validate_json(
+        Path("tests/fixtures/interchange/dictionary-page.base.json").read_text()
+    )
+    service = PageXmlInterchangeService()
+    image = tmp_path / "page.png"
+    image.write_bytes(b"fixture-image")
+    service.export_review_package(base, image, tmp_path)
+    page_xml = tmp_path / "page-0100.xml"
+    corrected = "drēorig"
+    page_xml.write_text(
+        page_xml.read_text().replace("dreorig", corrected),
+        encoding="utf-8",
+    )
+
+    returned = service.import_corrected_page(
+        page_xml,
+        tmp_path / "page-0100.bochord.json",
+    )
+
+    assert returned.spans[0].text_diplomatic == corrected
+    assert returned.spans[0].text_normalized == TextNormalizer(
+        DEFAULT_TEXT_NORMALIZATION_POLICY
+    ).normalize_span_text(corrected)
 
 
 def test_import_rejects_missing_region_id(tmp_path: Path) -> None:
