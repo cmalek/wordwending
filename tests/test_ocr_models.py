@@ -42,6 +42,7 @@ from bochord.models import (
     MetricProfile,
     ObjectProvenance,
     OverlayState,
+    PackagedRunnerInput,
     PackagingStrategy,
     PageClass,
     PageEvaluationRecord,
@@ -67,6 +68,7 @@ from bochord.models import (
     RunMetadata,
     RunnerCapability,
     RunnerExecutionBatch,
+    RunnerExecutionPolicy,
     RunnerOutputArtifact,
     RunnerReference,
     SourceDescriptor,
@@ -373,6 +375,7 @@ class TestOcrModels:
             runner_version="0.4.27",
             model_name="allenai/olmOCR",
             model_revision="model-revision",
+            hardware_class="nvidia-l40s",
             runtime_name="huggingface-endpoint",
             runtime_revision="container-digest",
             config_digest="sha256:runner-config",
@@ -383,6 +386,7 @@ class TestOcrModels:
             batch_id="batch-1",
             run_id="run-1",
             document_id="wright-demo",
+            execution_policy_id="olmocr-hf-fixed-v1",
             runner=runner,
             capability=RunnerCapability(
                 accepted_input_kinds=[InputKind.IMAGE, InputKind.PDF],
@@ -527,6 +531,7 @@ class TestOcrModels:
                 batch_id="batch-1",
                 run_id="run-1",
                 document_id="doc-1",
+                execution_policy_id="olmocr-hf-fixed-v1",
                 runner=RunnerReference(runner_id="fixture"),
                 capability=RunnerCapability(
                     accepted_input_kinds=[InputKind.IMAGE],
@@ -591,6 +596,7 @@ class TestOcrModels:
                 runner_id="olmocr",
                 model_name="allenai/olmOCR",
                 model_revision="model-revision",
+                hardware_class="nvidia-l40s",
                 runtime_name="local-gpu",
                 runtime_revision="container-digest",
                 config_digest="sha256:runner-config",
@@ -630,6 +636,93 @@ def test_bundle_rejects_unknown_line_join_target() -> None:
     page.lines[0].joins_to_line_id = "missing-line"
     with pytest.raises(ValidationError, match="unknown joined line"):
         BundlePage.model_validate(page.model_dump())
+
+
+def model_runner_payload(**overrides: object) -> dict[str, object]:
+    """Return a valid model-backed runner payload with optional overrides."""
+    payload: dict[str, object] = {
+        "runner_id": "olmocr",
+        "runner_version": "0.4.27",
+        "model_name": "allenai/olmOCR",
+        "model_revision": "model-revision",
+        "hardware_class": "nvidia-l40s",
+        "runtime_name": "huggingface-endpoint",
+        "runtime_revision": "container-digest",
+        "config_digest": "sha256:runner-config",
+        "prompt_digest": "sha256:prompt",
+    }
+    payload.update(overrides)
+    return payload
+
+
+def runner_policy_payload(**overrides: object) -> dict[str, object]:
+    """Return a valid runner execution policy payload with optional overrides."""
+    payload: dict[str, object] = {
+        "policy_id": "olmocr-hf-fixed-v1",
+        "version": "1",
+        "batch_size": 4,
+        "target_longest_image_dim": 1024,
+        "preserve_page_local_groups": True,
+        "packaging_strategy": "unit-to-pdf-batch",
+        "warmup_batch_count": 1,
+        "retry_mode": "failed-items",
+        "max_retries": 1,
+        "endpoint": {
+            "endpoint_name": "olmocr-production",
+            "endpoint_key": "olmocr-production",
+            "hardware_class": "nvidia-l40s",
+            "cold_start_timeout_seconds": 600,
+            "request_timeout_seconds": 180,
+            "retryable_status_codes": [408, 429, 502, 503, 504],
+            "scale_to_zero": True,
+            "max_items_per_run": 100,
+            "estimated_cost_per_item_usd": "0.01",
+            "max_run_cost_usd": "1.00",
+            "artifact_retention_days": 30,
+        },
+    }
+    payload.update(overrides)
+    return payload
+
+
+def test_model_backed_runner_requires_hardware_class() -> None:
+    payload = model_runner_payload(hardware_class=None)
+    with pytest.raises(ValidationError):
+        RunnerReference.model_validate(payload)
+
+
+def test_endpoint_policy_rejects_estimate_above_run_cap() -> None:
+    policy = runner_policy_payload(
+        endpoint={
+            **runner_policy_payload()["endpoint"],  # type: ignore[index]
+            "max_items_per_run": 10,
+            "estimated_cost_per_item_usd": "0.20",
+            "max_run_cost_usd": "1.00",
+        },
+    )
+    with pytest.raises(ValidationError):
+        RunnerExecutionPolicy.model_validate(policy)
+
+
+def test_packaged_runner_input_rejects_mismatched_item_page_lengths() -> None:
+    with pytest.raises(ValidationError):
+        PackagedRunnerInput(
+            artifact_id="pkg-1",
+            artifact_path="runner-inputs/batch-1.pdf",
+            checksum="sha256:pkg",
+            kind=InputKind.PDF,
+            batch_item_ids=["item-1", "item-2"],
+            page_numbers=[1],
+        )
+
+
+def test_runner_policy_fixture_validates() -> None:
+    fixture_path = (
+        Path(__file__).parent / "fixtures" / "runner" / "olmocr-policy-v1.json"
+    )
+    policy = RunnerExecutionPolicy.model_validate_json(fixture_path.read_text())
+    assert policy.policy_id == "olmocr-hf-fixed-v1"
+    assert policy.endpoint.hardware_class == "nvidia-l40s"
 
 
 def recipe_payload(**overrides: object) -> dict[str, object]:

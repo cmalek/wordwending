@@ -1,0 +1,24 @@
+{
+  "policy_id": "olmocr-hf-fixed-v1",
+  "version": "1",
+  "batch_size": 4,
+  "target_longest_image_dim": 1024,
+  "preserve_page_local_groups": true,
+  "packaging_strategy": "unit-to-pdf-batch",
+  "warmup_batch_count": 1,
+  "retry_mode": "failed-items",
+  "max_retries": 1,
+  "endpoint": {
+    "endpoint_name": "olmocr-production",
+    "endpoint_key": "olmocr-production",
+    "hardware_class": "nvidia-l40s",
+    "cold_start_timeout_seconds": 600,
+    "request_timeout_seconds": 180,
+    "retryable_status_codes": [408, 429, 502, 503, 504],
+    "scale_to_zero": true,
+    "max_items_per_run": 100,
+    "estimated_cost_per_item_usd": "0.01",
+    "max_run_cost_usd": "1.00",
+    "artifact_retention_days": 30
+  }
+}

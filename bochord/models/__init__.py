@@ -113,6 +113,15 @@ from bochord.models.preparation import (
     QualitySignal,
     SourcePageArtifact,
 )
+from bochord.models.runner_execution import (
+    HostedEndpointPolicy,
+    HostedInvocationResult,
+    PackagedRunnerInput,
+    PlannedRunnerBatch,
+    RetryMode,
+    RunnerExecutionPolicy,
+    RunnerThroughputSummary,
+)
 
 #: Public OCR contract model exports.
 __all__ = [
@@ -159,6 +168,8 @@ __all__ = [
     "GoldRegionAnnotation",
     "GoldStyleSpan",
     "GoldTextSpan",
+    "HostedEndpointPolicy",
+    "HostedInvocationResult",
     "InputKind",
     "LineRecord",
     "LinkNoteReviewEvent",
@@ -170,6 +181,7 @@ __all__ = [
     "NoteRecord",
     "ObjectProvenance",
     "OverlayState",
+    "PackagedRunnerInput",
     "PackagingStrategy",
     "PageClass",
     "PageEvaluationRecord",
@@ -177,6 +189,7 @@ __all__ = [
     "PageOverlay",
     "PagePreparationOverride",
     "PdfPageImageMode",
+    "PlannedRunnerBatch",
     "Point",
     "Polygon",
     "PreparationAssessment",
@@ -196,6 +209,7 @@ __all__ = [
     "ResolveFlagReviewEvent",
     "RetrievalMetadata",
     "RetrievalProvenance",
+    "RetryMode",
     "ReviewAction",
     "ReviewDimension",
     "ReviewEvent",
@@ -207,8 +221,10 @@ __all__ = [
     "RunMetadata",
     "RunnerCapability",
     "RunnerExecutionBatch",
+    "RunnerExecutionPolicy",
     "RunnerOutputArtifact",
     "RunnerReference",
+    "RunnerThroughputSummary",
     "SourceDescriptor",
     "SourcePageArtifact",
     "SourceType",

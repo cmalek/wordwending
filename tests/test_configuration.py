@@ -243,3 +243,27 @@ class TestConfiguration:
             assert settings.quiet_mode is False
             assert settings.log_level == "INFO"
             assert settings.log_file is None
+
+    def test_settings_accept_huggingface_api_key_and_endpoint_map(self):
+        """Hugging Face credentials and endpoint URLs load from settings."""
+        settings = Settings(
+            huggingface_api_key="hf_test_token",
+            huggingface_model_endpoints={
+                "olmocr-production": (
+                    "https://example.endpoints.huggingface.cloud/v1"
+                ),
+            },
+        )
+        assert settings.huggingface_api_key == "hf_test_token"
+        assert str(
+            settings.huggingface_model_endpoints["olmocr-production"]
+        ) == "https://example.endpoints.huggingface.cloud/v1"
+
+    def test_settings_reject_non_https_huggingface_endpoints(self):
+        """Hugging Face endpoint URLs must use HTTPS."""
+        with pytest.raises(Exception, match="https"):
+            Settings(
+                huggingface_model_endpoints={
+                    "olmocr-production": "http://example.endpoints.huggingface.cloud/v1",
+                },
+            )
