@@ -118,7 +118,7 @@ class TextNormalizationPolicy(SchemaModel):
 
 Reject `preserve_historical_characters=False` in v1 validator (YAGNI: no modernization path yet).
 
-- [ ] **Step 1: Write failing model tests**
+- [x] **Step 1: Write failing model tests**
 
 ```python
 def test_default_policy_preserves_historical_characters() -> None:
@@ -136,7 +136,7 @@ def test_policy_rejects_historical_modernization_flag() -> None:
         )
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 source .venv/bin/activate
@@ -145,11 +145,11 @@ pytest tests/test_text_normalization.py -v
 
 Expected: FAIL (module missing).
 
-- [ ] **Step 3: Implement models + exports**
+- [x] **Step 3: Implement models + exports**
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
-- [ ] **Step 5: Quality gate + commit**
+- [x] **Step 5: Quality gate + commit**
 
 ```bash
 ruff check bochord/models/text_normalization.py bochord/models/__init__.py tests/test_text_normalization.py
@@ -235,7 +235,7 @@ Documented v1 rules (also in the rst doc):
 
 Fixture `cases.json` rows: input diplomatic, policy overrides, expected normalized.
 
-- [ ] **Step 1: Write failing service tests from fixture cases**
+- [x] **Step 1: Write failing service tests from fixture cases**
 
 Include at least:
 
@@ -247,15 +247,15 @@ Include at least:
 - flatten superscript digits
 - `apply_to_page` leaves diplomatic identical
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
-- [ ] **Step 3: Implement `TextNormalizer` + short policy rst**
+- [x] **Step 3: Implement `TextNormalizer` + short policy rst**
 
 Add rst to architecture toctree if one already lists sibling policy docs; otherwise leave unlinked and note path in commit message (do not invent large docs scaffolding).
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
-- [ ] **Step 5: Quality gate + commit**
+- [x] **Step 5: Quality gate + commit**
 
 ```bash
 git commit -m "$(cat <<'EOF'
@@ -278,7 +278,7 @@ When `_merge_span` (or equivalent) updates `text_diplomatic` from PAGE `Unicode`
 
 Import `DEFAULT_TEXT_NORMALIZATION_POLICY` from `bochord.services.text_normalization` (defined in Task 2). Do not redefine it in page_interchange.
 
-- [ ] **Step 1: Write failing interchange test**
+- [x] **Step 1: Write failing interchange test**
 
 ```python
 def test_import_correct_text_regenerates_normalized() -> None:
@@ -289,9 +289,9 @@ def test_import_correct_text_regenerates_normalized() -> None:
     # ).normalize_span_text(corrected)
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
-- [ ] **Step 3: Wire regenerator into merge path**
+- [x] **Step 3: Wire regenerator into merge path**
 
 `PageXmlInterchangeService` currently has **no** `__init__`. Add a new optional constructor (not an extension of an existing one) for testability:
 
@@ -313,9 +313,9 @@ class PageXmlInterchangeService:
 
 Keep existing call sites working: default ctor args mean `PageXmlInterchangeService()` still valid.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
-- [ ] **Step 5: Quality gate + commit**
+- [x] **Step 5: Quality gate + commit**
 
 ```bash
 git commit -m "$(cat <<'EOF'
