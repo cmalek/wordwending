@@ -1,6 +1,6 @@
-=====================================
+============================
 Text Normalization Policy v1
-=====================================
+============================
 
 Purpose
 =======
@@ -68,16 +68,33 @@ Superscript
 implemented in ``TextNormalizer`` to baseline equivalents. Unknown superscript
 codepoints are left unchanged.
 
+Transform Order
+===============
+
+When multiple optional transforms apply to note text, ``TextNormalizer`` runs
+them in this fixed order after Unicode and whitespace normalization:
+
+1. Superscript flattening (when ``superscript_form`` is ``FLATTEN``)
+2. Note-marker placeholder replacement (when ``note_marker_form`` is
+   ``PLACEHOLDER``)
+
+Shared codepoints such as ``¹``, ``²``, and ``³`` appear in both the
+superscript table and the note-marker placeholder set. Flattening runs first so
+those characters become baseline digits before the marker pass; for example,
+``x¹*`` becomes ``x1[n]`` rather than ``x[n]*``.
+
 Line Joins
 ==========
 
 Line joining is a convenience helper for chunk and region callers via
 ``join_line_texts``. It does not mutate span line provenance on ``BundlePage``.
 
-Hyphen removal at a line boundary occurs only when ``join_kind`` is
-``hyphen-join`` or ``human-corrected`` and the left diplomatic text ends with
-ASCII hyphen-minus (``-``) or soft hyphen (U+00AD). All other join kinds keep
-boundary hyphens unchanged.
+Hyphen removal at a line boundary occurs only when ``join_hyphen_at_line_end``
+is enabled, ``join_kind`` is ``hyphen-join`` or ``human-corrected``, and the
+left diplomatic text ends with ASCII hyphen-minus (``-``) or soft hyphen
+(U+00AD). All other join kinds keep boundary hyphens unchanged. When
+``join_hyphen_at_line_end`` is disabled, hyphen-join and human-corrected joins
+still concatenate lines but leave trailing hyphens in place.
 
 ``LineJoinRecord`` is returned for audit purposes and is not persisted onto
 page graph objects in v1.

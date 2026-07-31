@@ -7,6 +7,13 @@
     "expected_normalized": "ǣ þ ð æ ō"
   },
   {
+    "id": "historical_oe_preserved",
+    "method": "normalize_span_text",
+    "input_diplomatic": "  cœur  ",
+    "policy_overrides": {},
+    "expected_normalized": "cœur"
+  },
+  {
     "id": "whitespace_collapsed",
     "method": "normalize_span_text",
     "input_diplomatic": "hello\t\n  world",
@@ -50,6 +57,32 @@
     "expected_removed_hyphen": false
   },
   {
+    "id": "hyphen_join_disabled_keeps_hyphen",
+    "method": "join_line_texts",
+    "left_diplomatic": "word-",
+    "right_diplomatic": "break",
+    "left_line_id": "line-1",
+    "right_line_id": "line-2",
+    "join_kind": "hyphen-join",
+    "policy_overrides": {
+      "join_hyphen_at_line_end": false
+    },
+    "expected_normalized": "word-break",
+    "expected_removed_hyphen": false
+  },
+  {
+    "id": "human_corrected_hyphen_join",
+    "method": "join_line_texts",
+    "left_diplomatic": "word-",
+    "right_diplomatic": "break",
+    "left_line_id": "line-1",
+    "right_line_id": "line-2",
+    "join_kind": "human-corrected",
+    "policy_overrides": {},
+    "expected_normalized": "wordbreak",
+    "expected_removed_hyphen": true
+  },
+  {
     "id": "placeholder_note_markers",
     "method": "normalize_note_text",
     "input_diplomatic": "See note*†",
@@ -75,5 +108,15 @@
       "note_marker_form": "placeholder"
     },
     "expected_normalized": "See*"
+  },
+  {
+    "id": "note_superscript_flatten_before_placeholder",
+    "method": "normalize_note_text",
+    "input_diplomatic": "x¹*",
+    "policy_overrides": {
+      "superscript_form": "flatten",
+      "note_marker_form": "placeholder"
+    },
+    "expected_normalized": "x1[n]"
   }
 ]

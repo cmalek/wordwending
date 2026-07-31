@@ -134,9 +134,9 @@ class TextNormalizer:
         """
         Join two line texts and return normalized output plus provenance.
 
-        Hyphen-at-line-end removal applies only for ``HYPHEN_JOIN`` and
-        ``HUMAN_CORRECTED`` when the left line ends with ASCII hyphen-minus
-        or soft hyphen.
+        Hyphen-at-line-end removal applies only when ``join_hyphen_at_line_end``
+        is enabled and ``join_kind`` is ``HYPHEN_JOIN`` or ``HUMAN_CORRECTED``,
+        and the left line ends with ASCII hyphen-minus or soft hyphen.
 
         Args:
             left_diplomatic: Diplomatic text for the left line.
@@ -153,7 +153,10 @@ class TextNormalizer:
         """
         left_text = left_diplomatic
         removed_hyphen = False
-        if join_kind in {LineJoinKind.HYPHEN_JOIN, LineJoinKind.HUMAN_CORRECTED}:
+        if (
+            self.policy.join_hyphen_at_line_end
+            and join_kind in {LineJoinKind.HYPHEN_JOIN, LineJoinKind.HUMAN_CORRECTED}
+        ):
             for suffix in _HYPHEN_JOIN_SUFFIXES:
                 if left_text.endswith(suffix):
                     left_text = left_text[: -len(suffix)]

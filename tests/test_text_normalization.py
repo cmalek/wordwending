@@ -177,6 +177,24 @@ def test_apply_to_page_leaves_diplomatic_unchanged() -> None:
     assert result.notes[0].text_normalized == "See[n][n]"
 
 
+def test_join_hyphen_at_line_end_false_skips_removal() -> None:
+    policy = TextNormalizationPolicy(
+        policy_id="text-norm-test",
+        version="1",
+        join_hyphen_at_line_end=False,
+    )
+    normalizer = TextNormalizer(policy)
+    normalized, record = normalizer.join_line_texts(
+        "word-",
+        "break",
+        left_line_id="line-1",
+        right_line_id="line-2",
+        join_kind=LineJoinKind.HYPHEN_JOIN,
+    )
+    assert normalized == "word-break"
+    assert record.removed_hyphen is False
+
+
 def test_apply_to_span_and_note_copy_records() -> None:
     provenance = _provenance()
     span = SpanRecord(
