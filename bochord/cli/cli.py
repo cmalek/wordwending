@@ -10,7 +10,8 @@ from importlib.metadata import Distribution
 from pathlib import Path
 
 import click
-from pydantic import TypeAdapter, ValidationError
+import httpx
+from pydantic import BaseModel, TypeAdapter, ValidationError
 from rich.table import Table
 
 import bochord
@@ -24,15 +25,22 @@ from ..models import (
     PagePreparationOverride,
     PreparationMode,
     PreparationRecipe,
+    PreparedArtifactRef,
+    RunnerReference,
 )
+from ..models.runner_execution import RunnerExecutionPolicy
 from ..services.evaluation import EvaluationService
 from ..services.evaluation_cohorts import EvaluationCohortService
+from ..services.olmocr_runner import HuggingFaceOlmocrRunner
 from ..services.preparation import (
     PageClassifier,
     PagePreparationService,
     PageQualityAssessor,
     PreparationBundleService,
 )
+from ..services.runner_batching import RunnerBatchPlanner
+from ..services.runner_execution import RunnerExecutionService
+from ..services.runner_packaging import RunnerInputPackager
 from ..services.source_acquisition import SourceAcquisitionService
 from ..settings import Settings
 from .utils import console, print_error, print_info
@@ -513,3 +521,138 @@ def _prepare_overrides(
     mode_override = PreparationMode(mode) if mode is not None else None
     page_class_override = PageClass(page_class) if page_class is not None else None
     return mode_override, page_class_override
+
+
+class _PreparedInputsManifest(BaseModel):
+    """Prepared artifact manifest accepted by ``bochord run``."""
+
+    #: Ordered prepared artifacts ready for runner execution.
+    artifacts: list[PreparedArtifactRef]
+
+
+@cli.command("run")
+@click.argument(
+    "prepared_inputs",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+)
+@click.option(
+    "--policy",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="RunnerExecutionPolicy JSON file.",
+)
+@click.option(
+    "--runner",
+    "runner_reference",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="RunnerReference JSON file.",
+)
+@click.option(
+    "--bundle-root",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Bundle root containing prepared artifact bytes.",
+)
+@click.option(
+    "--output-dir",
+    required=True,
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Destination directory for runner outputs.",
+)
+@click.option("--run-id", required=True, help="Execution run identifier.")
+@click.option(
+    "--document-id",
+    required=True,
+    help="Document identifier under processing.",
+)
+@click.pass_context
+def run_runner(  # noqa: PLR0913, PLR0917
+    ctx: click.Context,
+    prepared_inputs: Path,
+    policy: Path,
+    runner_reference: Path,
+    bundle_root: Path,
+    output_dir: Path,
+    run_id: str,
+    document_id: str,
+) -> None:
+    """
+    Execute prepared artifacts against one hosted olmOCR runner.
+
+    Args:
+        ctx: Click context object.
+        prepared_inputs: JSON manifest of prepared artifact references.
+        policy: RunnerExecutionPolicy JSON file path.
+        runner_reference: RunnerReference JSON file path.
+        bundle_root: Bundle root containing prepared artifact bytes.
+        output_dir: Destination root for runner outputs.
+        run_id: Execution run identifier.
+        document_id: Document identifier under processing.
+
+    Side Effects:
+        Writes runner inputs, batch records, witnesses, and throughput JSON.
+
+    Raises:
+        click.ClickException: When inputs or settings fail validation.
+
+    """
+    try:
+        manifest = _PreparedInputsManifest.model_validate_json(
+            prepared_inputs.read_text(encoding="utf-8")
+        )
+        execution_policy = RunnerExecutionPolicy.model_validate_json(
+            policy.read_text(encoding="utf-8")
+        )
+        runner = RunnerReference.model_validate_json(
+            runner_reference.read_text(encoding="utf-8")
+        )
+    except (OSError, ValidationError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    settings: Settings = ctx.obj["settings"]
+    token = settings.huggingface_api_key
+    if not token:
+        msg = "missing settings value huggingface_api_key"
+        raise click.ClickException(msg)
+    endpoint_url = settings.huggingface_model_endpoints.get(
+        execution_policy.endpoint.endpoint_key
+    )
+    if endpoint_url is None:
+        msg = (
+            "missing Hugging Face endpoint for "
+            f"{execution_policy.endpoint.endpoint_key}"
+        )
+        raise click.ClickException(msg)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    client = httpx.Client()
+    try:
+        hosted_runner = HuggingFaceOlmocrRunner(
+            runner=runner,
+            policy=execution_policy,
+            endpoint_url=str(endpoint_url),
+            token=token,
+            client=client,
+        )
+        service = RunnerExecutionService(
+            RunnerBatchPlanner(),
+            RunnerInputPackager(),
+            hosted_runner,
+        )
+        batches, summary = service.run(
+            run_id,
+            document_id,
+            manifest.artifacts,
+            bundle_root,
+            output_dir,
+        )
+    except (OSError, ValidationError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    finally:
+        client.close()
+
+    click.echo(f"batches: {len(batches)}")
+    click.echo(f"failed_items: {summary.failed_item_count}")
+    click.echo(f"items_per_second: {summary.items_per_second:.4f}")
+    click.echo(f"output: {output_dir}")

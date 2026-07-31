@@ -5,11 +5,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 from PIL import Image, ImageDraw
 
 from bochord.cli.cli import cli
 from bochord.models import EvaluationCohortReport, PreparationResult
+from bochord.models.runner_execution import RunnerThroughputSummary
+from bochord.settings import Settings
 
 
 def _dense_two_column_image() -> Image.Image:
@@ -419,6 +422,107 @@ def test_eval_cohorts_writes_all_fixed_views(runner, tmp_path: Path) -> None:
     assert report.by_page_class
     assert report.by_page_class_and_preparation_mode
     assert report.by_page_class_and_runner
+
+
+def _runner_reference_json() -> str:
+    return json.dumps(
+        {
+            "runner_id": "olmocr",
+            "runner_version": "0.4.27",
+            "model_name": "allenai/olmOCR",
+            "model_revision": "model-revision",
+            "hardware_class": "nvidia-l40s",
+            "runtime_name": "huggingface-endpoint",
+            "runtime_revision": "container-digest",
+            "config_digest": "sha256:runner-config",
+            "prompt_digest": "sha256:prompt",
+        }
+    )
+
+
+def _run_cli_args(tmp_path: Path) -> list[str]:
+    prepared = tmp_path / "prepared.json"
+    prepared.write_text(
+        Path("tests/fixtures/runner/prepared-inputs.json").read_text(),
+        encoding="utf-8",
+    )
+    policy = tmp_path / "policy.json"
+    policy.write_text(
+        Path("tests/fixtures/runner/olmocr-policy-v1.json").read_text(),
+        encoding="utf-8",
+    )
+    runner_ref = tmp_path / "runner.json"
+    runner_ref.write_text(_runner_reference_json(), encoding="utf-8")
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    output = tmp_path / "output"
+    return [
+        "run",
+        str(prepared),
+        "--policy",
+        str(policy),
+        "--runner",
+        str(runner_ref),
+        "--bundle-root",
+        str(bundle),
+        "--output-dir",
+        str(output),
+        "--run-id",
+        "run-1",
+        "--document-id",
+        "doc-1",
+    ]
+
+
+class TestCLIRun:
+    """Test the run command."""
+
+    def test_run_rejects_missing_huggingface_api_key(self, runner, tmp_path) -> None:
+        with patch("bochord.cli.cli.Settings") as mock_settings:
+            mock_settings.return_value = Settings()
+            result = runner.invoke(cli, _run_cli_args(tmp_path))
+
+        assert result.exit_code != 0
+        assert "huggingface_api_key" in result.output
+
+    def test_run_rejects_missing_endpoint_mapping(self, runner, tmp_path) -> None:
+        with patch("bochord.cli.cli.Settings") as mock_settings:
+            mock_settings.return_value = Settings(huggingface_api_key="hf_test_token")
+            result = runner.invoke(cli, _run_cli_args(tmp_path))
+
+        assert result.exit_code != 0
+        assert "missing Hugging Face endpoint" in result.output
+
+    @patch("bochord.cli.cli.RunnerExecutionService.run")
+    def test_run_command_reports_summary(
+        self,
+        mock_run,
+        runner,
+        tmp_path,
+    ) -> None:
+        mock_run.return_value = (
+            [],
+            RunnerThroughputSummary(
+                measured_item_count=2,
+                failed_item_count=0,
+                measured_duration_seconds=1.0,
+                items_per_second=2.0,
+            ),
+        )
+        configured = Settings(
+            huggingface_api_key="hf_test_token",
+            huggingface_model_endpoints={
+                "olmocr-production": "https://example.endpoints.huggingface.cloud/v1",
+            },
+        )
+        with patch("bochord.cli.cli.Settings", return_value=configured):
+            result = runner.invoke(cli, _run_cli_args(tmp_path))
+
+        assert result.exit_code == 0
+        assert "batches: 0" in result.output
+        assert "failed_items: 0" in result.output
+        assert "items_per_second: 2.0000" in result.output
+        assert "hf_test_token" not in result.output
 
 
 class TestCLIErrorHandling:
