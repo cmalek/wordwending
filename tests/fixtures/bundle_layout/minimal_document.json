@@ -1,0 +1,147 @@
+{
+  "document_id": "doc-minimal",
+  "bundle_schema_version": "1.0.0",
+  "source": {
+    "source_id": "src-minimal",
+    "source_type": "pdf",
+    "source_label": "sample.pdf",
+    "original_path": "sources/sample.pdf",
+    "page_count": 1
+  },
+  "bibliographic_provenance": {
+    "title": "Minimal Sample",
+    "authors": ["Author"]
+  },
+  "acquisition_provenance": {
+    "acquisition_kind": "local-scan",
+    "acquired_from": "local"
+  },
+  "run": {
+    "run_id": "run-minimal",
+    "run_timestamp_utc": "2026-07-31T12:00:00+00:00",
+    "preparation_recipe_id": "prep-v1",
+    "config_digest": "sha256:config",
+    "runner_set": [
+      {
+        "runner_id": "olmocr",
+        "runner_version": "0.4.27"
+      }
+    ],
+    "bundle_schema_version": "1.0.0"
+  },
+  "pages": [
+    {
+      "page_id": "page-0001",
+      "page_number": 1,
+      "prepared_page": {
+        "prepared_page_id": "prepared-page-1",
+        "preparation_mode": "full-page",
+        "page_class": "ordinary-prose",
+        "image_path": "pages/page-0001/image/prepared.jp2",
+        "source_artifact_id": "source-page-1",
+        "image_checksum": "sha256:prepared",
+        "preparation_recipe_id": "prep-v1",
+        "preparation_recipe_digest": "digest-prep-v1",
+        "coordinate_space": {
+          "space_id": "prepared-page-1",
+          "width_px": 100,
+          "height_px": 100
+        }
+      },
+      "witnesses": [
+        {
+          "witness_id": "wit-1",
+          "witness_kind": "text",
+          "artifact_path": "/tmp/olmocr-response.json",
+          "runner_id": "olmocr",
+          "page_id": "page-0001"
+        }
+      ],
+      "regions": [
+        {
+          "region_id": "region-1",
+          "region_kind": "body",
+          "reading_order_index": 1,
+          "line_ids": ["line-1"],
+          "note_ids": ["note-1"],
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-1"],
+            "runner_ids": ["olmocr"]
+          }
+        }
+      ],
+      "lines": [
+        {
+          "line_id": "line-1",
+          "region_id": "region-1",
+          "line_order": 1,
+          "span_ids": ["span-1"],
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-1"],
+            "runner_ids": ["olmocr"]
+          }
+        }
+      ],
+      "spans": [
+        {
+          "span_id": "span-1",
+          "line_id": "line-1",
+          "text_diplomatic": "hello",
+          "text_normalized": "hello",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-1"],
+            "runner_ids": ["olmocr"]
+          }
+        }
+      ],
+      "notes": [
+        {
+          "note_id": "note-1",
+          "note_kind": "footnote-block",
+          "region_id": "region-1",
+          "text_diplomatic": "footnote text",
+          "linked_marker_span_ids": ["span-1"],
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-1"],
+            "runner_ids": ["olmocr"]
+          }
+        }
+      ],
+      "evaluation_summary": {
+        "text": {
+          "metrics": [
+            {
+              "metric_id": "character_error_rate",
+              "value": 0.01
+            }
+          ],
+          "flags": [
+            {
+              "flag_id": "flag-text-1",
+              "flag_type": "low_confidence",
+              "severity": "warning",
+              "message": "Span confidence below threshold"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "evaluation_summary": {
+    "text": {
+      "metrics": [
+        {
+          "metric_id": "character_error_rate",
+          "value": 0.01
+        }
+      ]
+    }
+  },
+  "exports": {
+    "bundle_json_path": "exports/bundle.json"
+  }
+}
