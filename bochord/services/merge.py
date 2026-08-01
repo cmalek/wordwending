@@ -92,6 +92,28 @@ class _NoteLinkResolutionContext(NamedTuple):
     text_normalizer: TextNormalizer
 
 
+class _SpanRoleMergeState(NamedTuple):
+    """Confidence, alternates, and flag callback for span-role resolution."""
+
+    #: Current merge confidence for the span.
+    confidence: float
+    #: Alternate candidates accumulated during resolution.
+    alternates: list[AlternateCandidate]
+    #: Callback that appends one merge flag to the run accumulator.
+    add_flag: Callable[..., None]
+
+
+class _NoteLinkMergeState(NamedTuple):
+    """Confidence, alternates, and flag callback for note-link resolution."""
+
+    #: Current merge confidence for the note.
+    confidence: float
+    #: Alternate candidates accumulated during resolution.
+    alternates: list[AlternateCandidate]
+    #: Callback that appends one merge flag to the run accumulator.
+    add_flag: Callable[..., None]
+
+
 def _box_iou(left: BoundingBox, right: BoundingBox) -> float:
     """
     Return intersection-over-union for two axis-aligned boxes.
@@ -1114,6 +1136,78 @@ def _apply_span_text_resolution(
     )
 
 
+def _resolve_span_typography_conflicts(
+    typography: Typography,
+    candidates: list[_SpanCandidate],
+    alternates: list[AlternateCandidate],
+    confidence: float,
+) -> tuple[Typography, list[AlternateCandidate], float, bool]:
+    """
+    Resolve typography facets from witness span candidates.
+
+    Args:
+        typography: Typography copied from the accepted span.
+        candidates: Matched witness span candidates.
+        alternates: Existing alternate candidates to extend.
+        confidence: Current merge confidence for the span.
+
+    Returns:
+        Resolved typography, alternates, confidence, and typography conflict flag.
+
+    """
+    typography, facet_conflict, typo_alternates = _resolve_typography_facets(
+        typography,
+        candidates,
+    )
+    typo_conflict = False
+    if facet_conflict:
+        typo_conflict = True
+        alternates = list(alternates)
+        alternates.extend(typo_alternates)
+        confidence = _min_merge_confidence(
+            confidence,
+            _MERGE_CONFIDENCE_CONFLICT,
+        )
+    return typography, alternates, confidence, typo_conflict
+
+
+def _resolve_span_role_conflicts(
+    candidates: list[_SpanCandidate],
+    roles: list[TextRole],
+    span_id: str,
+    state: _SpanRoleMergeState,
+) -> tuple[list[TextRole], _SpanRoleMergeState]:
+    """
+    Resolve span roles from witness candidates.
+
+    Args:
+        candidates: Matched witness span candidates.
+        roles: Starting roles copied from the accepted span.
+        span_id: Accepted span identifier for flag targeting.
+        state: Confidence, alternates, and flag callback for role resolution.
+
+    Returns:
+        Resolved roles and updated merge state.
+
+    """
+    roles, role_conflict, role_alternates = _resolve_span_roles(candidates, roles)
+    if not role_conflict:
+        return roles, state
+
+    alternates = list(state.alternates)
+    alternates.extend(role_alternates)
+    confidence = _min_merge_confidence(
+        state.confidence,
+        _MERGE_CONFIDENCE_CONFLICT,
+    )
+    state.add_flag(
+        MergeFlagType.ROLE_CONFLICT,
+        target_object_ids=[span_id],
+        message=f"Witnesses disagree on roles for span {span_id}.",
+    )
+    return roles, state._replace(confidence=confidence, alternates=alternates)
+
+
 def _apply_span_typography_resolution(
     span: SpanRecord,
     candidates: list[_SpanCandidate],
@@ -1136,33 +1230,25 @@ def _apply_span_typography_resolution(
     alternates = list(provenance.alternate_candidates)
     confidence = provenance.merge_confidence or _MERGE_CONFIDENCE_AGREEMENT
     roles = list(span.roles)
-    typo_conflict = False
 
-    typography, facet_conflict, typo_alternates = _resolve_typography_facets(
-        typography,
-        candidates,
+    typography, alternates, confidence, typo_conflict = (
+        _resolve_span_typography_conflicts(
+            typography,
+            candidates,
+            alternates,
+            confidence,
+        )
     )
-    if facet_conflict:
-        typo_conflict = True
-        alternates.extend(typo_alternates)
-        confidence = _min_merge_confidence(
-            confidence,
-            _MERGE_CONFIDENCE_CONFLICT,
-        )
-
-    roles, role_conflict, role_alternates = _resolve_span_roles(candidates, roles)
-    if role_conflict:
-        alternates.extend(role_alternates)
-        confidence = _min_merge_confidence(
-            confidence,
-            _MERGE_CONFIDENCE_CONFLICT,
-        )
-        add_flag(
-            MergeFlagType.ROLE_CONFLICT,
-            target_object_ids=[span.span_id],
-            message=f"Witnesses disagree on roles for span {span.span_id}.",
-        )
-
+    roles, role_state = _resolve_span_role_conflicts(
+        candidates,
+        roles,
+        span.span_id,
+        _SpanRoleMergeState(
+            confidence=confidence,
+            alternates=alternates,
+            add_flag=add_flag,
+        ),
+    )
     if typo_conflict:
         add_flag(
             MergeFlagType.TYPOGRAPHY_CONFLICT,
@@ -1172,8 +1258,8 @@ def _apply_span_typography_resolution(
             ),
         )
 
-    provenance.merge_confidence = confidence
-    provenance.alternate_candidates = alternates
+    provenance.merge_confidence = role_state.confidence
+    provenance.alternate_candidates = role_state.alternates
     return span.model_copy(
         update={
             "typography": typography,
@@ -1211,6 +1297,131 @@ def _resolve_span_roles(
     return default_roles, False, []
 
 
+def _note_marker_links_when_mapping_ambiguous(
+    note_id: str,
+    candidates: list[_NoteCandidate],
+    context: _NoteLinkResolutionContext,
+    state: _NoteLinkMergeState,
+) -> tuple[list[str], _NoteLinkMergeState]:
+    """
+    Return empty links when witness marker mapping is ambiguous.
+
+    Args:
+        note_id: Accepted note identifier for flag targeting.
+        candidates: Matched witness note candidates.
+        context: Witness, span, and threshold inputs for note-link resolution.
+        state: Confidence, alternates, and flag callback for note-link resolution.
+
+    Returns:
+        Empty linked ids and updated merge state.
+
+    """
+    alternates = list(state.alternates)
+    alternates.extend(_note_link_alternates(candidates, context))
+    state.add_flag(
+        MergeFlagType.NOTE_LINK_AMBIGUOUS,
+        target_object_ids=[note_id],
+        message=(
+            f"Witness marker spans map ambiguously for note {note_id}."
+        ),
+    )
+    return [], state._replace(
+        confidence=_min_merge_confidence(
+            state.confidence,
+            _MERGE_CONFIDENCE_CONFLICT,
+        ),
+        alternates=alternates,
+    )
+
+
+def _note_marker_links_from_mapped_sets(
+    note_id: str,
+    mapped_sets: list[frozenset[str]],
+    candidates: list[_NoteCandidate],
+    context: _NoteLinkResolutionContext,
+    state: _NoteLinkMergeState,
+) -> tuple[list[str], _NoteLinkMergeState]:
+    """
+    Resolve linked marker ids when mapping succeeded for all candidates.
+
+    Args:
+        note_id: Accepted note identifier for flag targeting.
+        mapped_sets: Mapped link-id sets per witness note candidate.
+        candidates: Matched witness note candidates.
+        context: Witness, span, and threshold inputs for note-link resolution.
+        state: Confidence, alternates, and flag callback for note-link resolution.
+
+    Returns:
+        Linked marker span ids and updated merge state.
+
+    """
+    unique_sets = set(mapped_sets)
+    if len(unique_sets) == 1:
+        linked_ids = sorted(unique_sets.pop())
+        return linked_ids, state._replace(
+            confidence=_min_merge_confidence(
+                state.confidence,
+                _MERGE_CONFIDENCE_AGREEMENT,
+            ),
+        )
+
+    alternates = list(state.alternates)
+    alternates.extend(_note_link_alternates(candidates, context))
+    state.add_flag(
+        MergeFlagType.NOTE_LINK_AMBIGUOUS,
+        target_object_ids=[note_id],
+        message=(
+            f"Witnesses supply conflicting note links for {note_id}."
+        ),
+    )
+    return [], state._replace(
+        confidence=_min_merge_confidence(
+            state.confidence,
+            _MERGE_CONFIDENCE_CONFLICT,
+        ),
+        alternates=alternates,
+    )
+
+
+def _resolve_note_marker_links(
+    note_id: str,
+    candidates: list[_NoteCandidate],
+    context: _NoteLinkResolutionContext,
+    state: _NoteLinkMergeState,
+) -> tuple[list[str], _NoteLinkMergeState]:
+    """
+    Resolve linked marker span ids from matched witness notes.
+
+    Args:
+        note_id: Accepted note identifier for flag targeting.
+        candidates: Matched witness note candidates.
+        context: Witness, span, and threshold inputs for note-link resolution.
+        state: Confidence, alternates, and flag callback for note-link resolution.
+
+    Returns:
+        Linked marker span ids and updated merge state.
+
+    """
+    mapped_sets, mapping_ambiguous = _mapped_note_link_sets(
+        candidates,
+        context,
+    )
+    if mapping_ambiguous:
+        return _note_marker_links_when_mapping_ambiguous(
+            note_id,
+            candidates,
+            context,
+            state,
+        )
+    return _note_marker_links_from_mapped_sets(
+        note_id,
+        mapped_sets,
+        candidates,
+        context,
+        state,
+    )
+
+
 def _apply_note_link_resolution(
     note: NoteRecord,
     candidates: list[_NoteCandidate],
@@ -1238,46 +1449,19 @@ def _apply_note_link_resolution(
 
     if candidates:
         diplomatic = candidates[0].note.text_diplomatic
-        mapped_sets, mapping_ambiguous = _mapped_note_link_sets(
+        link_state = _NoteLinkMergeState(
+            confidence=confidence,
+            alternates=alternates,
+            add_flag=add_flag,
+        )
+        linked_ids, link_state = _resolve_note_marker_links(
+            note.note_id,
             candidates,
             context,
+            link_state,
         )
-        if mapping_ambiguous:
-            linked_ids = []
-            confidence = _min_merge_confidence(
-                confidence,
-                _MERGE_CONFIDENCE_CONFLICT,
-            )
-            alternates.extend(_note_link_alternates(candidates, context))
-            add_flag(
-                MergeFlagType.NOTE_LINK_AMBIGUOUS,
-                target_object_ids=[note.note_id],
-                message=(
-                    f"Witness marker spans map ambiguously for note {note.note_id}."
-                ),
-            )
-        else:
-            unique_sets = set(mapped_sets)
-            if len(unique_sets) == 1:
-                linked_ids = sorted(unique_sets.pop())
-                confidence = _min_merge_confidence(
-                    confidence,
-                    _MERGE_CONFIDENCE_AGREEMENT,
-                )
-            else:
-                linked_ids = []
-                confidence = _min_merge_confidence(
-                    confidence,
-                    _MERGE_CONFIDENCE_CONFLICT,
-                )
-                alternates.extend(_note_link_alternates(candidates, context))
-                add_flag(
-                    MergeFlagType.NOTE_LINK_AMBIGUOUS,
-                    target_object_ids=[note.note_id],
-                    message=(
-                        f"Witnesses supply conflicting note links for {note.note_id}."
-                    ),
-                )
+        confidence = link_state.confidence
+        alternates = link_state.alternates
 
     provenance.merge_confidence = confidence
     provenance.alternate_candidates = alternates
