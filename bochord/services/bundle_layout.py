@@ -8,6 +8,7 @@ import shutil
 from collections.abc import Mapping  # noqa: TC003
 from itertools import chain
 from pathlib import Path
+from typing import Any
 
 from bochord.models import (
     BUNDLE_SCHEMA_VERSION,
@@ -15,8 +16,10 @@ from bochord.models import (
     BundlePaths,
     DocumentBundle,
     DocumentBundleManifest,
+    OverlayState,
     PageBundleManifest,
     PageEvaluationSummary,
+    ReviewEvent,
     RunnerReference,
     WitnessReference,
 )
@@ -513,3 +516,83 @@ class BundleLayoutService:
         return BundlePage.model_validate_json(
             paths.page_graph(page_number).read_text(encoding="utf-8")
         )
+
+    def append_review_events(
+        self,
+        root: Path,
+        page_number: int,
+        events: list[ReviewEvent],
+    ) -> None:
+        """
+        Append JSONL review events; never rewrite prior lines.
+
+        Side Effects:
+            Creates/appends ``overlays/review_events.jsonl``.
+
+        Args:
+            root: Filesystem root for one document bundle tree.
+            page_number: 1-based page index within the document bundle.
+            events: Review events to append in order.
+
+        """
+        if not events:
+            return
+        paths = BundlePaths(root)
+        review_events_path = paths.review_events(page_number)
+        review_events_path.parent.mkdir(parents=True, exist_ok=True)
+        lines = [
+            json.dumps(event.model_dump(mode="json"), separators=(",", ":"))
+            for event in events
+        ]
+        with review_events_path.open("a", encoding="utf-8") as handle:
+            handle.write("\n".join(lines) + "\n")
+
+    def write_overlay_state(
+        self,
+        root: Path,
+        page_number: int,
+        states: list[OverlayState],
+    ) -> None:
+        """
+        Overwrite ``overlays/current_state.json`` deterministically.
+
+        Side Effects:
+            Atomically replaces ``overlays/current_state.json``.
+
+        Args:
+            root: Filesystem root for one document bundle tree.
+            page_number: 1-based page index within the document bundle.
+            states: Materialized overlay state for reviewed objects.
+
+        """
+        paths = BundlePaths(root)
+        payload = [state.model_dump(mode="json") for state in states]
+        _atomic_write_json(paths.overlay_state(page_number), payload)
+
+    def read_review_events(
+        self,
+        root: Path,
+        page_number: int,
+    ) -> list[dict[str, Any]]:
+        """
+        Read append-only review events for one page.
+
+        Args:
+            root: Filesystem root for one document bundle tree.
+            page_number: 1-based page index within the document bundle.
+
+        Returns:
+            Parsed JSON objects for each non-blank JSONL line.
+
+        """
+        paths = BundlePaths(root)
+        review_events_path = paths.review_events(page_number)
+        if not review_events_path.exists():
+            return []
+        events: list[dict[str, Any]] = []
+        for line in review_events_path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            events.append(json.loads(stripped))
+        return events

@@ -12,15 +12,20 @@ from pydantic import ValidationError
 
 from bochord.models import (
     BUNDLE_SCHEMA_VERSION,
+    AcceptReviewEvent,
     AcquisitionProvenance,
     BibliographicProvenance,
     BundlePaths,
     DocumentBundle,
     DocumentBundleManifest,
+    OverlayState,
     PageBundleManifest,
+    ReviewDimension,
+    ReviewScope,
     RunnerReference,
     SourceDescriptor,
     SourceType,
+    TrustState,
     WitnessReference,
     page_dir_name,
 )
@@ -34,6 +39,24 @@ FIXTURE_PATH = (
 def load_minimal_bundle() -> DocumentBundle:
     """Load the minimal DocumentBundle fixture."""
     return DocumentBundle.model_validate_json(FIXTURE_PATH.read_text(encoding="utf-8"))
+
+
+def _accept_review_event(event_id: str) -> AcceptReviewEvent:
+    """Build one minimal accept review event for bundle overlay tests."""
+    return AcceptReviewEvent(
+        event_id=event_id,
+        task_id="task-1",
+        target_object_id="note-1",
+        target_scope=ReviewScope.NOTE,
+        review_dimensions=[ReviewDimension.NOTE_LINKAGE],
+        base_run_id="run-1",
+        base_graph_revision="graph-1",
+        guideline_version="review-v1",
+        prior_trust_state=TrustState.MACHINE,
+        new_trust_state=TrustState.REVIEWED,
+        operator_id="editor-1",
+        timestamp_utc=datetime(2026, 7, 26, tzinfo=UTC),
+    )
 
 
 def _write_minimal_inputs(
@@ -418,3 +441,136 @@ def test_write_document_bundle_writes_page_exports(tmp_path) -> None:
     export_path = root / "pages" / "page-0001" / "exports" / "reading.txt"
     assert export_path.exists()
     assert export_path.read_text(encoding="utf-8") == "hello"
+
+
+def test_append_review_events_preserves_order_and_grows_file(tmp_path) -> None:
+    """Append-only JSONL keeps prior lines and grows monotonically."""
+    bundle = load_minimal_bundle()
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
+        tmp_path
+    )
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=witness_files,
+    )
+
+    event_a = _accept_review_event("evt-a")
+    event_b = _accept_review_event("evt-b")
+    review_path = root / "pages" / "page-0001" / "overlays" / "review_events.jsonl"
+
+    service.append_review_events(root, 1, [event_a])
+    size_after_a = review_path.stat().st_size
+    assert size_after_a > 0
+
+    service.append_review_events(root, 1, [event_b])
+    size_after_b = review_path.stat().st_size
+    assert size_after_b > size_after_a
+
+    events = service.read_review_events(root, 1)
+    assert [event["event_id"] for event in events] == ["evt-a", "evt-b"]
+
+
+def test_write_document_bundle_after_append_does_not_rewrite_jsonl(tmp_path) -> None:
+    """Recomputing the bundle must not truncate appended review history."""
+    bundle = load_minimal_bundle()
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
+        tmp_path
+    )
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=witness_files,
+    )
+
+    event = _accept_review_event("evt-append")
+    service.append_review_events(root, 1, [event])
+    review_path = root / "pages" / "page-0001" / "overlays" / "review_events.jsonl"
+    bytes_after_append = review_path.read_bytes()
+
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=witness_files,
+    )
+
+    assert review_path.read_bytes() == bytes_after_append
+    assert service.read_review_events(root, 1)[0]["event_id"] == "evt-append"
+
+
+def test_write_overlay_state_writes_json_array(tmp_path) -> None:
+    """Derived overlay state overwrites current_state.json as a JSON array."""
+    bundle = load_minimal_bundle()
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
+        tmp_path
+    )
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=witness_files,
+    )
+
+    states = [
+        OverlayState(
+            object_id="note-1",
+            scope=ReviewScope.NOTE,
+            trust_state=TrustState.REVIEWED,
+            reviewed_dimensions=[ReviewDimension.NOTE_LINKAGE],
+            applied_event_ids=["evt-a"],
+        )
+    ]
+    service.write_overlay_state(root, 1, states)
+
+    state_path = root / "pages" / "page-0001" / "overlays" / "current_state.json"
+    assert state_path.exists()
+    payload = json.loads(state_path.read_text(encoding="utf-8"))
+    assert payload == [state.model_dump(mode="json") for state in states]
+
+
+def test_read_review_events_skips_blank_lines(tmp_path) -> None:
+    """Blank JSONL lines are ignored when reading review events."""
+    bundle = load_minimal_bundle()
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
+        tmp_path
+    )
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=witness_files,
+    )
+
+    event = _accept_review_event("evt-only")
+    review_path = root / "pages" / "page-0001" / "overlays" / "review_events.jsonl"
+    review_path.write_text(
+        "\n"
+        + json.dumps(event.model_dump(mode="json"))
+        + "\n\n",
+        encoding="utf-8",
+    )
+
+    events = service.read_review_events(root, 1)
+    assert len(events) == 1
+    assert events[0]["event_id"] == "evt-only"
