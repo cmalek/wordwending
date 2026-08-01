@@ -22,6 +22,7 @@ from bochord.models import (
     ReviewEvent,
     RunnerReference,
     WitnessReference,
+    page_dir_name,
 )
 
 #: Witness families that receive empty on-disk directories per page.
@@ -147,10 +148,14 @@ def _resolve_source_image_path(
         paths: Path helpers for the bundle root.
         page_number: 1-based page index within the document bundle.
         source_page_image_path: Bundle-relative source page image when copied.
-        prepared_image_path: Bundle-relative prepared image when copied.
+        prepared_image_path: Bundle-relative prepared image when copied or known.
 
     Returns:
         Bundle-relative path for ``PageBundleManifest.source_image_path``.
+
+    Raises:
+        ValueError: If multiple ``source/pages/{page:04d}.*`` files exist, or
+            if no source or prepared image path can be resolved.
 
     """
     if source_page_image_path:
@@ -158,10 +163,27 @@ def _resolve_source_image_path(
     pages_dir = paths.source_pages_dir()
     if pages_dir.is_dir():
         prefix = f"{page_number:04d}."
-        for candidate in sorted(pages_dir.iterdir()):
-            if candidate.is_file() and candidate.name.startswith(prefix):
-                return _relative_path(root, candidate)
-    return prepared_image_path or ""
+        matches = sorted(
+            candidate
+            for candidate in pages_dir.iterdir()
+            if candidate.is_file() and candidate.name.startswith(prefix)
+        )
+        if len(matches) > 1:
+            names = ", ".join(path.name for path in matches)
+            msg = (
+                f"ambiguous source page image for page {page_number}: "
+                f"multiple files match {prefix}* ({names})"
+            )
+            raise ValueError(msg)
+        if len(matches) == 1:
+            return _relative_path(root, matches[0])
+    if prepared_image_path:
+        return prepared_image_path
+    msg = (
+        f"source_image_path required for page {page_number}: "
+        "no source/pages image and no prepared image path"
+    )
+    raise ValueError(msg)
 
 
 def _resolve_overlay_state_path(
@@ -496,6 +518,7 @@ class BundleLayoutService:
         if not review_events_path.exists():
             review_events_path.write_text("", encoding="utf-8")
 
+        prepared_fallback = prepared_image_path or page.prepared_page.image_path or None
         page_manifest = PageBundleManifest(
             schema_version=BUNDLE_SCHEMA_VERSION,
             page_id=page.page_id,
@@ -505,7 +528,7 @@ class BundleLayoutService:
                 paths,
                 page_number,
                 source_page_image_path,
-                prepared_image_path,
+                prepared_fallback,
             ),
             executed_passes=_executed_passes(page, runner_set),
             witness_artifacts=rewritten_witnesses,
@@ -649,7 +672,10 @@ class BundleLayoutService:
         Overwrite ``overlays/current_state.json`` deterministically.
 
         Side Effects:
-            Atomically replaces ``overlays/current_state.json``.
+            Atomically replaces ``overlays/current_state.json``. Updates the
+            page ``manifest.json`` ``overlay_state_path`` pointer when a
+            manifest exists, or creates a stub page manifest (plus empty
+            ``review_events.jsonl``) when none exists yet.
 
         Args:
             root: Filesystem root for one document bundle tree.
@@ -661,6 +687,12 @@ class BundleLayoutService:
         overlay_path = paths.overlay_state(page_number)
         payload = [state.model_dump(mode="json") for state in states]
         _atomic_write_json(overlay_path, payload)
+        overlay_relative = _relative_path(root, overlay_path)
+
+        review_events_path = paths.review_events(page_number)
+        review_events_path.parent.mkdir(parents=True, exist_ok=True)
+        if not review_events_path.exists():
+            review_events_path.write_text("", encoding="utf-8")
 
         manifest_path = paths.page_manifest(page_number)
         if manifest_path.exists():
@@ -668,11 +700,21 @@ class BundleLayoutService:
                 manifest_path.read_text(encoding="utf-8")
             )
             updated = page_manifest.model_copy(
-                update={
-                    "overlay_state_path": _relative_path(root, overlay_path),
-                }
+                update={"overlay_state_path": overlay_relative}
             )
-            _rewrite_page_manifest(paths, page_number, updated)
+        else:
+            # ponytail: stub manifest so overlay presence is recorded before
+            # write_document_bundle; full write replaces all other fields.
+            updated = PageBundleManifest(
+                schema_version=BUNDLE_SCHEMA_VERSION,
+                page_id=page_dir_name(page_number),
+                page_number=page_number,
+                source_image_path="",
+                graph_artifact_path=_relative_path(root, paths.page_graph(page_number)),
+                overlay_state_path=overlay_relative,
+                review_events_path=_relative_path(root, review_events_path),
+            )
+        _rewrite_page_manifest(paths, page_number, updated)
 
     def read_review_events(
         self,

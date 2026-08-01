@@ -29,7 +29,10 @@ from bochord.models import (
     WitnessReference,
     page_dir_name,
 )
-from bochord.services.bundle_layout import BundleLayoutService
+from bochord.services.bundle_layout import (
+    BundleLayoutService,
+    _resolve_source_image_path,
+)
 
 FIXTURE_PATH = (
     Path(__file__).parent / "fixtures" / "bundle_layout" / "minimal_document.json"
@@ -227,8 +230,8 @@ def test_write_document_bundle_creates_spec_tree(tmp_path) -> None:
     bundle = load_minimal_bundle()
     service = BundleLayoutService()
     root = tmp_path / "bundle"
-    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
-        tmp_path
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
     )
 
     manifest = service.write_document_bundle(
@@ -272,7 +275,9 @@ def test_write_document_bundle_creates_spec_tree(tmp_path) -> None:
         "pages/page-0001/witnesses/text/olmocr-response.json"
     )
 
-    review_events_path = root / "pages" / "page-0001" / "overlays" / "review_events.jsonl"
+    review_events_path = (
+        root / "pages" / "page-0001" / "overlays" / "review_events.jsonl"
+    )
     assert review_events_path.exists()
     assert review_events_path.read_text(encoding="utf-8") == ""
 
@@ -301,8 +306,8 @@ def test_write_document_bundle_refreshes_graph_on_rerun(tmp_path) -> None:
     bundle = load_minimal_bundle()
     service = BundleLayoutService()
     root = tmp_path / "bundle"
-    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
-        tmp_path
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
     )
 
     service.write_document_bundle(
@@ -334,8 +339,8 @@ def test_write_document_bundle_preserves_review_events_jsonl(tmp_path) -> None:
     bundle = load_minimal_bundle()
     service = BundleLayoutService()
     root = tmp_path / "bundle"
-    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
-        tmp_path
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
     )
     review_path = root / "pages" / "page-0001" / "overlays" / "review_events.jsonl"
     seeded = b'{"event_id":"evt-seeded"}\n'
@@ -368,8 +373,8 @@ def test_read_document_manifest_round_trip(tmp_path) -> None:
     bundle = load_minimal_bundle()
     service = BundleLayoutService()
     root = tmp_path / "bundle"
-    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
-        tmp_path
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
     )
 
     written = service.write_document_bundle(
@@ -392,8 +397,8 @@ def test_write_document_bundle_rewrites_witness_paths_without_files(tmp_path) ->
     bundle = load_minimal_bundle()
     service = BundleLayoutService()
     root = tmp_path / "bundle"
-    source_files, source_page_images, page_images, _witness_files = _write_minimal_inputs(
-        tmp_path
+    source_files, source_page_images, page_images, _witness_files = (
+        _write_minimal_inputs(tmp_path)
     )
     pre_write_path = bundle.pages[0].witnesses[0].artifact_path
     assert pre_write_path.endswith("olmocr-response.json")
@@ -424,8 +429,8 @@ def test_write_document_bundle_writes_page_exports(tmp_path) -> None:
     bundle = load_minimal_bundle()
     service = BundleLayoutService()
     root = tmp_path / "bundle"
-    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
-        tmp_path
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
     )
 
     service.write_document_bundle(
@@ -448,8 +453,8 @@ def test_append_review_events_preserves_order_and_grows_file(tmp_path) -> None:
     bundle = load_minimal_bundle()
     service = BundleLayoutService()
     root = tmp_path / "bundle"
-    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
-        tmp_path
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
     )
     service.write_document_bundle(
         bundle,
@@ -481,8 +486,8 @@ def test_write_document_bundle_after_append_does_not_rewrite_jsonl(tmp_path) -> 
     bundle = load_minimal_bundle()
     service = BundleLayoutService()
     root = tmp_path / "bundle"
-    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
-        tmp_path
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
     )
     service.write_document_bundle(
         bundle,
@@ -516,8 +521,8 @@ def test_write_overlay_state_updates_page_manifest_pointer(tmp_path) -> None:
     bundle = load_minimal_bundle()
     service = BundleLayoutService()
     root = tmp_path / "bundle"
-    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
-        tmp_path
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
     )
     service.write_document_bundle(
         bundle,
@@ -550,8 +555,8 @@ def test_write_document_bundle_preserves_overlay_state_pointer(tmp_path) -> None
     bundle = load_minimal_bundle()
     service = BundleLayoutService()
     root = tmp_path / "bundle"
-    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
-        tmp_path
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
     )
     service.write_document_bundle(
         bundle,
@@ -596,8 +601,8 @@ def test_write_overlay_state_writes_json_array(tmp_path) -> None:
     bundle = load_minimal_bundle()
     service = BundleLayoutService()
     root = tmp_path / "bundle"
-    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
-        tmp_path
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
     )
     service.write_document_bundle(
         bundle,
@@ -630,8 +635,8 @@ def test_read_review_events_skips_blank_lines(tmp_path) -> None:
     bundle = load_minimal_bundle()
     service = BundleLayoutService()
     root = tmp_path / "bundle"
-    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
-        tmp_path
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
     )
     service.write_document_bundle(
         bundle,
@@ -645,12 +650,82 @@ def test_read_review_events_skips_blank_lines(tmp_path) -> None:
     event = _accept_review_event("evt-only")
     review_path = root / "pages" / "page-0001" / "overlays" / "review_events.jsonl"
     review_path.write_text(
-        "\n"
-        + json.dumps(event.model_dump(mode="json"))
-        + "\n\n",
+        "\n" + json.dumps(event.model_dump(mode="json")) + "\n\n",
         encoding="utf-8",
     )
 
     events = service.read_review_events(root, 1)
     assert len(events) == 1
     assert events[0]["event_id"] == "evt-only"
+
+
+def test_write_overlay_state_creates_manifest_when_missing(tmp_path) -> None:
+    """Overlay write before bundle write still records overlay presence."""
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    states = [
+        OverlayState(
+            object_id="note-1",
+            scope=ReviewScope.NOTE,
+            trust_state=TrustState.REVIEWED,
+            reviewed_dimensions=[ReviewDimension.NOTE_LINKAGE],
+            applied_event_ids=["evt-a"],
+        )
+    ]
+
+    service.write_overlay_state(root, 1, states)
+
+    state_path = root / "pages" / "page-0001" / "overlays" / "current_state.json"
+    assert state_path.exists()
+    page_manifest = service.read_page_manifest(root, 1)
+    assert page_manifest.page_id == "page-0001"
+    assert page_manifest.overlay_state_path == (
+        "pages/page-0001/overlays/current_state.json"
+    )
+    assert page_manifest.review_events_path == (
+        "pages/page-0001/overlays/review_events.jsonl"
+    )
+    review_path = root / "pages" / "page-0001" / "overlays" / "review_events.jsonl"
+    assert review_path.exists()
+
+
+def test_resolve_source_image_path_rejects_ambiguous_extensions(tmp_path) -> None:
+    """Multiple source/pages/NNNN.* files must not silently pick one."""
+    root = tmp_path / "bundle"
+    paths = BundlePaths(root)
+    pages_dir = paths.source_pages_dir()
+    pages_dir.mkdir(parents=True)
+    (pages_dir / "0001.jp2").write_bytes(b"a")
+    (pages_dir / "0001.png").write_bytes(b"b")
+
+    with pytest.raises(ValueError, match="ambiguous source page image"):
+        _resolve_source_image_path(root, paths, 1, None, None)
+
+
+def test_write_document_bundle_uses_prepared_image_path_fallback(tmp_path) -> None:
+    """Without source/prepared copies, fall back to BundlePage prepared path."""
+    bundle = load_minimal_bundle()
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+
+    service.write_document_bundle(bundle, root)
+
+    page_manifest = service.read_page_manifest(root, 1)
+    assert page_manifest.source_image_path == "pages/page-0001/image/prepared.jp2"
+
+
+def test_write_document_bundle_rejects_missing_source_image_path(tmp_path) -> None:
+    """Raise when no source page image and no prepared image path exist."""
+    bundle = load_minimal_bundle()
+    page = bundle.pages[0]
+    cleared = page.model_copy(
+        update={
+            "prepared_page": page.prepared_page.model_copy(update={"image_path": ""}),
+        }
+    )
+    bundle = bundle.model_copy(update={"pages": [cleared]})
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+
+    with pytest.raises(ValueError, match="source_image_path"):
+        service.write_document_bundle(bundle, root)
