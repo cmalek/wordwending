@@ -1541,6 +1541,324 @@ def test_ambiguous_note_links_clear_ids_and_flag() -> None:
     assert len(link_alternates) >= 1
 
 
+def test_same_kind_note_without_iou_does_not_false_agree() -> None:
+    """Same-kind singleton must not create false 1.0 link agreement without IoU."""
+    marker_a_box = BoundingBox(x0=0, y0=0, x1=10, y1=10)
+    marker_b_box = BoundingBox(x0=60, y0=0, x1=70, y1=10)
+    scaffold = _witness_page(
+        witness_id="wit-scaffold",
+        runner_id="runner-scaffold",
+        regions=[
+            _region(
+                "region-scaffold",
+                reading_order_index=1,
+                line_ids=["line-scaffold"],
+                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=40),
+            )
+        ],
+        lines=[
+            _line(
+                "line-scaffold",
+                region_id="region-scaffold",
+                line_order=1,
+                span_ids=["span-marker-a"],
+                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+            )
+        ],
+        spans=[
+            _span(
+                "span-marker-a",
+                line_id="line-scaffold",
+                text="1",
+                bounding_box=marker_a_box,
+                roles=[TextRole.FOOTNOTE_MARKER],
+            )
+        ],
+        notes=[
+            _note(
+                "note-scaffold",
+                text="Footnote body.",
+                linked_marker_span_ids=["span-marker-a"],
+                bounding_box=None,
+                region_id="region-scaffold",
+            )
+        ],
+    )
+    alternate = _witness_page(
+        witness_id="wit-alt",
+        runner_id="runner-alt",
+        regions=[
+            _region(
+                "region-alt",
+                reading_order_index=1,
+                line_ids=["line-alt"],
+                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=39),
+            )
+        ],
+        lines=[
+            _line(
+                "line-alt",
+                region_id="region-alt",
+                line_order=1,
+                span_ids=["span-marker-b"],
+                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=9),
+            )
+        ],
+        spans=[
+            _span(
+                "span-marker-b",
+                line_id="line-alt",
+                text="2",
+                bounding_box=marker_b_box,
+                roles=[TextRole.FOOTNOTE_MARKER],
+            )
+        ],
+        notes=[
+            _note(
+                "note-alt",
+                text="Footnote body.",
+                linked_marker_span_ids=["span-marker-b"],
+                bounding_box=None,
+                region_id="region-alt",
+            )
+        ],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[scaffold, alternate],
+    )
+    policy = MergePolicy(
+        policy_id="merge-v1",
+        version="1.0.0",
+        structure_scaffold_runner_ids=["runner-scaffold"],
+    )
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    note = result.page.notes[0]
+    assert note.linked_marker_span_ids == ["span-marker-a"]
+    assert note.provenance.merge_confidence == 1.0
+    assert not any(
+        flag.flag_type == MergeFlagType.NOTE_LINK_AMBIGUOUS for flag in result.flags
+    )
+
+
+def test_non_overlapping_note_boxes_do_not_cross_match() -> None:
+    """Notes with non-overlapping boxes must not compete on marker links."""
+    scaffold_note_box = BoundingBox(x0=0, y0=20, x1=80, y1=35)
+    alt_note_box = BoundingBox(x0=0, y0=50, x1=80, y1=65)
+    scaffold = _witness_page(
+        witness_id="wit-scaffold",
+        runner_id="runner-scaffold",
+        regions=[
+            _region(
+                "region-scaffold",
+                reading_order_index=1,
+                line_ids=["line-scaffold"],
+                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=70),
+            )
+        ],
+        lines=[
+            _line(
+                "line-scaffold",
+                region_id="region-scaffold",
+                line_order=1,
+                span_ids=["span-marker-a"],
+                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+            )
+        ],
+        spans=[
+            _span(
+                "span-marker-a",
+                line_id="line-scaffold",
+                text="1",
+                bounding_box=BoundingBox(x0=0, y0=0, x1=10, y1=10),
+                roles=[TextRole.FOOTNOTE_MARKER],
+            )
+        ],
+        notes=[
+            _note(
+                "note-scaffold",
+                text="Footnote body.",
+                linked_marker_span_ids=["span-marker-a"],
+                bounding_box=scaffold_note_box,
+                region_id="region-scaffold",
+            )
+        ],
+    )
+    alternate = _witness_page(
+        witness_id="wit-alt",
+        runner_id="runner-alt",
+        regions=[
+            _region(
+                "region-alt",
+                reading_order_index=1,
+                line_ids=["line-alt"],
+                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=69),
+            )
+        ],
+        lines=[
+            _line(
+                "line-alt",
+                region_id="region-alt",
+                line_order=1,
+                span_ids=["span-marker-b"],
+                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=9),
+            )
+        ],
+        spans=[
+            _span(
+                "span-marker-b",
+                line_id="line-alt",
+                text="2",
+                bounding_box=BoundingBox(x0=60, y0=1, x1=70, y1=9),
+                roles=[TextRole.FOOTNOTE_MARKER],
+            )
+        ],
+        notes=[
+            _note(
+                "note-alt",
+                text="Footnote body.",
+                linked_marker_span_ids=["span-marker-b"],
+                bounding_box=alt_note_box,
+                region_id="region-alt",
+            )
+        ],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[scaffold, alternate],
+    )
+    policy = MergePolicy(
+        policy_id="merge-v1",
+        version="1.0.0",
+        structure_scaffold_runner_ids=["runner-scaffold"],
+    )
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    note = result.page.notes[0]
+    assert note.linked_marker_span_ids == ["span-marker-a"]
+    assert note.provenance.merge_confidence == 1.0
+    assert not any(
+        flag.flag_type == MergeFlagType.NOTE_LINK_AMBIGUOUS for flag in result.flags
+    )
+
+
+def test_overlapping_note_boxes_conflicting_links_flag_ambiguous() -> None:
+    """IoU-matched notes with conflicting mapped marker sets flag ambiguous."""
+    note_box = BoundingBox(x0=0, y0=20, x1=80, y1=35)
+    alt_note_box = BoundingBox(x0=1, y0=21, x1=79, y1=34)
+    scaffold = _witness_page(
+        witness_id="wit-scaffold",
+        runner_id="runner-scaffold",
+        regions=[
+            _region(
+                "region-scaffold",
+                reading_order_index=1,
+                line_ids=["line-scaffold"],
+                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=40),
+            )
+        ],
+        lines=[
+            _line(
+                "line-scaffold",
+                region_id="region-scaffold",
+                line_order=1,
+                span_ids=["span-marker-a"],
+                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+            )
+        ],
+        spans=[
+            _span(
+                "span-marker-a",
+                line_id="line-scaffold",
+                text="1",
+                bounding_box=BoundingBox(x0=0, y0=0, x1=10, y1=10),
+                roles=[TextRole.FOOTNOTE_MARKER],
+            )
+        ],
+        notes=[
+            _note(
+                "note-scaffold",
+                text="Footnote body.",
+                linked_marker_span_ids=["span-marker-a"],
+                bounding_box=note_box,
+                region_id="region-scaffold",
+            )
+        ],
+    )
+    alternate = _witness_page(
+        witness_id="wit-alt",
+        runner_id="runner-alt",
+        regions=[
+            _region(
+                "region-alt",
+                reading_order_index=1,
+                line_ids=["line-alt"],
+                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=39),
+            )
+        ],
+        lines=[
+            _line(
+                "line-alt",
+                region_id="region-alt",
+                line_order=1,
+                span_ids=["span-marker-b", "span-marker-c"],
+                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=9),
+            )
+        ],
+        spans=[
+            _span(
+                "span-marker-b",
+                line_id="line-alt",
+                text="1",
+                bounding_box=BoundingBox(x0=5, y0=1, x1=15, y1=9),
+                roles=[TextRole.FOOTNOTE_MARKER],
+            ),
+            _span(
+                "span-marker-c",
+                line_id="line-alt",
+                text="2",
+                bounding_box=BoundingBox(x0=60, y0=1, x1=70, y1=9),
+                roles=[TextRole.FOOTNOTE_MARKER],
+            ),
+        ],
+        notes=[
+            _note(
+                "note-alt",
+                text="Footnote body.",
+                linked_marker_span_ids=["span-marker-c"],
+                bounding_box=alt_note_box,
+                region_id="region-alt",
+            )
+        ],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[scaffold, alternate],
+    )
+    policy = MergePolicy(
+        policy_id="merge-v1",
+        version="1.0.0",
+        structure_scaffold_runner_ids=["runner-scaffold"],
+    )
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    note = result.page.notes[0]
+    assert note.linked_marker_span_ids == []
+    assert any(
+        flag.flag_type == MergeFlagType.NOTE_LINK_AMBIGUOUS for flag in result.flags
+    )
+
+
 def test_unambiguous_note_link_accepted() -> None:
     """Agreeing note link sets are accepted at merge_confidence 1.0."""
     note_box = BoundingBox(x0=0, y0=20, x1=80, y1=35)

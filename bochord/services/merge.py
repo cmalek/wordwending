@@ -1438,6 +1438,36 @@ def _resolve_typography_facets(
         Resolved typography, conflict flag, and typography alternates.
 
     """
+    typography, enum_conflict, enum_alternates = _resolve_typography_enum_facets(
+        typography,
+        candidates,
+    )
+    typography, optional_conflict, optional_alternates = (
+        _resolve_typography_optional_facets(
+            typography,
+            candidates,
+        )
+    )
+    conflict = enum_conflict or optional_conflict
+    alternates = enum_alternates + optional_alternates
+    return typography, conflict, alternates
+
+
+def _resolve_typography_enum_facets(
+    typography: Typography,
+    candidates: list[_SpanCandidate],
+) -> tuple[Typography, bool, list[AlternateCandidate]]:
+    """
+    Resolve enum-like typography facets from span candidates.
+
+    Args:
+        typography: Starting typography copied from the accepted span.
+        candidates: Matched witness span candidates.
+
+    Returns:
+        Updated typography, conflict flag, and enum facet alternates.
+
+    """
     alternates: list[AlternateCandidate] = []
     conflict = False
 
@@ -1470,6 +1500,27 @@ def _resolve_typography_facets(
     typography.baseline_shift = baseline
     conflict = conflict or baseline_conflict
     alternates.extend(baseline_alternates)
+
+    return typography, conflict, alternates
+
+
+def _resolve_typography_optional_facets(
+    typography: Typography,
+    candidates: list[_SpanCandidate],
+) -> tuple[Typography, bool, list[AlternateCandidate]]:
+    """
+    Resolve optional boolean and float typography facets from span candidates.
+
+    Args:
+        typography: Starting typography copied from the accepted span.
+        candidates: Matched witness span candidates.
+
+    Returns:
+        Updated typography, conflict flag, and optional facet alternates.
+
+    """
+    alternates: list[AlternateCandidate] = []
+    conflict = False
 
     small_caps, small_caps_conflict, small_caps_alternates = (
         _resolve_optional_bool_facet(
@@ -1718,11 +1769,6 @@ def _matching_notes_for_witness(
             >= iou_threshold
         ]
 
-    same_kind = [
-        note for note in witness.notes if note.note_kind == accepted_note.note_kind
-    ]
-    if len(same_kind) == 1:
-        return same_kind
     return []
 
 
