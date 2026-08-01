@@ -245,6 +245,13 @@ def test_write_document_bundle_creates_spec_tree(tmp_path) -> None:
     assert graph.spans[0].text_diplomatic == "hello"
     assert len(graph.notes) == 1
     assert graph.notes[0].text_diplomatic == "footnote text"
+    assert graph.witnesses[0].artifact_path == (
+        "pages/page-0001/witnesses/text/olmocr-response.json"
+    )
+
+    review_events_path = root / "pages" / "page-0001" / "overlays" / "review_events.jsonl"
+    assert review_events_path.exists()
+    assert review_events_path.read_text(encoding="utf-8") == ""
 
     scores = json.loads(
         (root / "pages" / "page-0001" / "evaluation" / "scores.json").read_text(
@@ -382,6 +389,11 @@ def test_write_document_bundle_rewrites_witness_paths_without_files(tmp_path) ->
         "pages/page-0001/witnesses/text/olmocr-response.json"
     )
     assert page_manifest.witness_artifacts[0].artifact_path.startswith("pages/")
+
+    graph = service.read_page_graph(root, 1)
+    assert graph.witnesses[0].artifact_path == (
+        "pages/page-0001/witnesses/text/olmocr-response.json"
+    )
 
 
 def test_write_document_bundle_writes_page_exports(tmp_path) -> None:

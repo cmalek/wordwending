@@ -202,12 +202,50 @@ class BundleLayoutService:
                 page_exports=page_exports,
             )
 
+        self._write_document_tail(bundle, paths)
+        return self._build_document_manifest(bundle, paths)
+
+    def _write_document_tail(
+        self,
+        bundle: DocumentBundle,
+        paths: BundlePaths,
+    ) -> None:
+        """
+        Write document-level evaluation and export scaffolding.
+
+        Side Effects:
+            Creates ``exports/`` and writes ``evaluation/summary.json``.
+
+        Args:
+            bundle: Canonical in-memory document export.
+            paths: Path helpers for the bundle root.
+
+        """
         paths.document_exports_dir().mkdir(parents=True, exist_ok=True)
         _atomic_write_json(
             paths.document_evaluation_summary(),
             bundle.evaluation_summary.model_dump(mode="json"),
         )
 
+    def _build_document_manifest(
+        self,
+        bundle: DocumentBundle,
+        paths: BundlePaths,
+    ) -> DocumentBundleManifest:
+        """
+        Persist and return the document-level manifest.
+
+        Side Effects:
+            Writes ``manifest.json`` under the bundle root.
+
+        Args:
+            bundle: Canonical in-memory document export.
+            paths: Path helpers for the bundle root.
+
+        Returns:
+            The written document manifest.
+
+        """
         document_manifest = DocumentBundleManifest(
             schema_version=BUNDLE_SCHEMA_VERSION,
             document_id=bundle.document_id,
@@ -258,25 +296,93 @@ class BundleLayoutService:
         for family in _WITNESS_FAMILIES:
             paths.witnesses_dir(page_number, family).mkdir(parents=True, exist_ok=True)
 
-        prepared_image_path: str | None = None
-        if page_images and page.page_id in page_images:
-            source_path = page_images[page.page_id]
-            image_dir = paths.page_image_dir(page_number)
-            image_dir.mkdir(parents=True, exist_ok=True)
-            destination = image_dir / source_path.name
-            shutil.copy2(source_path, destination)
-            prepared_image_path = _relative_path(root, destination)
-
+        prepared_image_path = self._copy_prepared_page_image(
+            page=page,
+            root=root,
+            paths=paths,
+            page_images=page_images,
+        )
         rewritten_witnesses = self._copy_witnesses(
             page=page,
             root=root,
             paths=paths,
             witness_files=witness_files,
         )
-
+        page_for_graph = page.model_copy(update={"witnesses": rewritten_witnesses})
         graph_path = paths.page_graph(page_number)
-        _atomic_write_json(graph_path, page.model_dump(mode="json"))
+        _atomic_write_json(graph_path, page_for_graph.model_dump(mode="json"))
 
+        self._write_page_evaluation_and_manifest(
+            page=page,
+            root=root,
+            paths=paths,
+            runner_set=runner_set,
+            rewritten_witnesses=rewritten_witnesses,
+            prepared_image_path=prepared_image_path,
+            graph_path=graph_path,
+            page_exports=page_exports,
+        )
+
+    def _copy_prepared_page_image(
+        self,
+        *,
+        page: BundlePage,
+        root: Path,
+        paths: BundlePaths,
+        page_images: Mapping[str, Path] | None,
+    ) -> str | None:
+        """
+        Copy one prepared page image when a source path is supplied.
+
+        Keyword Args:
+            page: Accepted page graph to persist.
+            root: Bundle root directory.
+            paths: Path helpers for the bundle root.
+            page_images: Prepared image paths keyed by page id.
+
+        Returns:
+            Bundle-relative prepared image path when copied.
+
+        """
+        if not page_images or page.page_id not in page_images:
+            return None
+        source_path = page_images[page.page_id]
+        image_dir = paths.page_image_dir(page.page_number)
+        image_dir.mkdir(parents=True, exist_ok=True)
+        destination = image_dir / source_path.name
+        shutil.copy2(source_path, destination)
+        return _relative_path(root, destination)
+
+    def _write_page_evaluation_and_manifest(  # noqa: PLR0913
+        self,
+        *,
+        page: BundlePage,
+        root: Path,
+        paths: BundlePaths,
+        runner_set: list[RunnerReference],
+        rewritten_witnesses: list[WitnessReference],
+        prepared_image_path: str | None,
+        graph_path: Path,
+        page_exports: Mapping[str, Mapping[str, str]] | None,
+    ) -> None:
+        """
+        Write page evaluation artifacts, exports, overlays, and manifest.
+
+        Side Effects:
+            Creates evaluation, export, overlay, and manifest files for one page.
+
+        Keyword Args:
+            page: Accepted page graph to persist.
+            root: Bundle root directory.
+            paths: Path helpers for the bundle root.
+            runner_set: Document-level runner references.
+            rewritten_witnesses: Witness references with bundle-relative paths.
+            prepared_image_path: Bundle-relative prepared image path when present.
+            graph_path: Absolute path to the page graph artifact.
+            page_exports: Optional page export text keyed by page id.
+
+        """
+        page_number = page.page_number
         scores_path = paths.evaluation_scores(page_number)
         _atomic_write_json(
             scores_path,
