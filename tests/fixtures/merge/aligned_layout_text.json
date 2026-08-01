@@ -31,12 +31,24 @@
           "region_id": "region-a-1",
           "region_kind": "body",
           "reading_order_index": 1,
-          "bounding_box": {"x0": 0, "y0": 0, "x1": 80, "y1": 40},
-          "line_ids": ["line-a-1"],
+          "bounding_box": {
+            "x0": 0,
+            "y0": 0,
+            "x1": 80,
+            "y1": 40,
+            "coordinate_space_id": "prepared-page-1"
+          },
+          "line_ids": [
+            "line-a-1"
+          ],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-a"],
-            "runner_ids": ["runner-a"],
+            "witness_ids": [
+              "wit-a"
+            ],
+            "runner_ids": [
+              "runner-a"
+            ],
             "machine_confidence": 0.9
           }
         }
@@ -46,12 +58,24 @@
           "line_id": "line-a-1",
           "region_id": "region-a-1",
           "line_order": 1,
-          "bounding_box": {"x0": 0, "y0": 0, "x1": 80, "y1": 10},
-          "span_ids": ["span-a-1"],
+          "bounding_box": {
+            "x0": 0,
+            "y0": 0,
+            "x1": 80,
+            "y1": 10,
+            "coordinate_space_id": "prepared-page-1"
+          },
+          "span_ids": [
+            "span-a-1"
+          ],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-a"],
-            "runner_ids": ["runner-a"],
+            "witness_ids": [
+              "wit-a"
+            ],
+            "runner_ids": [
+              "runner-a"
+            ],
             "machine_confidence": 0.9
           }
         }
@@ -64,8 +88,12 @@
           "text_normalized": "beta",
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-a"],
-            "runner_ids": ["runner-a"],
+            "witness_ids": [
+              "wit-a"
+            ],
+            "runner_ids": [
+              "runner-a"
+            ],
             "machine_confidence": 0.9
           }
         }
@@ -86,12 +114,24 @@
           "region_id": "region-b-1",
           "region_kind": "body",
           "reading_order_index": 1,
-          "bounding_box": {"x0": 1, "y0": 1, "x1": 79, "y1": 39},
-          "line_ids": ["line-b-1"],
+          "bounding_box": {
+            "x0": 1,
+            "y0": 1,
+            "x1": 79,
+            "y1": 39,
+            "coordinate_space_id": "prepared-page-1"
+          },
+          "line_ids": [
+            "line-b-1"
+          ],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-b"],
-            "runner_ids": ["runner-b"],
+            "witness_ids": [
+              "wit-b"
+            ],
+            "runner_ids": [
+              "runner-b"
+            ],
             "machine_confidence": 0.88
           }
         }
@@ -101,12 +141,24 @@
           "line_id": "line-b-1",
           "region_id": "region-b-1",
           "line_order": 1,
-          "bounding_box": {"x0": 1, "y0": 1, "x1": 79, "y1": 9},
-          "span_ids": ["span-b-1"],
+          "bounding_box": {
+            "x0": 1,
+            "y0": 1,
+            "x1": 79,
+            "y1": 9,
+            "coordinate_space_id": "prepared-page-1"
+          },
+          "span_ids": [
+            "span-b-1"
+          ],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-b"],
-            "runner_ids": ["runner-b"],
+            "witness_ids": [
+              "wit-b"
+            ],
+            "runner_ids": [
+              "runner-b"
+            ],
             "machine_confidence": 0.88
           }
         },
@@ -114,12 +166,24 @@
           "line_id": "line-b-2",
           "region_id": "region-b-1",
           "line_order": 2,
-          "bounding_box": {"x0": 1, "y0": 12, "x1": 79, "y1": 20},
-          "span_ids": ["span-b-2"],
+          "bounding_box": {
+            "x0": 1,
+            "y0": 12,
+            "x1": 79,
+            "y1": 20,
+            "coordinate_space_id": "prepared-page-1"
+          },
+          "span_ids": [
+            "span-b-2"
+          ],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-b"],
-            "runner_ids": ["runner-b"],
+            "witness_ids": [
+              "wit-b"
+            ],
+            "runner_ids": [
+              "runner-b"
+            ],
             "machine_confidence": 0.88
           }
         }
@@ -132,8 +196,12 @@
           "text_normalized": "beta",
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-b"],
-            "runner_ids": ["runner-b"],
+            "witness_ids": [
+              "wit-b"
+            ],
+            "runner_ids": [
+              "runner-b"
+            ],
             "machine_confidence": 0.88
           }
         },
@@ -144,8 +212,12 @@
           "text_normalized": "second",
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-b"],
-            "runner_ids": ["runner-b"],
+            "witness_ids": [
+              "wit-b"
+            ],
+            "runner_ids": [
+              "runner-b"
+            ],
             "machine_confidence": 0.88
           }
         }

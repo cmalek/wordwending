@@ -139,6 +139,17 @@ def _coordinate_space() -> CoordinateSpace:
     return CoordinateSpace(space_id="prepared-page-1", width_px=100, height_px=100)
 
 
+def _bounding_box(x0: float, y0: float, x1: float, y1: float) -> BoundingBox:
+    """Return a bounding box in the test prepared-page coordinate space."""
+    return BoundingBox(
+        x0=x0,
+        y0=y0,
+        x1=x1,
+        y1=y1,
+        coordinate_space_id="prepared-page-1",
+    )
+
+
 def _witness_page(  # noqa: PLR0913
     *,
     witness_id: str,
@@ -257,8 +268,8 @@ def _aligned_text_witnesses(
     alternate_runner: str = "runner-alt",
 ) -> tuple[PassWitnessPage, PassWitnessPage]:
     """Build two witnesses with overlapping geometry and differing span text."""
-    box = BoundingBox(x0=0, y0=0, x1=80, y1=10)
-    alt_box = BoundingBox(x0=1, y0=1, x1=79, y1=9)
+    box = _bounding_box(x0=0, y0=0, x1=80, y1=10)
+    alt_box = _bounding_box(x0=1, y0=1, x1=79, y1=9)
     scaffold = _witness_page(
         witness_id="wit-scaffold",
         runner_id=scaffold_runner,
@@ -267,7 +278,7 @@ def _aligned_text_witnesses(
                 "region-scaffold",
                 reading_order_index=1,
                 line_ids=["line-scaffold"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=40),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=40),
             )
         ],
         lines=[
@@ -296,7 +307,7 @@ def _aligned_text_witnesses(
                 "region-alt",
                 reading_order_index=1,
                 line_ids=["line-alt"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=39),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=39),
             )
         ],
         lines=[
@@ -462,7 +473,7 @@ def test_scaffold_preference_uses_coordinate_rich_lines_when_no_runner_order() -
                 region_id="region-rich",
                 line_order=1,
                 span_ids=["span-rich-1"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
             ),
             _line(
                 "line-rich-2",
@@ -503,7 +514,7 @@ def test_cross_variant_witnesses_are_excluded_from_merge() -> None:
                 region_id="region-aligned",
                 line_order=1,
                 span_ids=["span-aligned"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
             )
         ],
         spans=[_span("span-aligned", line_id="line-aligned", text="aligned")],
@@ -519,7 +530,7 @@ def test_cross_variant_witnesses_are_excluded_from_merge() -> None:
                 region_id="region-cross",
                 line_order=1,
                 span_ids=["span-cross"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
             )
         ],
         spans=[_span("span-cross", line_id="line-cross", text="cross")],
@@ -605,7 +616,7 @@ def test_lines_only_witness_not_chosen_when_regions_available() -> None:
                 region_id="missing-region",
                 line_order=1,
                 span_ids=["span-only-1"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
             ),
             _line(
                 "line-only-2",
@@ -666,7 +677,7 @@ def test_lines_only_witnesses_abstain_insufficient_evidence() -> None:
                 region_id="orphan-a",
                 line_order=1,
                 span_ids=["span-a"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
             )
         ],
         spans=[_span("span-a", line_id="line-a", text="alpha")],
@@ -705,8 +716,8 @@ def test_lines_only_witnesses_abstain_insufficient_evidence() -> None:
 
 def test_reversed_reading_order_flags_structure_conflict() -> None:
     """Same geometry with reversed reading order is a structure scaffold conflict."""
-    top_box = BoundingBox(x0=0, y0=0, x1=100, y1=40)
-    bottom_box = BoundingBox(x0=0, y0=50, x1=100, y1=90)
+    top_box = _bounding_box(x0=0, y0=0, x1=100, y1=40)
+    bottom_box = _bounding_box(x0=0, y0=50, x1=100, y1=90)
     scaffold = _witness_page(
         witness_id="wit-scaffold",
         runner_id="runner-scaffold",
@@ -839,9 +850,9 @@ def test_empty_precedence_text_disagreement_abstains() -> None:
 
 def test_text_precedence_picks_first_candidate_for_duplicate_runner_id() -> None:
     """When multiple IoU-matched spans share a preferred runner, the first wins."""
-    box = BoundingBox(x0=0, y0=0, x1=80, y1=10)
-    alt_box_first = BoundingBox(x0=1, y0=1, x1=79, y1=9)
-    alt_box_second = BoundingBox(x0=2, y0=2, x1=78, y1=8)
+    box = _bounding_box(x0=0, y0=0, x1=80, y1=10)
+    alt_box_first = _bounding_box(x0=1, y0=1, x1=79, y1=9)
+    alt_box_second = _bounding_box(x0=2, y0=2, x1=78, y1=8)
     scaffold = _witness_page(
         witness_id="wit-scaffold",
         runner_id="runner-scaffold",
@@ -850,7 +861,7 @@ def test_text_precedence_picks_first_candidate_for_duplicate_runner_id() -> None
                 "region-scaffold",
                 reading_order_index=1,
                 line_ids=["line-scaffold"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=40),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=40),
             )
         ],
         lines=[
@@ -879,7 +890,7 @@ def test_text_precedence_picks_first_candidate_for_duplicate_runner_id() -> None
                 "region-preferred-first",
                 reading_order_index=1,
                 line_ids=["line-preferred-first"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=39),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=39),
             )
         ],
         lines=[
@@ -908,7 +919,7 @@ def test_text_precedence_picks_first_candidate_for_duplicate_runner_id() -> None
                 "region-preferred-second",
                 reading_order_index=1,
                 line_ids=["line-preferred-second"],
-                bounding_box=BoundingBox(x0=2, y0=2, x1=78, y1=38),
+                bounding_box=_bounding_box(x0=2, y0=2, x1=78, y1=38),
             )
         ],
         lines=[
@@ -967,8 +978,8 @@ def test_text_precedence_picks_first_candidate_for_duplicate_runner_id() -> None
 def test_text_alternates_keep_cross_witness_same_span_id() -> None:
     """Alternates include losing witnesses even when span_id strings match."""
     shared_span_id = "span-shared"
-    box = BoundingBox(x0=0, y0=0, x1=80, y1=10)
-    alt_box = BoundingBox(x0=1, y0=1, x1=79, y1=9)
+    box = _bounding_box(x0=0, y0=0, x1=80, y1=10)
+    alt_box = _bounding_box(x0=1, y0=1, x1=79, y1=9)
     scaffold = _witness_page(
         witness_id="wit-scaffold",
         runner_id="runner-scaffold",
@@ -977,7 +988,7 @@ def test_text_alternates_keep_cross_witness_same_span_id() -> None:
                 "region-scaffold",
                 reading_order_index=1,
                 line_ids=["line-scaffold"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=40),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=40),
             )
         ],
         lines=[
@@ -1006,7 +1017,7 @@ def test_text_alternates_keep_cross_witness_same_span_id() -> None:
                 "region-alt",
                 reading_order_index=1,
                 line_ids=["line-alt"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=39),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=39),
             )
         ],
         lines=[
@@ -1153,8 +1164,8 @@ def test_normalized_text_equality_no_disagreement_flag() -> None:
 
 def test_typography_facet_conflict_unknown_only_for_conflicting_facet() -> None:
     """Typography conflict sets unknown on the conflicting facet only."""
-    box = BoundingBox(x0=0, y0=0, x1=80, y1=10)
-    alt_box = BoundingBox(x0=1, y0=1, x1=79, y1=9)
+    box = _bounding_box(x0=0, y0=0, x1=80, y1=10)
+    alt_box = _bounding_box(x0=1, y0=1, x1=79, y1=9)
     scaffold = _witness_page(
         witness_id="wit-scaffold",
         runner_id="runner-scaffold",
@@ -1163,7 +1174,7 @@ def test_typography_facet_conflict_unknown_only_for_conflicting_facet() -> None:
                 "region-scaffold",
                 reading_order_index=1,
                 line_ids=["line-scaffold"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=40),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=40),
             )
         ],
         lines=[
@@ -1197,7 +1208,7 @@ def test_typography_facet_conflict_unknown_only_for_conflicting_facet() -> None:
                 "region-alt",
                 reading_order_index=1,
                 line_ids=["line-alt"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=39),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=39),
             )
         ],
         lines=[
@@ -1255,7 +1266,7 @@ def test_typography_facet_conflict_unknown_only_for_conflicting_facet() -> None:
 
 def test_missing_typography_evidence_stays_unknown() -> None:
     """Witnesses without typography evidence never invent regular/upright."""
-    box = BoundingBox(x0=0, y0=0, x1=80, y1=10)
+    box = _bounding_box(x0=0, y0=0, x1=80, y1=10)
     scaffold = _witness_page(
         witness_id="wit-scaffold",
         runner_id="runner-scaffold",
@@ -1264,7 +1275,7 @@ def test_missing_typography_evidence_stays_unknown() -> None:
                 "region-scaffold",
                 reading_order_index=1,
                 line_ids=["line-scaffold"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=40),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=40),
             )
         ],
         lines=[
@@ -1293,7 +1304,7 @@ def test_missing_typography_evidence_stays_unknown() -> None:
                 "region-alt",
                 reading_order_index=1,
                 line_ids=["line-alt"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=39),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=39),
             )
         ],
         lines=[
@@ -1302,7 +1313,7 @@ def test_missing_typography_evidence_stays_unknown() -> None:
                 region_id="region-alt",
                 line_order=1,
                 span_ids=["span-alt"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=9),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=9),
             )
         ],
         spans=[
@@ -1310,7 +1321,7 @@ def test_missing_typography_evidence_stays_unknown() -> None:
                 "span-alt",
                 line_id="line-alt",
                 text="same-text",
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=9),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=9),
             )
         ],
     )
@@ -1339,8 +1350,8 @@ def test_missing_typography_evidence_stays_unknown() -> None:
 
 def test_role_conflict_without_changing_typography() -> None:
     """Conflicting roles emit ROLE_CONFLICT without altering visual facets."""
-    box = BoundingBox(x0=0, y0=0, x1=80, y1=10)
-    alt_box = BoundingBox(x0=1, y0=1, x1=79, y1=9)
+    box = _bounding_box(x0=0, y0=0, x1=80, y1=10)
+    alt_box = _bounding_box(x0=1, y0=1, x1=79, y1=9)
     bold_upright = Typography(
         weight=FontWeight.BOLD,
         slant=FontSlant.UPRIGHT,
@@ -1354,7 +1365,7 @@ def test_role_conflict_without_changing_typography() -> None:
                 "region-scaffold",
                 reading_order_index=1,
                 line_ids=["line-scaffold"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=40),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=40),
             )
         ],
         lines=[
@@ -1385,7 +1396,7 @@ def test_role_conflict_without_changing_typography() -> None:
                 "region-alt",
                 reading_order_index=1,
                 line_ids=["line-alt"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=39),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=39),
             )
         ],
         lines=[
@@ -1542,11 +1553,11 @@ def test_span_matching_with_bbox_iou_flags_text_disagreement() -> None:
 
 def test_ambiguous_marker_iou_mapping_flags_note_link_ambiguous() -> None:
     """One witness marker overlapping two accepted spans is ambiguous linkage."""
-    note_box = BoundingBox(x0=0, y0=20, x1=80, y1=35)
-    alt_note_box = BoundingBox(x0=1, y0=21, x1=79, y1=34)
-    marker_a_box = BoundingBox(x0=0, y0=0, x1=15, y1=10)
-    marker_b_box = BoundingBox(x0=5, y0=0, x1=20, y1=10)
-    witness_marker_box = BoundingBox(x0=5, y0=0, x1=18, y1=10)
+    note_box = _bounding_box(x0=0, y0=20, x1=80, y1=35)
+    alt_note_box = _bounding_box(x0=1, y0=21, x1=79, y1=34)
+    marker_a_box = _bounding_box(x0=0, y0=0, x1=15, y1=10)
+    marker_b_box = _bounding_box(x0=5, y0=0, x1=20, y1=10)
+    witness_marker_box = _bounding_box(x0=5, y0=0, x1=18, y1=10)
     scaffold = _witness_page(
         witness_id="wit-scaffold",
         runner_id="runner-scaffold",
@@ -1555,7 +1566,7 @@ def test_ambiguous_marker_iou_mapping_flags_note_link_ambiguous() -> None:
                 "region-scaffold",
                 reading_order_index=1,
                 line_ids=["line-scaffold"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=40),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=40),
             )
         ],
         lines=[
@@ -1564,7 +1575,7 @@ def test_ambiguous_marker_iou_mapping_flags_note_link_ambiguous() -> None:
                 region_id="region-scaffold",
                 line_order=1,
                 span_ids=["span-marker-a", "span-marker-b"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
             )
         ],
         spans=[
@@ -1601,7 +1612,7 @@ def test_ambiguous_marker_iou_mapping_flags_note_link_ambiguous() -> None:
                 "region-alt",
                 reading_order_index=1,
                 line_ids=["line-alt"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=39),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=39),
             )
         ],
         lines=[
@@ -1610,7 +1621,7 @@ def test_ambiguous_marker_iou_mapping_flags_note_link_ambiguous() -> None:
                 region_id="region-alt",
                 line_order=1,
                 span_ids=["span-marker-x"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=9),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=9),
             )
         ],
         spans=[
@@ -1655,8 +1666,8 @@ def test_ambiguous_marker_iou_mapping_flags_note_link_ambiguous() -> None:
 
 def test_ambiguous_note_links_clear_ids_and_flag() -> None:
     """Conflicting note link sets emit NOTE_LINK_AMBIGUOUS and clear links."""
-    note_box = BoundingBox(x0=0, y0=20, x1=80, y1=35)
-    alt_note_box = BoundingBox(x0=1, y0=21, x1=79, y1=34)
+    note_box = _bounding_box(x0=0, y0=20, x1=80, y1=35)
+    alt_note_box = _bounding_box(x0=1, y0=21, x1=79, y1=34)
     scaffold = _witness_page(
         witness_id="wit-scaffold",
         runner_id="runner-scaffold",
@@ -1665,7 +1676,7 @@ def test_ambiguous_note_links_clear_ids_and_flag() -> None:
                 "region-scaffold",
                 reading_order_index=1,
                 line_ids=["line-scaffold"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=40),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=40),
             )
         ],
         lines=[
@@ -1674,7 +1685,7 @@ def test_ambiguous_note_links_clear_ids_and_flag() -> None:
                 region_id="region-scaffold",
                 line_order=1,
                 span_ids=["span-marker-a"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
             )
         ],
         spans=[
@@ -1682,7 +1693,7 @@ def test_ambiguous_note_links_clear_ids_and_flag() -> None:
                 "span-marker-a",
                 line_id="line-scaffold",
                 text="1",
-                bounding_box=BoundingBox(x0=0, y0=0, x1=10, y1=10),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=10, y1=10),
                 roles=[TextRole.FOOTNOTE_MARKER],
             )
         ],
@@ -1704,7 +1715,7 @@ def test_ambiguous_note_links_clear_ids_and_flag() -> None:
                 "region-alt",
                 reading_order_index=1,
                 line_ids=["line-alt"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=39),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=39),
             )
         ],
         lines=[
@@ -1713,7 +1724,7 @@ def test_ambiguous_note_links_clear_ids_and_flag() -> None:
                 region_id="region-alt",
                 line_order=1,
                 span_ids=["span-marker-b", "span-marker-c"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=9),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=9),
             )
         ],
         spans=[
@@ -1721,14 +1732,14 @@ def test_ambiguous_note_links_clear_ids_and_flag() -> None:
                 "span-marker-b",
                 line_id="line-alt",
                 text="1",
-                bounding_box=BoundingBox(x0=5, y0=1, x1=15, y1=9),
+                bounding_box=_bounding_box(x0=5, y0=1, x1=15, y1=9),
                 roles=[TextRole.FOOTNOTE_MARKER],
             ),
             _span(
                 "span-marker-c",
                 line_id="line-alt",
                 text="2",
-                bounding_box=BoundingBox(x0=60, y0=1, x1=70, y1=9),
+                bounding_box=_bounding_box(x0=60, y0=1, x1=70, y1=9),
                 roles=[TextRole.FOOTNOTE_MARKER],
             ),
         ],
@@ -1773,8 +1784,8 @@ def test_ambiguous_note_links_clear_ids_and_flag() -> None:
 
 def test_same_kind_note_without_iou_does_not_false_agree() -> None:
     """Same-kind singleton must not create false 1.0 link agreement without IoU."""
-    marker_a_box = BoundingBox(x0=0, y0=0, x1=10, y1=10)
-    marker_b_box = BoundingBox(x0=60, y0=0, x1=70, y1=10)
+    marker_a_box = _bounding_box(x0=0, y0=0, x1=10, y1=10)
+    marker_b_box = _bounding_box(x0=60, y0=0, x1=70, y1=10)
     scaffold = _witness_page(
         witness_id="wit-scaffold",
         runner_id="runner-scaffold",
@@ -1783,7 +1794,7 @@ def test_same_kind_note_without_iou_does_not_false_agree() -> None:
                 "region-scaffold",
                 reading_order_index=1,
                 line_ids=["line-scaffold"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=40),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=40),
             )
         ],
         lines=[
@@ -1792,7 +1803,7 @@ def test_same_kind_note_without_iou_does_not_false_agree() -> None:
                 region_id="region-scaffold",
                 line_order=1,
                 span_ids=["span-marker-a"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
             )
         ],
         spans=[
@@ -1822,7 +1833,7 @@ def test_same_kind_note_without_iou_does_not_false_agree() -> None:
                 "region-alt",
                 reading_order_index=1,
                 line_ids=["line-alt"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=39),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=39),
             )
         ],
         lines=[
@@ -1831,7 +1842,7 @@ def test_same_kind_note_without_iou_does_not_false_agree() -> None:
                 region_id="region-alt",
                 line_order=1,
                 span_ids=["span-marker-b"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=9),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=9),
             )
         ],
         spans=[
@@ -1877,8 +1888,8 @@ def test_same_kind_note_without_iou_does_not_false_agree() -> None:
 
 def test_non_overlapping_note_boxes_do_not_cross_match() -> None:
     """Notes with non-overlapping boxes must not compete on marker links."""
-    scaffold_note_box = BoundingBox(x0=0, y0=20, x1=80, y1=35)
-    alt_note_box = BoundingBox(x0=0, y0=50, x1=80, y1=65)
+    scaffold_note_box = _bounding_box(x0=0, y0=20, x1=80, y1=35)
+    alt_note_box = _bounding_box(x0=0, y0=50, x1=80, y1=65)
     scaffold = _witness_page(
         witness_id="wit-scaffold",
         runner_id="runner-scaffold",
@@ -1887,7 +1898,7 @@ def test_non_overlapping_note_boxes_do_not_cross_match() -> None:
                 "region-scaffold",
                 reading_order_index=1,
                 line_ids=["line-scaffold"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=70),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=70),
             )
         ],
         lines=[
@@ -1896,7 +1907,7 @@ def test_non_overlapping_note_boxes_do_not_cross_match() -> None:
                 region_id="region-scaffold",
                 line_order=1,
                 span_ids=["span-marker-a"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
             )
         ],
         spans=[
@@ -1904,7 +1915,7 @@ def test_non_overlapping_note_boxes_do_not_cross_match() -> None:
                 "span-marker-a",
                 line_id="line-scaffold",
                 text="1",
-                bounding_box=BoundingBox(x0=0, y0=0, x1=10, y1=10),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=10, y1=10),
                 roles=[TextRole.FOOTNOTE_MARKER],
             )
         ],
@@ -1926,7 +1937,7 @@ def test_non_overlapping_note_boxes_do_not_cross_match() -> None:
                 "region-alt",
                 reading_order_index=1,
                 line_ids=["line-alt"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=69),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=69),
             )
         ],
         lines=[
@@ -1935,7 +1946,7 @@ def test_non_overlapping_note_boxes_do_not_cross_match() -> None:
                 region_id="region-alt",
                 line_order=1,
                 span_ids=["span-marker-b"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=9),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=9),
             )
         ],
         spans=[
@@ -1943,7 +1954,7 @@ def test_non_overlapping_note_boxes_do_not_cross_match() -> None:
                 "span-marker-b",
                 line_id="line-alt",
                 text="2",
-                bounding_box=BoundingBox(x0=60, y0=1, x1=70, y1=9),
+                bounding_box=_bounding_box(x0=60, y0=1, x1=70, y1=9),
                 roles=[TextRole.FOOTNOTE_MARKER],
             )
         ],
@@ -1981,8 +1992,8 @@ def test_non_overlapping_note_boxes_do_not_cross_match() -> None:
 
 def test_overlapping_note_boxes_conflicting_links_flag_ambiguous() -> None:
     """IoU-matched notes with conflicting mapped marker sets flag ambiguous."""
-    note_box = BoundingBox(x0=0, y0=20, x1=80, y1=35)
-    alt_note_box = BoundingBox(x0=1, y0=21, x1=79, y1=34)
+    note_box = _bounding_box(x0=0, y0=20, x1=80, y1=35)
+    alt_note_box = _bounding_box(x0=1, y0=21, x1=79, y1=34)
     scaffold = _witness_page(
         witness_id="wit-scaffold",
         runner_id="runner-scaffold",
@@ -1991,7 +2002,7 @@ def test_overlapping_note_boxes_conflicting_links_flag_ambiguous() -> None:
                 "region-scaffold",
                 reading_order_index=1,
                 line_ids=["line-scaffold"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=40),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=40),
             )
         ],
         lines=[
@@ -2000,7 +2011,7 @@ def test_overlapping_note_boxes_conflicting_links_flag_ambiguous() -> None:
                 region_id="region-scaffold",
                 line_order=1,
                 span_ids=["span-marker-a"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
             )
         ],
         spans=[
@@ -2008,7 +2019,7 @@ def test_overlapping_note_boxes_conflicting_links_flag_ambiguous() -> None:
                 "span-marker-a",
                 line_id="line-scaffold",
                 text="1",
-                bounding_box=BoundingBox(x0=0, y0=0, x1=10, y1=10),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=10, y1=10),
                 roles=[TextRole.FOOTNOTE_MARKER],
             )
         ],
@@ -2030,7 +2041,7 @@ def test_overlapping_note_boxes_conflicting_links_flag_ambiguous() -> None:
                 "region-alt",
                 reading_order_index=1,
                 line_ids=["line-alt"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=39),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=39),
             )
         ],
         lines=[
@@ -2039,7 +2050,7 @@ def test_overlapping_note_boxes_conflicting_links_flag_ambiguous() -> None:
                 region_id="region-alt",
                 line_order=1,
                 span_ids=["span-marker-b", "span-marker-c"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=9),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=9),
             )
         ],
         spans=[
@@ -2047,14 +2058,14 @@ def test_overlapping_note_boxes_conflicting_links_flag_ambiguous() -> None:
                 "span-marker-b",
                 line_id="line-alt",
                 text="1",
-                bounding_box=BoundingBox(x0=5, y0=1, x1=15, y1=9),
+                bounding_box=_bounding_box(x0=5, y0=1, x1=15, y1=9),
                 roles=[TextRole.FOOTNOTE_MARKER],
             ),
             _span(
                 "span-marker-c",
                 line_id="line-alt",
                 text="2",
-                bounding_box=BoundingBox(x0=60, y0=1, x1=70, y1=9),
+                bounding_box=_bounding_box(x0=60, y0=1, x1=70, y1=9),
                 roles=[TextRole.FOOTNOTE_MARKER],
             ),
         ],
@@ -2091,8 +2102,8 @@ def test_overlapping_note_boxes_conflicting_links_flag_ambiguous() -> None:
 
 def test_unambiguous_note_link_accepted() -> None:
     """Agreeing note link sets are accepted at merge_confidence 1.0."""
-    note_box = BoundingBox(x0=0, y0=20, x1=80, y1=35)
-    alt_note_box = BoundingBox(x0=1, y0=21, x1=79, y1=34)
+    note_box = _bounding_box(x0=0, y0=20, x1=80, y1=35)
+    alt_note_box = _bounding_box(x0=1, y0=21, x1=79, y1=34)
     scaffold = _witness_page(
         witness_id="wit-scaffold",
         runner_id="runner-scaffold",
@@ -2101,7 +2112,7 @@ def test_unambiguous_note_link_accepted() -> None:
                 "region-scaffold",
                 reading_order_index=1,
                 line_ids=["line-scaffold"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=40),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=40),
             )
         ],
         lines=[
@@ -2110,7 +2121,7 @@ def test_unambiguous_note_link_accepted() -> None:
                 region_id="region-scaffold",
                 line_order=1,
                 span_ids=["span-marker-a"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
             )
         ],
         spans=[
@@ -2118,7 +2129,7 @@ def test_unambiguous_note_link_accepted() -> None:
                 "span-marker-a",
                 line_id="line-scaffold",
                 text="1",
-                bounding_box=BoundingBox(x0=0, y0=0, x1=10, y1=10),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=10, y1=10),
                 roles=[TextRole.FOOTNOTE_MARKER],
             )
         ],
@@ -2140,7 +2151,7 @@ def test_unambiguous_note_link_accepted() -> None:
                 "region-alt",
                 reading_order_index=1,
                 line_ids=["line-alt"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=39),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=39),
             )
         ],
         lines=[
@@ -2149,7 +2160,7 @@ def test_unambiguous_note_link_accepted() -> None:
                 region_id="region-alt",
                 line_order=1,
                 span_ids=["span-marker-b"],
-                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=9),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=9),
             )
         ],
         spans=[
@@ -2157,7 +2168,7 @@ def test_unambiguous_note_link_accepted() -> None:
                 "span-marker-b",
                 line_id="line-alt",
                 text="1",
-                bounding_box=BoundingBox(x0=1, y0=1, x1=9, y1=9),
+                bounding_box=_bounding_box(x0=1, y0=1, x1=9, y1=9),
                 roles=[TextRole.FOOTNOTE_MARKER],
             )
         ],
@@ -2304,7 +2315,7 @@ def test_coordinate_space_mismatch_excludes_witness_from_merge() -> None:
                 region_id="region-aligned",
                 line_order=1,
                 span_ids=["span-aligned"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
             )
         ],
         spans=[_span("span-aligned", line_id="line-aligned", text="aligned")],
@@ -2324,7 +2335,7 @@ def test_coordinate_space_mismatch_excludes_witness_from_merge() -> None:
                 region_id="region-space",
                 line_order=1,
                 span_ids=["span-space"],
-                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
             )
         ],
         spans=[_span("span-space", line_id="line-space", text="space")],
@@ -2347,6 +2358,80 @@ def test_coordinate_space_mismatch_excludes_witness_from_merge() -> None:
     ]
     assert len(skipped) == 1
     assert skipped[0].witness_id == "wit-space"
+    assert skipped[0].value["prepared_page_id"] == "prepared-page-1"
+    assert skipped[0].value["reason"] == "coordinate_space_mismatch"
+
+
+def test_mismatched_box_coordinate_space_id_excludes_witness_from_merge() -> None:
+    """Matching witness space but mismatched box coordinate_space_id skips witness."""
+    aligned = _witness_page(
+        witness_id="wit-aligned",
+        runner_id="runner-aligned",
+        regions=[
+            _region(
+                "region-aligned",
+                reading_order_index=1,
+                line_ids=["line-aligned"],
+                bounding_box=_bounding_box(0, 0, 80, 40),
+            )
+        ],
+        lines=[
+            _line(
+                "line-aligned",
+                region_id="region-aligned",
+                line_order=1,
+                span_ids=["span-aligned"],
+                bounding_box=_bounding_box(0, 0, 80, 10),
+            )
+        ],
+        spans=[_span("span-aligned", line_id="line-aligned", text="aligned")],
+    )
+    mismatched_box = _witness_page(
+        witness_id="wit-box-space",
+        runner_id="runner-box-space",
+        regions=[
+            _region(
+                "region-space",
+                reading_order_index=1,
+                line_ids=["line-space"],
+                bounding_box=BoundingBox(
+                    x0=0,
+                    y0=0,
+                    x1=80,
+                    y1=40,
+                    coordinate_space_id="other-space",
+                ),
+            )
+        ],
+        lines=[
+            _line(
+                "line-space",
+                region_id="region-space",
+                line_order=1,
+                span_ids=["span-space"],
+                bounding_box=_bounding_box(0, 0, 80, 10),
+            )
+        ],
+        spans=[_span("span-space", line_id="line-space", text="space")],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[aligned, mismatched_box],
+    )
+    policy = MergePolicy(policy_id="merge-v1", version="1.0.0")
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    assert result.page.regions[0].region_id == "region-aligned"
+    skipped = [
+        candidate
+        for candidate in result.page.regions[0].provenance.alternate_candidates
+        if candidate.value_kind == "skipped_witness"
+    ]
+    assert len(skipped) == 1
+    assert skipped[0].witness_id == "wit-box-space"
     assert skipped[0].value["prepared_page_id"] == "prepared-page-1"
     assert skipped[0].value["reason"] == "coordinate_space_mismatch"
 

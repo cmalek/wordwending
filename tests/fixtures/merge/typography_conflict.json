@@ -31,12 +31,24 @@
           "region_id": "region-scaffold-1",
           "region_kind": "body",
           "reading_order_index": 1,
-          "bounding_box": {"x0": 0, "y0": 0, "x1": 80, "y1": 40},
-          "line_ids": ["line-scaffold-1"],
+          "bounding_box": {
+            "x0": 0,
+            "y0": 0,
+            "x1": 80,
+            "y1": 40,
+            "coordinate_space_id": "prepared-page-1"
+          },
+          "line_ids": [
+            "line-scaffold-1"
+          ],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-scaffold"],
-            "runner_ids": ["runner-scaffold"],
+            "witness_ids": [
+              "wit-scaffold"
+            ],
+            "runner_ids": [
+              "runner-scaffold"
+            ],
             "machine_confidence": 0.9
           }
         }
@@ -46,12 +58,24 @@
           "line_id": "line-scaffold-1",
           "region_id": "region-scaffold-1",
           "line_order": 1,
-          "bounding_box": {"x0": 0, "y0": 0, "x1": 80, "y1": 10},
-          "span_ids": ["span-scaffold-1"],
+          "bounding_box": {
+            "x0": 0,
+            "y0": 0,
+            "x1": 80,
+            "y1": 10,
+            "coordinate_space_id": "prepared-page-1"
+          },
+          "span_ids": [
+            "span-scaffold-1"
+          ],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-scaffold"],
-            "runner_ids": ["runner-scaffold"],
+            "witness_ids": [
+              "wit-scaffold"
+            ],
+            "runner_ids": [
+              "runner-scaffold"
+            ],
             "machine_confidence": 0.9
           }
         }
@@ -62,7 +86,13 @@
           "line_id": "line-scaffold-1",
           "text_diplomatic": "same-text",
           "text_normalized": "same-text",
-          "bounding_box": {"x0": 0, "y0": 0, "x1": 80, "y1": 10},
+          "bounding_box": {
+            "x0": 0,
+            "y0": 0,
+            "x1": 80,
+            "y1": 10,
+            "coordinate_space_id": "prepared-page-1"
+          },
           "typography": {
             "weight": "bold",
             "slant": "upright",
@@ -70,8 +100,12 @@
           },
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-scaffold"],
-            "runner_ids": ["runner-scaffold"],
+            "witness_ids": [
+              "wit-scaffold"
+            ],
+            "runner_ids": [
+              "runner-scaffold"
+            ],
             "machine_confidence": 0.9
           }
         }
@@ -92,12 +126,24 @@
           "region_id": "region-alt-1",
           "region_kind": "body",
           "reading_order_index": 1,
-          "bounding_box": {"x0": 1, "y0": 1, "x1": 79, "y1": 39},
-          "line_ids": ["line-alt-1"],
+          "bounding_box": {
+            "x0": 1,
+            "y0": 1,
+            "x1": 79,
+            "y1": 39,
+            "coordinate_space_id": "prepared-page-1"
+          },
+          "line_ids": [
+            "line-alt-1"
+          ],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-alt"],
-            "runner_ids": ["runner-alt"],
+            "witness_ids": [
+              "wit-alt"
+            ],
+            "runner_ids": [
+              "runner-alt"
+            ],
             "machine_confidence": 0.88
           }
         }
@@ -107,12 +153,24 @@
           "line_id": "line-alt-1",
           "region_id": "region-alt-1",
           "line_order": 1,
-          "bounding_box": {"x0": 1, "y0": 1, "x1": 79, "y1": 9},
-          "span_ids": ["span-alt-1"],
+          "bounding_box": {
+            "x0": 1,
+            "y0": 1,
+            "x1": 79,
+            "y1": 9,
+            "coordinate_space_id": "prepared-page-1"
+          },
+          "span_ids": [
+            "span-alt-1"
+          ],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-alt"],
-            "runner_ids": ["runner-alt"],
+            "witness_ids": [
+              "wit-alt"
+            ],
+            "runner_ids": [
+              "runner-alt"
+            ],
             "machine_confidence": 0.88
           }
         }
@@ -123,7 +181,13 @@
           "line_id": "line-alt-1",
           "text_diplomatic": "same-text",
           "text_normalized": "same-text",
-          "bounding_box": {"x0": 1, "y0": 1, "x1": 79, "y1": 9},
+          "bounding_box": {
+            "x0": 1,
+            "y0": 1,
+            "x1": 79,
+            "y1": 9,
+            "coordinate_space_id": "prepared-page-1"
+          },
           "typography": {
             "weight": "regular",
             "slant": "upright",
@@ -131,8 +195,12 @@
           },
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-alt"],
-            "runner_ids": ["runner-alt"],
+            "witness_ids": [
+              "wit-alt"
+            ],
+            "runner_ids": [
+              "runner-alt"
+            ],
             "machine_confidence": 0.88
           }
         }

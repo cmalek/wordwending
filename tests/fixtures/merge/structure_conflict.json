@@ -31,12 +31,24 @@
           "region_id": "region-scaffold-1",
           "region_kind": "body",
           "reading_order_index": 1,
-          "bounding_box": {"x0": 0, "y0": 0, "x1": 80, "y1": 40},
-          "line_ids": ["line-scaffold-1"],
+          "bounding_box": {
+            "x0": 0,
+            "y0": 0,
+            "x1": 80,
+            "y1": 40,
+            "coordinate_space_id": "prepared-page-1"
+          },
+          "line_ids": [
+            "line-scaffold-1"
+          ],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-scaffold"],
-            "runner_ids": ["runner-scaffold"],
+            "witness_ids": [
+              "wit-scaffold"
+            ],
+            "runner_ids": [
+              "runner-scaffold"
+            ],
             "machine_confidence": 0.9
           }
         }
@@ -46,12 +58,24 @@
           "line_id": "line-scaffold-1",
           "region_id": "region-scaffold-1",
           "line_order": 1,
-          "bounding_box": {"x0": 0, "y0": 0, "x1": 80, "y1": 10},
-          "span_ids": ["span-scaffold-1"],
+          "bounding_box": {
+            "x0": 0,
+            "y0": 0,
+            "x1": 80,
+            "y1": 10,
+            "coordinate_space_id": "prepared-page-1"
+          },
+          "span_ids": [
+            "span-scaffold-1"
+          ],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-scaffold"],
-            "runner_ids": ["runner-scaffold"],
+            "witness_ids": [
+              "wit-scaffold"
+            ],
+            "runner_ids": [
+              "runner-scaffold"
+            ],
             "machine_confidence": 0.9
           }
         }
@@ -64,8 +88,12 @@
           "text_normalized": "one region",
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-scaffold"],
-            "runner_ids": ["runner-scaffold"],
+            "witness_ids": [
+              "wit-scaffold"
+            ],
+            "runner_ids": [
+              "runner-scaffold"
+            ],
             "machine_confidence": 0.9
           }
         }
@@ -86,12 +114,24 @@
           "region_id": "region-conflict-1",
           "region_kind": "body",
           "reading_order_index": 1,
-          "bounding_box": {"x0": 0, "y0": 0, "x1": 40, "y1": 20},
-          "line_ids": ["line-conflict-1"],
+          "bounding_box": {
+            "x0": 0,
+            "y0": 0,
+            "x1": 40,
+            "y1": 20,
+            "coordinate_space_id": "prepared-page-1"
+          },
+          "line_ids": [
+            "line-conflict-1"
+          ],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-conflict"],
-            "runner_ids": ["runner-conflict"],
+            "witness_ids": [
+              "wit-conflict"
+            ],
+            "runner_ids": [
+              "runner-conflict"
+            ],
             "machine_confidence": 0.85
           }
         },
@@ -99,12 +139,24 @@
           "region_id": "region-conflict-2",
           "region_kind": "body",
           "reading_order_index": 2,
-          "bounding_box": {"x0": 50, "y0": 0, "x1": 90, "y1": 20},
-          "line_ids": ["line-conflict-2"],
+          "bounding_box": {
+            "x0": 50,
+            "y0": 0,
+            "x1": 90,
+            "y1": 20,
+            "coordinate_space_id": "prepared-page-1"
+          },
+          "line_ids": [
+            "line-conflict-2"
+          ],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-conflict"],
-            "runner_ids": ["runner-conflict"],
+            "witness_ids": [
+              "wit-conflict"
+            ],
+            "runner_ids": [
+              "runner-conflict"
+            ],
             "machine_confidence": 0.85
           }
         }
@@ -114,12 +166,24 @@
           "line_id": "line-conflict-1",
           "region_id": "region-conflict-1",
           "line_order": 1,
-          "bounding_box": {"x0": 0, "y0": 0, "x1": 40, "y1": 10},
-          "span_ids": ["span-conflict-1"],
+          "bounding_box": {
+            "x0": 0,
+            "y0": 0,
+            "x1": 40,
+            "y1": 10,
+            "coordinate_space_id": "prepared-page-1"
+          },
+          "span_ids": [
+            "span-conflict-1"
+          ],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-conflict"],
-            "runner_ids": ["runner-conflict"],
+            "witness_ids": [
+              "wit-conflict"
+            ],
+            "runner_ids": [
+              "runner-conflict"
+            ],
             "machine_confidence": 0.85
           }
         },
@@ -127,12 +191,24 @@
           "line_id": "line-conflict-2",
           "region_id": "region-conflict-2",
           "line_order": 1,
-          "bounding_box": {"x0": 50, "y0": 0, "x1": 90, "y1": 10},
-          "span_ids": ["span-conflict-2"],
+          "bounding_box": {
+            "x0": 50,
+            "y0": 0,
+            "x1": 90,
+            "y1": 10,
+            "coordinate_space_id": "prepared-page-1"
+          },
+          "span_ids": [
+            "span-conflict-2"
+          ],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-conflict"],
-            "runner_ids": ["runner-conflict"],
+            "witness_ids": [
+              "wit-conflict"
+            ],
+            "runner_ids": [
+              "runner-conflict"
+            ],
             "machine_confidence": 0.85
           }
         }
@@ -145,8 +221,12 @@
           "text_normalized": "left",
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-conflict"],
-            "runner_ids": ["runner-conflict"],
+            "witness_ids": [
+              "wit-conflict"
+            ],
+            "runner_ids": [
+              "runner-conflict"
+            ],
             "machine_confidence": 0.85
           }
         },
@@ -157,8 +237,12 @@
           "text_normalized": "right",
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-conflict"],
-            "runner_ids": ["runner-conflict"],
+            "witness_ids": [
+              "wit-conflict"
+            ],
+            "runner_ids": [
+              "runner-conflict"
+            ],
             "machine_confidence": 0.85
           }
         }

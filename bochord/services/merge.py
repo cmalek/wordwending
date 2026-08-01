@@ -701,6 +701,48 @@ def _witness_coordinate_space_matches(
     )
 
 
+def _witness_bounding_box_spaces_match(
+    expected_space_id: str,
+    witness: PassWitnessPage,
+) -> bool:
+    """
+    Return whether every present bounding box uses the expected coordinate space.
+
+    Args:
+        expected_space_id: Coordinate-space identifier from the prepared page.
+        witness: Candidate witness fragment to evaluate.
+
+    Returns:
+        ``True`` when all non-null bounding boxes match ``expected_space_id``.
+
+    """
+    for region in witness.regions:
+        if (
+            region.bounding_box is not None
+            and region.bounding_box.coordinate_space_id != expected_space_id
+        ):
+            return False
+    for line in witness.lines:
+        if (
+            line.bounding_box is not None
+            and line.bounding_box.coordinate_space_id != expected_space_id
+        ):
+            return False
+    for span in witness.spans:
+        if (
+            span.bounding_box is not None
+            and span.bounding_box.coordinate_space_id != expected_space_id
+        ):
+            return False
+    for note in witness.notes:
+        if (
+            note.bounding_box is not None
+            and note.bounding_box.coordinate_space_id != expected_space_id
+        ):
+            return False
+    return True
+
+
 def _witness_skip_reason(
     prepared_page: PreparedPage,
     witness: PassWitnessPage,
@@ -721,6 +763,11 @@ def _witness_skip_reason(
     if not _witness_coordinate_space_matches(
         prepared_page.coordinate_space,
         witness.coordinate_space,
+    ):
+        return "coordinate_space_mismatch"
+    if not _witness_bounding_box_spaces_match(
+        prepared_page.coordinate_space.space_id,
+        witness,
     ):
         return "coordinate_space_mismatch"
     return None
