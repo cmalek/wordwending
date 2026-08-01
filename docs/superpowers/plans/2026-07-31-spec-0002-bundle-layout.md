@@ -138,7 +138,7 @@ class PageBundleManifest(SchemaModel):
     review_events_path: str
 ```
 
-- [ ] **Step 1: Write failing path + manifest tests**
+- [x] **Step 1: Write failing path + manifest tests**
 
 ```python
 def test_page_dir_name_is_zero_padded() -> None:
@@ -156,13 +156,13 @@ def test_bundle_paths_match_spec_0002_layout(tmp_path: Path) -> None:
     )
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
-- [ ] **Step 3: Implement models + path helpers**
+- [x] **Step 3: Implement models + path helpers**
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
-- [ ] **Step 5: Quality gate + commit**
+- [x] **Step 5: Quality gate + commit**
 
 ```bash
 git commit -m "$(cat <<'EOF'
@@ -239,7 +239,7 @@ Writer rules:
 
 `page_graph.json` payload = `BundlePage.model_dump(mode="json")` (YAGNI wrapper).
 
-- [ ] **Step 1: Write failing write/read tests** asserting tree shape with `tmp_path.rglob` and manifest fields.
+- [x] **Step 1: Write failing write/read tests** asserting tree shape with `tmp_path.rglob` and manifest fields.
 
 Required assertions:
 
@@ -252,13 +252,13 @@ Required assertions:
 - second write refreshes graph content
 - second write leaves a pre-seeded `review_events.jsonl` byte-identical (append-only guard before Task 3 API exists)
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
-- [ ] **Step 3: Implement writer/reader**
+- [x] **Step 3: Implement writer/reader**
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
-- [ ] **Step 5: Quality gate + commit**
+- [x] **Step 5: Quality gate + commit**
 
 ```bash
 git commit -m "$(cat <<'EOF'
@@ -315,19 +315,19 @@ Rules:
 - `current_state.json` may overwrite (derived current view); history stays in JSONL.
 - Page manifest always points at review_events path (empty file ok from Task 2).
 
-- [ ] **Step 1: Write failing append-only tests**
+- [x] **Step 1: Write failing append-only tests**
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
-- [ ] **Step 3: Implement append + state write**
+- [x] **Step 3: Implement append + state write**
 
-- [ ] **Step 4: Run full bundle suite**
+- [x] **Step 4: Run full bundle suite**
 
 ```bash
 pytest tests/test_bundle_layout.py -q
 ```
 
-- [ ] **Step 5: Quality gate + commit**
+- [x] **Step 5: Quality gate + commit**
 
 ```bash
 git commit -m "$(cat <<'EOF'
