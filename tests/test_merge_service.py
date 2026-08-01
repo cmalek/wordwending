@@ -942,6 +942,19 @@ def test_text_precedence_picks_first_candidate_for_duplicate_runner_id() -> None
     assert span.text_diplomatic == "first-text"
     assert span.provenance.merge_confidence == 0.7
     assert result.abstained is False
+    text_alternates = [
+        candidate
+        for candidate in span.provenance.alternate_candidates
+        if candidate.value_kind == "text"
+    ]
+    second_text_alternates = [
+        candidate
+        for candidate in text_alternates
+        if candidate.value.get("text_diplomatic") == "second-text"
+    ]
+    assert len(second_text_alternates) == 1
+    assert second_text_alternates[0].witness_id == "wit-preferred-second"
+    assert second_text_alternates[0].runner_id == "runner-preferred"
 
 
 def test_precedence_picks_winner_and_flags_with_confidence_0_7() -> None:

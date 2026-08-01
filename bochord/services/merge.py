@@ -1593,8 +1593,6 @@ def _text_alternates_from_candidates(
     for candidate in candidates:
         if winner is not None and candidate.span.span_id == winner.span.span_id:
             continue
-        if winner is not None and candidate.runner_id == winner.runner_id:
-            continue
         alternates.append(
             AlternateCandidate(
                 witness_id=candidate.witness_id,
