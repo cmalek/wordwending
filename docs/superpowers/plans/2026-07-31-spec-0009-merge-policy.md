@@ -289,21 +289,21 @@ Notes:
 
 Emit `ReviewTask`-shaped data? **No** in this plan — emit `MergeFlag` only. Review-task packets are Spec 0005 / Phase 8.
 
-- [ ] **Step 1: Write failing tests** for each rule above (one focused test each).
+- [x] **Step 1: Write failing tests** for each rule above (one focused test each).
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
-- [ ] **Step 3: Implement remaining orchestrator steps**
+- [x] **Step 3: Implement remaining orchestrator steps**
 
 Keep methods ≤ 60 lines; split helpers as needed (`_resolve_span_text`, `_resolve_typography`, `_resolve_note_links`).
 
-- [ ] **Step 4: Run full merge suite**
+- [x] **Step 4: Run full merge suite**
 
 ```bash
 pytest tests/test_merge_service.py tests/test_ocr_models.py -q
 ```
 
-- [ ] **Step 5: Quality gate + commit**
+- [x] **Step 5: Quality gate + commit**
 
 ```bash
 git commit -m "$(cat <<'EOF'

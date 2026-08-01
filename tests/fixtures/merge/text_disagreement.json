@@ -18,8 +18,8 @@
   },
   "witnesses": [
     {
-      "witness_id": "wit-a",
-      "runner_id": "runner-a",
+      "witness_id": "wit-scaffold",
+      "runner_id": "runner-scaffold",
       "prepared_page_id": "prepared-page-1",
       "coordinate_space": {
         "space_id": "prepared-page-1",
@@ -28,44 +28,45 @@
       },
       "regions": [
         {
-          "region_id": "region-a-1",
+          "region_id": "region-scaffold-1",
           "region_kind": "body",
           "reading_order_index": 1,
           "bounding_box": {"x0": 0, "y0": 0, "x1": 80, "y1": 40},
-          "line_ids": ["line-a-1"],
+          "line_ids": ["line-scaffold-1"],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-a"],
-            "runner_ids": ["runner-a"],
+            "witness_ids": ["wit-scaffold"],
+            "runner_ids": ["runner-scaffold"],
             "machine_confidence": 0.9
           }
         }
       ],
       "lines": [
         {
-          "line_id": "line-a-1",
-          "region_id": "region-a-1",
+          "line_id": "line-scaffold-1",
+          "region_id": "region-scaffold-1",
           "line_order": 1,
           "bounding_box": {"x0": 0, "y0": 0, "x1": 80, "y1": 10},
-          "span_ids": ["span-a-1"],
+          "span_ids": ["span-scaffold-1"],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-a"],
-            "runner_ids": ["runner-a"],
+            "witness_ids": ["wit-scaffold"],
+            "runner_ids": ["runner-scaffold"],
             "machine_confidence": 0.9
           }
         }
       ],
       "spans": [
         {
-          "span_id": "span-a-1",
-          "line_id": "line-a-1",
-          "text_diplomatic": "beta",
-          "text_normalized": "beta",
+          "span_id": "span-scaffold-1",
+          "line_id": "line-scaffold-1",
+          "text_diplomatic": "scaffold-text",
+          "text_normalized": "scaffold-text",
+          "bounding_box": {"x0": 0, "y0": 0, "x1": 80, "y1": 10},
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-a"],
-            "runner_ids": ["runner-a"],
+            "witness_ids": ["wit-scaffold"],
+            "runner_ids": ["runner-scaffold"],
             "machine_confidence": 0.9
           }
         }
@@ -73,8 +74,8 @@
       "machine_confidence": 0.9
     },
     {
-      "witness_id": "wit-b",
-      "runner_id": "runner-b",
+      "witness_id": "wit-alt",
+      "runner_id": "runner-alt",
       "prepared_page_id": "prepared-page-1",
       "coordinate_space": {
         "space_id": "prepared-page-1",
@@ -83,69 +84,45 @@
       },
       "regions": [
         {
-          "region_id": "region-b-1",
+          "region_id": "region-alt-1",
           "region_kind": "body",
           "reading_order_index": 1,
           "bounding_box": {"x0": 1, "y0": 1, "x1": 79, "y1": 39},
-          "line_ids": ["line-b-1"],
+          "line_ids": ["line-alt-1"],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-b"],
-            "runner_ids": ["runner-b"],
+            "witness_ids": ["wit-alt"],
+            "runner_ids": ["runner-alt"],
             "machine_confidence": 0.88
           }
         }
       ],
       "lines": [
         {
-          "line_id": "line-b-1",
-          "region_id": "region-b-1",
+          "line_id": "line-alt-1",
+          "region_id": "region-alt-1",
           "line_order": 1,
           "bounding_box": {"x0": 1, "y0": 1, "x1": 79, "y1": 9},
-          "span_ids": ["span-b-1"],
+          "span_ids": ["span-alt-1"],
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-b"],
-            "runner_ids": ["runner-b"],
-            "machine_confidence": 0.88
-          }
-        },
-        {
-          "line_id": "line-b-2",
-          "region_id": "region-b-1",
-          "line_order": 2,
-          "bounding_box": {"x0": 1, "y0": 12, "x1": 79, "y1": 20},
-          "span_ids": ["span-b-2"],
-          "provenance": {
-            "source_page_id": "page-0001",
-            "witness_ids": ["wit-b"],
-            "runner_ids": ["runner-b"],
+            "witness_ids": ["wit-alt"],
+            "runner_ids": ["runner-alt"],
             "machine_confidence": 0.88
           }
         }
       ],
       "spans": [
         {
-          "span_id": "span-b-1",
-          "line_id": "line-b-1",
-          "text_diplomatic": "beta",
-          "text_normalized": "beta",
+          "span_id": "span-alt-1",
+          "line_id": "line-alt-1",
+          "text_diplomatic": "alternate-text",
+          "text_normalized": "alternate-text",
+          "bounding_box": {"x0": 1, "y0": 1, "x1": 79, "y1": 9},
           "provenance": {
             "source_page_id": "page-0001",
-            "witness_ids": ["wit-b"],
-            "runner_ids": ["runner-b"],
-            "machine_confidence": 0.88
-          }
-        },
-        {
-          "span_id": "span-b-2",
-          "line_id": "line-b-2",
-          "text_diplomatic": "second",
-          "text_normalized": "second",
-          "provenance": {
-            "source_page_id": "page-0001",
-            "witness_ids": ["wit-b"],
-            "runner_ids": ["runner-b"],
+            "witness_ids": ["wit-alt"],
+            "runner_ids": ["runner-alt"],
             "machine_confidence": 0.88
           }
         }
