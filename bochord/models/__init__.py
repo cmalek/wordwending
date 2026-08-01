@@ -1,6 +1,13 @@
 # Copyright (C) 2026 Chris Malek.
 """Exported data models for bochord."""
 
+from bochord.models.bundle_layout import (
+    BUNDLE_SCHEMA_VERSION,
+    BundlePaths,
+    DocumentBundleManifest,
+    PageBundleManifest,
+    page_dir_name,
+)
 from bochord.models.evaluation import (
     EvaluationCohortKey,
     EvaluationCohortReport,
@@ -142,6 +149,7 @@ from bochord.models.text_normalization import (
 
 #: Public OCR contract model exports.
 __all__ = [
+    "BUNDLE_SCHEMA_VERSION",
     "AcceptReviewEvent",
     "AcquisitionProvenance",
     "AlternateCandidate",
@@ -155,6 +163,7 @@ __all__ = [
     "BinarizeMode",
     "BoundingBox",
     "BundlePage",
+    "BundlePaths",
     "ChunkType",
     "ColorMode",
     "CoordinateSpace",
@@ -166,6 +175,7 @@ __all__ = [
     "DatasetSplit",
     "DewarpMode",
     "DocumentBundle",
+    "DocumentBundleManifest",
     "DocumentEvaluationSummary",
     "EvaluationCohortKey",
     "EvaluationCohortReport",
@@ -209,6 +219,7 @@ __all__ = [
     "OverlayState",
     "PackagedRunnerInput",
     "PackagingStrategy",
+    "PageBundleManifest",
     "PageClass",
     "PageEvaluationRecord",
     "PageEvaluationSummary",
@@ -268,4 +279,5 @@ __all__ = [
     "UnicodeNormalizationForm",
     "UnlinkNoteReviewEvent",
     "WitnessReference",
+    "page_dir_name",
 ]
