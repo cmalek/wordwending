@@ -246,6 +246,76 @@ def test_scaffold_preference_uses_structure_scaffold_runner_ids() -> None:
     )
 
 
+def test_scaffold_preference_picks_first_witness_for_duplicate_runner_id() -> None:
+    """When multiple witnesses share a preferred runner, the first one wins."""
+    first_runner_a = _witness_page(
+        witness_id="wit-a-first",
+        runner_id="runner-a",
+        regions=[_region("region-a-first", reading_order_index=1, line_ids=["line-a-first"])],
+        lines=[_line("line-a-first", region_id="region-a-first", line_order=1, span_ids=["span-a-first"])],
+        spans=[_span("span-a-first", line_id="line-a-first", text="first")],
+    )
+    second_runner_a = _witness_page(
+        witness_id="wit-a-second",
+        runner_id="runner-a",
+        regions=[_region("region-a-second", reading_order_index=1, line_ids=["line-a-second"])],
+        lines=[_line("line-a-second", region_id="region-a-second", line_order=1, span_ids=["span-a-second"])],
+        spans=[_span("span-a-second", line_id="line-a-second", text="second")],
+    )
+    runner_b = _witness_page(
+        witness_id="wit-b",
+        runner_id="runner-b",
+        regions=[_region("region-b", reading_order_index=1, line_ids=["line-b"])],
+        lines=[_line("line-b", region_id="region-b", line_order=1, span_ids=["span-b"])],
+        spans=[_span("span-b", line_id="line-b", text="beta")],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[first_runner_a, second_runner_a, runner_b],
+    )
+    policy = MergePolicy(
+        policy_id="merge-v1",
+        version="1.0.0",
+        structure_scaffold_runner_ids=["runner-a", "runner-b"],
+    )
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    assert result.page.regions[0].region_id == "region-a-first"
+    assert result.page.lines[0].line_id == "line-a-first"
+    assert result.page.spans[0].text_diplomatic == "first"
+    assert result.abstained is False
+
+
+def test_merge_page_does_not_mutate_input_witnesses() -> None:
+    """Merge deep-copies scaffold layout without altering input witness graphs."""
+    witness = _witness_page(
+        witness_id="wit-a",
+        runner_id="runner-a",
+        regions=[_region("region-a", reading_order_index=1, line_ids=["line-a"])],
+        lines=[_line("line-a", region_id="region-a", line_order=1, span_ids=["span-a"])],
+        spans=[_span("span-a", line_id="line-a", text="alpha")],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[witness],
+    )
+    policy = MergePolicy(
+        policy_id="merge-v1",
+        version="1.0.0",
+        structure_scaffold_runner_ids=["runner-a"],
+    )
+    witness_snapshot = witness.model_dump(mode="json")
+
+    AbstainingMergeService().merge_page(page_input, policy)
+
+    assert witness.model_dump(mode="json") == witness_snapshot
+
+
 def test_scaffold_preference_uses_coordinate_rich_lines_when_no_runner_order() -> None:
     """Without runner order, the witness with more geometry-rich lines wins."""
     sparse = _witness_page(

@@ -149,44 +149,63 @@ class MergeOrchestrator:
 
     def _choose_structure_scaffold(self) -> None:
         """Pick one coordinate-rich structure scaffold and detect layout conflicts."""
-        candidates = [
-            witness
-            for witness in self._eligible_witnesses
-            if witness.regions
-        ]
+        candidates = _region_bearing_witnesses(self._eligible_witnesses)
         if not candidates:
-            self._scaffold_witness = None
-            self._abstained = True
-            self._add_flag(
-                MergeFlagType.INSUFFICIENT_EVIDENCE,
-                target_object_ids=[],
-                message=(
-                    "No witness supplies region structure for scaffold selection."
-                ),
-            )
+            self._abstain_without_scaffold()
             return
 
+        self._scaffold_witness = self._pick_scaffold_witness(candidates)
+        if self._scaffold_witness is not None:
+            self._flag_scaffold_conflicts(self._scaffold_witness)
+
+    def _abstain_without_scaffold(self) -> None:
+        """Record insufficient evidence when no region scaffold is available."""
+        self._scaffold_witness = None
+        self._abstained = True
+        self._add_flag(
+            MergeFlagType.INSUFFICIENT_EVIDENCE,
+            target_object_ids=[],
+            message=(
+                "No witness supplies region structure for scaffold selection."
+            ),
+        )
+
+    def _pick_scaffold_witness(
+        self,
+        candidates: list[PassWitnessPage],
+    ) -> PassWitnessPage:
+        """
+        Select one scaffold witness from region-bearing candidates.
+
+        Args:
+            candidates: Eligible witnesses that supply region structure.
+
+        Returns:
+            Chosen scaffold witness.
+
+        """
         if self._policy.structure_scaffold_runner_ids:
-            by_runner = {witness.runner_id: witness for witness in candidates}
-            for runner_id in self._policy.structure_scaffold_runner_ids:
-                witness = by_runner.get(runner_id)
-                if witness is not None:
-                    self._scaffold_witness = witness
-                    break
-            else:
-                self._scaffold_witness = candidates[0]
-        else:
-            self._scaffold_witness = max(
+            preferred = _first_witness_by_runner_preference(
                 candidates,
-                key=lambda witness: (
-                    _coordinate_rich_line_count(witness),
-                    -self._eligible_witnesses.index(witness),
-                ),
+                self._policy.structure_scaffold_runner_ids,
             )
+            return preferred if preferred is not None else candidates[0]
+        return max(
+            candidates,
+            key=lambda witness: (
+                _coordinate_rich_line_count(witness),
+                -self._eligible_witnesses.index(witness),
+            ),
+        )
 
-        scaffold_witness = self._scaffold_witness
-        if scaffold_witness is None:
-            return
+    def _flag_scaffold_conflicts(self, scaffold_witness: PassWitnessPage) -> None:
+        """
+        Compare other witnesses against the chosen scaffold and flag conflicts.
+
+        Args:
+            scaffold_witness: Witness selected as the structure scaffold.
+
+        """
         for witness in self._eligible_witnesses:
             if witness.witness_id == scaffold_witness.witness_id:
                 continue
@@ -218,63 +237,22 @@ class MergeOrchestrator:
         if self._scaffold_witness is None:
             return
 
-        scaffold = self._scaffold_witness
         merge_provenance = ObjectProvenance(
             source_page_id=self._page_input.page_id,
-            witness_ids=[scaffold.witness_id],
-            runner_ids=[scaffold.runner_id],
-            machine_confidence=scaffold.machine_confidence,
+            witness_ids=[self._scaffold_witness.witness_id],
+            runner_ids=[self._scaffold_witness.runner_id],
+            machine_confidence=self._scaffold_witness.machine_confidence,
         )
-        self._regions = [
-            region.model_copy(
-                update={"provenance": merge_provenance.model_copy(deep=True)},
-                deep=True,
-            )
-            for region in scaffold.regions
-        ]
-        self._lines = [
-            line.model_copy(
-                update={"provenance": merge_provenance.model_copy(deep=True)},
-                deep=True,
-            )
-            for line in scaffold.lines
-        ]
-        self._spans = [
-            span.model_copy(
-                update={"provenance": merge_provenance.model_copy(deep=True)},
-                deep=True,
-            )
-            for span in scaffold.spans
-        ]
-        self._notes = [
-            note.model_copy(
-                update={"provenance": merge_provenance.model_copy(deep=True)},
-                deep=True,
-            )
-            for note in scaffold.notes
-        ]
+        self._regions, self._lines, self._spans, self._notes = _copy_scaffold_layout(
+            self._scaffold_witness,
+            merge_provenance,
+        )
         if self._regions:
-            alternates = [
-                AlternateCandidate(
-                    witness_id=witness.witness_id,
-                    runner_id=witness.runner_id,
-                    value_kind="skipped_witness",
-                    value={
-                        "prepared_page_id": witness.prepared_page_id,
-                        "reason": "cross_variant_excluded",
-                    },
-                )
-                for witness in self._skipped_witnesses
-            ]
-            alternates.extend(self._geometry_alternates)
-            if alternates:
-                region = self._regions[0]
-                provenance = region.provenance.model_copy(deep=True)
-                provenance.alternate_candidates.extend(alternates)
-                self._regions[0] = region.model_copy(
-                    update={"provenance": provenance},
-                    deep=True,
-                )
+            self._regions = _attach_region_alternates(
+                self._regions,
+                self._skipped_witnesses,
+                self._geometry_alternates,
+            )
 
     def _merge_text(self) -> None:
         """Stub text merge: scaffold spans remain accepted until Task 3."""
@@ -387,6 +365,124 @@ class AbstainingMergeService:
         return orchestrator.run()
 
 
+def _region_bearing_witnesses(
+    witnesses: list[PassWitnessPage],
+) -> list[PassWitnessPage]:
+    """
+    Return witnesses that supply region structure for scaffold selection.
+
+    Args:
+        witnesses: Eligible witnesses aligned to the accepted prepared page.
+
+    Returns:
+        Witnesses with at least one region node.
+
+    """
+    return [witness for witness in witnesses if witness.regions]
+
+
+def _first_witness_by_runner_preference(
+    candidates: list[PassWitnessPage],
+    runner_ids: list[str],
+) -> PassWitnessPage | None:
+    """
+    Pick the first eligible witness for the earliest preferred runner id.
+
+    Args:
+        candidates: Region-bearing witnesses in input order.
+        runner_ids: Preferred runner ids in precedence order.
+
+    Returns:
+        First matching witness, or ``None`` when no runner id matches.
+
+    """
+    by_runner: dict[str, PassWitnessPage] = {}
+    for witness in candidates:
+        if witness.runner_id not in by_runner:
+            by_runner[witness.runner_id] = witness
+    for runner_id in runner_ids:
+        preferred = by_runner.get(runner_id)
+        if preferred is not None:
+            return preferred
+    return None
+
+
+def _copy_scaffold_layout(
+    scaffold: PassWitnessPage,
+    merge_provenance: ObjectProvenance,
+) -> tuple[
+    list[RegionRecord],
+    list[LineRecord],
+    list[SpanRecord],
+    list[NoteRecord],
+]:
+    """
+    Deep-copy scaffold layout nodes with merge provenance.
+
+    Args:
+        scaffold: Witness selected as the structure scaffold.
+        merge_provenance: Provenance stamped onto accepted layout nodes.
+
+    Returns:
+        Accepted region, line, span, and note nodes copied from the scaffold.
+
+    """
+    provenance = merge_provenance.model_copy(deep=True)
+
+    def _copy_node(node: RegionRecord | LineRecord | SpanRecord | NoteRecord) -> Any:
+        return node.model_copy(
+            update={"provenance": provenance.model_copy(deep=True)},
+            deep=True,
+        )
+
+    regions = [_copy_node(region) for region in scaffold.regions]
+    lines = [_copy_node(line) for line in scaffold.lines]
+    spans = [_copy_node(span) for span in scaffold.spans]
+    notes = [_copy_node(note) for note in scaffold.notes]
+    return regions, lines, spans, notes
+
+
+def _attach_region_alternates(
+    regions: list[RegionRecord],
+    skipped_witnesses: list[PassWitnessPage],
+    geometry_alternates: list[AlternateCandidate],
+) -> list[RegionRecord]:
+    """
+    Attach skipped and geometry alternates to the first accepted region.
+
+    Args:
+        regions: Accepted region nodes copied from the scaffold.
+        skipped_witnesses: Cross-variant witnesses excluded from merge.
+        geometry_alternates: Losing geometry payloads from scaffold conflicts.
+
+    Returns:
+        Region list with alternates attached to the first region.
+
+    """
+    alternates = [
+        AlternateCandidate(
+            witness_id=witness.witness_id,
+            runner_id=witness.runner_id,
+            value_kind="skipped_witness",
+            value={
+                "prepared_page_id": witness.prepared_page_id,
+                "reason": "cross_variant_excluded",
+            },
+        )
+        for witness in skipped_witnesses
+    ]
+    alternates.extend(geometry_alternates)
+    if not alternates:
+        return regions
+
+    region = regions[0]
+    provenance = region.provenance.model_copy(deep=True)
+    provenance.alternate_candidates.extend(alternates)
+    updated_regions = list(regions)
+    updated_regions[0] = region.model_copy(update={"provenance": provenance}, deep=True)
+    return updated_regions
+
+
 def _coordinate_rich_line_count(witness: PassWitnessPage) -> int:
     """
     Count lines carrying bounding boxes or baseline geometry.
@@ -429,14 +525,8 @@ def _detect_structure_conflict(
         Conflict flag plus alternate geometry payloads for losing regions.
 
     """
-    scaffold_sorted = sorted(
-        scaffold_regions,
-        key=lambda region: region.reading_order_index,
-    )
-    witness_sorted = sorted(
-        witness_regions,
-        key=lambda region: region.reading_order_index,
-    )
+    scaffold_sorted = _regions_by_reading_order(scaffold_regions)
+    witness_sorted = _regions_by_reading_order(witness_regions)
     if len(scaffold_sorted) != len(witness_sorted):
         return True, _geometry_alternates_for_regions(
             witness_sorted,
@@ -444,6 +534,55 @@ def _detect_structure_conflict(
             runner_id=runner_id,
         )
 
+    box_presence = _region_box_presence_mismatch(scaffold_sorted, witness_sorted)
+    if box_presence is True:
+        return True, _geometry_alternates_for_regions(
+            witness_sorted,
+            witness_id=witness_id,
+            runner_id=runner_id,
+        )
+    if box_presence is None:
+        return False, []
+
+    if _regions_iou_conflict(scaffold_sorted, witness_sorted, iou_threshold):
+        return True, _geometry_alternates_for_regions(
+            witness_sorted,
+            witness_id=witness_id,
+            runner_id=runner_id,
+        )
+    return False, []
+
+
+def _regions_by_reading_order(regions: list[RegionRecord]) -> list[RegionRecord]:
+    """
+    Sort regions by reading order index.
+
+    Args:
+        regions: Region nodes from one witness.
+
+    Returns:
+        Regions sorted by ``reading_order_index``.
+
+    """
+    return sorted(regions, key=lambda region: region.reading_order_index)
+
+
+def _region_box_presence_mismatch(
+    scaffold_sorted: list[RegionRecord],
+    witness_sorted: list[RegionRecord],
+) -> bool | None:
+    """
+    Decide whether region box presence disagrees between two witnesses.
+
+    Args:
+        scaffold_sorted: Scaffold regions sorted by reading order.
+        witness_sorted: Witness regions sorted by reading order.
+
+    Returns:
+        ``True`` when box presence disagrees, ``False`` when both sides have
+        boxes, and ``None`` when neither side supplies boxes.
+
+    """
     scaffold_has_boxes = any(
         region.bounding_box is not None for region in scaffold_sorted
     )
@@ -451,14 +590,27 @@ def _detect_structure_conflict(
         region.bounding_box is not None for region in witness_sorted
     )
     if not scaffold_has_boxes and not witness_has_boxes:
-        return False, []
-    if scaffold_has_boxes != witness_has_boxes:
-        return True, _geometry_alternates_for_regions(
-            witness_sorted,
-            witness_id=witness_id,
-            runner_id=runner_id,
-        )
+        return None
+    return scaffold_has_boxes != witness_has_boxes
 
+
+def _regions_iou_conflict(
+    scaffold_sorted: list[RegionRecord],
+    witness_sorted: list[RegionRecord],
+    iou_threshold: float,
+) -> bool:
+    """
+    Return whether paired regions fail the IoU match threshold.
+
+    Args:
+        scaffold_sorted: Scaffold regions sorted by reading order.
+        witness_sorted: Witness regions sorted by reading order.
+        iou_threshold: Minimum IoU required for a one-to-one region match.
+
+    Returns:
+        ``True`` when any paired region boxes disagree beyond the threshold.
+
+    """
     for scaffold_region, witness_region in zip(
         scaffold_sorted,
         witness_sorted,
@@ -469,18 +621,10 @@ def _detect_structure_conflict(
         if scaffold_box is None and witness_box is None:
             continue
         if scaffold_box is None or witness_box is None:
-            return True, _geometry_alternates_for_regions(
-                witness_sorted,
-                witness_id=witness_id,
-                runner_id=runner_id,
-            )
+            return True
         if _box_iou(scaffold_box, witness_box) < iou_threshold:
-            return True, _geometry_alternates_for_regions(
-                witness_sorted,
-                witness_id=witness_id,
-                runner_id=runner_id,
-            )
-    return False, []
+            return True
+    return False
 
 
 def _geometry_alternates_for_regions(
