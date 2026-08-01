@@ -317,7 +317,8 @@ class MergeOrchestrator:
                     MergeFlagType.STRUCTURE_SCAFFOLD_CONFLICT,
                     target_object_ids=[
                         region.region_id for region in scaffold_witness.regions
-                    ],
+                    ]
+                    + [line.line_id for line in scaffold_witness.lines],
                     message=(
                         f"Witness {witness.witness_id} structure disagrees with "
                         f"scaffold {scaffold_witness.witness_id}."
@@ -388,16 +389,28 @@ class MergeOrchestrator:
     def _apply_confidence_floor(self) -> None:
         """Abstain when any accepted object falls below the policy confidence floor."""
         minimum = self._policy.min_merge_confidence_to_accept
-        objects = (
-            list(self._regions)
-            + list(self._lines)
-            + list(self._spans)
-            + list(self._notes)
-        )
-        for obj in objects:
+        flagged_ids = _flagged_object_ids(self._flags)
+        for obj_id, obj in _iter_accepted_objects(
+            self._regions,
+            self._lines,
+            self._spans,
+            self._notes,
+        ):
             confidence = obj.provenance.merge_confidence
-            if confidence is not None and confidence < minimum:
-                self._abstained = True
+            if confidence is None or confidence >= minimum:
+                continue
+            self._abstained = True
+            if obj_id in flagged_ids:
+                continue
+            self._add_flag(
+                MergeFlagType.INSUFFICIENT_EVIDENCE,
+                target_object_ids=[obj_id],
+                message=(
+                    f"Object {obj_id} merge confidence {confidence} "
+                    f"is below acceptance floor {minimum}."
+                ),
+            )
+            flagged_ids.add(obj_id)
 
     def _resolve_span_text(self, span: SpanRecord) -> SpanRecord:
         """
@@ -1791,9 +1804,95 @@ def _resolve_typography_facets(
             candidates,
         )
     )
-    conflict = enum_conflict or optional_conflict
-    alternates = enum_alternates + optional_alternates
+    typography, family_conflict, family_alternates = _resolve_font_families_facet(
+        typography,
+        candidates,
+    )
+    conflict = enum_conflict or optional_conflict or family_conflict
+    alternates = enum_alternates + optional_alternates + family_alternates
     return typography, conflict, alternates
+
+
+def _resolve_font_families_facet(
+    typography: Typography,
+    candidates: list[_SpanCandidate],
+) -> tuple[Typography, bool, list[AlternateCandidate]]:
+    """
+    Resolve font-family labels independently from span candidates.
+
+    Args:
+        typography: Starting typography copied from the accepted span.
+        candidates: Matched witness span candidates.
+
+    Returns:
+        Updated typography, conflict flag, and font-family alternates.
+
+    """
+    family_lists = [
+        list(candidate.span.typography.font_families) for candidate in candidates
+    ]
+    non_empty = [families for families in family_lists if families]
+    if not non_empty:
+        return typography, False, []
+
+    name_sets = [
+        frozenset(family.name for family in families) for families in non_empty
+    ]
+    if len(set(name_sets)) == 1:
+        typography.font_families = list(non_empty[0])
+        return typography, False, []
+
+    typography.font_families = []
+    return (
+        typography,
+        True,
+        _typography_alternates_for_facet("font_families", candidates),
+    )
+
+
+def _flagged_object_ids(flags: list[MergeFlag]) -> set[str]:
+    """
+    Collect object ids already referenced by merge flags.
+
+    Args:
+        flags: Merge flags emitted during the current run.
+
+    Returns:
+        Object ids appearing in any flag target list.
+
+    """
+    return {
+        object_id
+        for flag in flags
+        for object_id in flag.target_object_ids
+    }
+
+
+def _iter_accepted_objects(
+    regions: list[RegionRecord],
+    lines: list[LineRecord],
+    spans: list[SpanRecord],
+    notes: list[NoteRecord],
+) -> list[tuple[str, RegionRecord | LineRecord | SpanRecord | NoteRecord]]:
+    """
+    Pair accepted graph objects with their stable identifiers.
+
+    Args:
+        regions: Accepted region nodes under construction.
+        lines: Accepted line nodes under construction.
+        spans: Accepted span nodes under construction.
+        notes: Accepted note nodes under construction.
+
+    Returns:
+        Object id and record pairs for confidence-floor evaluation.
+
+    """
+    objects: list[tuple[str, RegionRecord | LineRecord | SpanRecord | NoteRecord]] = []
+    objects.extend((region.region_id, region) for region in regions)
+    objects.extend((line.line_id, line) for line in lines)
+    objects.extend((span.span_id, span) for span in spans)
+    objects.extend((note.note_id, note) for note in notes)
+    return objects
 
 
 def _resolve_typography_enum_facets(

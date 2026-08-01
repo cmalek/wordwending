@@ -12,6 +12,7 @@ from bochord.models import (
     BaselineShift,
     BoundingBox,
     CoordinateSpace,
+    FontFamilyCandidate,
     FontSlant,
     FontWeight,
     LineRecord,
@@ -1264,6 +1265,101 @@ def test_typography_facet_conflict_unknown_only_for_conflicting_facet() -> None:
     assert len(typo_alternates) >= 1
 
 
+def test_font_family_conflict_clears_families_and_flags() -> None:
+    """Conflicting font-family evidence clears families and flags typography."""
+    box = _bounding_box(x0=0, y0=0, x1=80, y1=10)
+    alt_box = _bounding_box(x0=1, y0=1, x1=79, y1=9)
+    garamond = [FontFamilyCandidate(name="Garamond", confidence=0.9)]
+    times = [FontFamilyCandidate(name="Times New Roman", confidence=0.85)]
+    scaffold = _witness_page(
+        witness_id="wit-scaffold",
+        runner_id="runner-scaffold",
+        regions=[
+            _region(
+                "region-scaffold",
+                reading_order_index=1,
+                line_ids=["line-scaffold"],
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=40),
+            )
+        ],
+        lines=[
+            _line(
+                "line-scaffold",
+                region_id="region-scaffold",
+                line_order=1,
+                span_ids=["span-scaffold"],
+                bounding_box=box,
+            )
+        ],
+        spans=[
+            _span(
+                "span-scaffold",
+                line_id="line-scaffold",
+                text="same-text",
+                bounding_box=box,
+                typography=Typography(font_families=garamond),
+            )
+        ],
+    )
+    alternate = _witness_page(
+        witness_id="wit-alt",
+        runner_id="runner-alt",
+        regions=[
+            _region(
+                "region-alt",
+                reading_order_index=1,
+                line_ids=["line-alt"],
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=39),
+            )
+        ],
+        lines=[
+            _line(
+                "line-alt",
+                region_id="region-alt",
+                line_order=1,
+                span_ids=["span-alt"],
+                bounding_box=alt_box,
+            )
+        ],
+        spans=[
+            _span(
+                "span-alt",
+                line_id="line-alt",
+                text="same-text",
+                bounding_box=alt_box,
+                typography=Typography(font_families=times),
+            )
+        ],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[scaffold, alternate],
+    )
+    policy = MergePolicy(
+        policy_id="merge-v1",
+        version="1.0.0",
+        structure_scaffold_runner_ids=["runner-scaffold"],
+    )
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    span = result.page.spans[0]
+    assert span.typography.font_families == []
+    assert span.provenance.merge_confidence == 0.3
+    assert any(
+        flag.flag_type == MergeFlagType.TYPOGRAPHY_CONFLICT for flag in result.flags
+    )
+    family_alternates = [
+        candidate
+        for candidate in span.provenance.alternate_candidates
+        if candidate.value_kind == "typography"
+        and candidate.value.get("facet") == "font_families"
+    ]
+    assert len(family_alternates) >= 2
+
+
 def test_missing_typography_evidence_stays_unknown() -> None:
     """Witnesses without typography evidence never invent regular/upright."""
     box = _bounding_box(x0=0, y0=0, x1=80, y1=10)
@@ -2301,6 +2397,32 @@ def test_structure_scaffold_conflict_regions_have_low_merge_confidence() -> None
         flag.flag_type == MergeFlagType.STRUCTURE_SCAFFOLD_CONFLICT
         for flag in result.flags
     )
+
+
+def test_structure_conflict_flags_target_all_low_confidence_lines() -> None:
+    """Every accepted line at merge_confidence 0.3 appears in a flag target list."""
+    page_input = _load_merge_fixture("structure_conflict.json")
+    policy = MergePolicy(
+        policy_id="merge-v1",
+        version="1.0.0",
+        structure_scaffold_runner_ids=["runner-scaffold", "runner-conflict"],
+    )
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    low_conf_lines = [
+        line.line_id
+        for line in result.page.lines
+        if line.provenance.merge_confidence == 0.3
+    ]
+    flagged_ids = {
+        obj_id
+        for flag in result.flags
+        for obj_id in flag.target_object_ids
+    }
+    assert low_conf_lines
+    for line_id in low_conf_lines:
+        assert line_id in flagged_ids
 
 
 def test_coordinate_space_mismatch_excludes_witness_from_merge() -> None:
