@@ -107,6 +107,9 @@ class BundlePaths:
         Returns:
             Path such as ``source/pages/0001.jp2``.
 
+        Raises:
+            ValueError: If ``extension`` is empty or whitespace-only after trimming.
+
         """
         trimmed = extension.strip()
         if not trimmed:

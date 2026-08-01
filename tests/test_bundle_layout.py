@@ -139,3 +139,21 @@ def test_document_bundle_manifest_rejects_non_positive_page_count() -> None:
             page_count=0,
             bundle_schema_version=BUNDLE_SCHEMA_VERSION,
         )
+
+
+def test_page_bundle_manifest_rejects_non_positive_page_number() -> None:
+    with pytest.raises(ValidationError):
+        PageBundleManifest(
+            schema_version="1.0.0",
+            page_id="page-0000",
+            page_number=0,
+            source_image_path="source/pages/0001.jp2",
+            graph_artifact_path="pages/page-0000/graph/page_graph.json",
+            review_events_path="pages/page-0000/overlays/review_events.jsonl",
+        )
+
+
+def test_source_page_image_rejects_empty_extension(tmp_path) -> None:
+    paths = BundlePaths(tmp_path / "doc")
+    with pytest.raises(ValueError, match="extension must not be empty"):
+        paths.source_page_image(1, "   ")
