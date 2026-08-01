@@ -255,7 +255,7 @@ def test_write_document_bundle_creates_spec_tree(tmp_path) -> None:
         assert (root / "pages" / "page-0001" / "witnesses" / family).is_dir()
 
     page_manifest = service.read_page_manifest(root, 1)
-    assert page_manifest.source_image_path == "pages/page-0001/image/prepared.jp2"
+    assert page_manifest.source_image_path == "source/pages/0001.jp2"
     assert page_manifest.overlay_state_path is None
     assert len(page_manifest.executed_passes) == 1
     assert page_manifest.executed_passes[0].runner_id == "olmocr"
@@ -509,6 +509,86 @@ def test_write_document_bundle_after_append_does_not_rewrite_jsonl(tmp_path) -> 
 
     assert review_path.read_bytes() == bytes_after_append
     assert service.read_review_events(root, 1)[0]["event_id"] == "evt-append"
+
+
+def test_write_overlay_state_updates_page_manifest_pointer(tmp_path) -> None:
+    """After write_overlay_state, page manifest points at current_state.json."""
+    bundle = load_minimal_bundle()
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
+        tmp_path
+    )
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=witness_files,
+    )
+
+    states = [
+        OverlayState(
+            object_id="note-1",
+            scope=ReviewScope.NOTE,
+            trust_state=TrustState.REVIEWED,
+            reviewed_dimensions=[ReviewDimension.NOTE_LINKAGE],
+            applied_event_ids=["evt-a"],
+        )
+    ]
+    service.write_overlay_state(root, 1, states)
+
+    page_manifest = service.read_page_manifest(root, 1)
+    assert page_manifest.overlay_state_path == (
+        "pages/page-0001/overlays/current_state.json"
+    )
+
+
+def test_write_document_bundle_preserves_overlay_state_pointer(tmp_path) -> None:
+    """Rewriting the bundle keeps overlay state file and manifest pointer."""
+    bundle = load_minimal_bundle()
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
+        tmp_path
+    )
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=witness_files,
+    )
+
+    states = [
+        OverlayState(
+            object_id="note-1",
+            scope=ReviewScope.NOTE,
+            trust_state=TrustState.REVIEWED,
+            reviewed_dimensions=[ReviewDimension.NOTE_LINKAGE],
+            applied_event_ids=["evt-a"],
+        )
+    ]
+    service.write_overlay_state(root, 1, states)
+    state_path = root / "pages" / "page-0001" / "overlays" / "current_state.json"
+    bytes_after_overlay = state_path.read_bytes()
+
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=witness_files,
+    )
+
+    page_manifest = service.read_page_manifest(root, 1)
+    assert state_path.read_bytes() == bytes_after_overlay
+    assert page_manifest.overlay_state_path == (
+        "pages/page-0001/overlays/current_state.json"
+    )
 
 
 def test_write_overlay_state_writes_json_array(tmp_path) -> None:

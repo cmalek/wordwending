@@ -129,6 +129,87 @@ def _executed_passes(
     return executed
 
 
+def _resolve_source_image_path(
+    root: Path,
+    paths: BundlePaths,
+    page_number: int,
+    source_page_image_path: str | None,
+    prepared_image_path: str | None,
+) -> str:
+    """
+    Choose the page manifest source image path.
+
+    Prefer ``source/pages/`` when a source page image was copied or already
+    exists on disk; otherwise fall back to the prepared image path.
+
+    Args:
+        root: Bundle root directory.
+        paths: Path helpers for the bundle root.
+        page_number: 1-based page index within the document bundle.
+        source_page_image_path: Bundle-relative source page image when copied.
+        prepared_image_path: Bundle-relative prepared image when copied.
+
+    Returns:
+        Bundle-relative path for ``PageBundleManifest.source_image_path``.
+
+    """
+    if source_page_image_path:
+        return source_page_image_path
+    pages_dir = paths.source_pages_dir()
+    if pages_dir.is_dir():
+        prefix = f"{page_number:04d}."
+        for candidate in sorted(pages_dir.iterdir()):
+            if candidate.is_file() and candidate.name.startswith(prefix):
+                return _relative_path(root, candidate)
+    return prepared_image_path or ""
+
+
+def _resolve_overlay_state_path(
+    root: Path,
+    paths: BundlePaths,
+    page_number: int,
+) -> str | None:
+    """
+    Return the overlay state manifest pointer when the artifact exists.
+
+    Args:
+        root: Bundle root directory.
+        paths: Path helpers for the bundle root.
+        page_number: 1-based page index within the document bundle.
+
+    Returns:
+        Bundle-relative path to ``current_state.json`` when present.
+
+    """
+    overlay_path = paths.overlay_state(page_number)
+    if overlay_path.exists():
+        return _relative_path(root, overlay_path)
+    return None
+
+
+def _rewrite_page_manifest(
+    paths: BundlePaths,
+    page_number: int,
+    page_manifest: PageBundleManifest,
+) -> None:
+    """
+    Atomically rewrite one page manifest.
+
+    Side Effects:
+        Replaces ``pages/page-NNNN/manifest.json``.
+
+    Args:
+        paths: Path helpers for the bundle root.
+        page_number: 1-based page index within the document bundle.
+        page_manifest: Manifest payload to persist.
+
+    """
+    _atomic_write_json(
+        paths.page_manifest(page_number),
+        page_manifest.model_dump(mode="json"),
+    )
+
+
 class BundleLayoutService:
     """Write and read Spec 0002 document bundle trees."""
 
@@ -189,10 +270,12 @@ class BundleLayoutService:
         }
         _atomic_write_json(paths.source_provenance(), provenance_payload)
 
+        source_page_image_paths: dict[int, str] = {}
         if source_page_images:
             for page_number, source_path in source_page_images.items():
                 destination = paths.source_page_image(page_number, source_path.suffix)
                 shutil.copy2(source_path, destination)
+                source_page_image_paths[page_number] = _relative_path(root, destination)
 
         for page in bundle.pages:
             self._write_page_bundle(
@@ -203,6 +286,7 @@ class BundleLayoutService:
                 page_images=page_images,
                 witness_files=witness_files,
                 page_exports=page_exports,
+                source_page_image_path=source_page_image_paths.get(page.page_number),
             )
 
         self._write_document_tail(bundle, paths)
@@ -277,6 +361,7 @@ class BundleLayoutService:
         page_images: Mapping[str, Path] | None,
         witness_files: Mapping[str, Path] | None,
         page_exports: Mapping[str, Mapping[str, str]] | None,
+        source_page_image_path: str | None = None,
     ) -> None:
         """
         Write one page bundle subtree.
@@ -292,6 +377,7 @@ class BundleLayoutService:
             page_images: Prepared image paths keyed by page id.
             witness_files: Witness artifact paths keyed by witness id.
             page_exports: Optional page export text keyed by page id.
+            source_page_image_path: Bundle-relative source page image when copied.
 
         """
         page_number = page.page_number
@@ -322,6 +408,7 @@ class BundleLayoutService:
             runner_set=runner_set,
             rewritten_witnesses=rewritten_witnesses,
             prepared_image_path=prepared_image_path,
+            source_page_image_path=source_page_image_path,
             graph_path=graph_path,
             page_exports=page_exports,
         )
@@ -365,6 +452,7 @@ class BundleLayoutService:
         runner_set: list[RunnerReference],
         rewritten_witnesses: list[WitnessReference],
         prepared_image_path: str | None,
+        source_page_image_path: str | None,
         graph_path: Path,
         page_exports: Mapping[str, Mapping[str, str]] | None,
     ) -> None:
@@ -381,6 +469,7 @@ class BundleLayoutService:
             runner_set: Document-level runner references.
             rewritten_witnesses: Witness references with bundle-relative paths.
             prepared_image_path: Bundle-relative prepared image path when present.
+            source_page_image_path: Bundle-relative source page image when copied.
             graph_path: Absolute path to the page graph artifact.
             page_exports: Optional page export text keyed by page id.
 
@@ -411,19 +500,22 @@ class BundleLayoutService:
             schema_version=BUNDLE_SCHEMA_VERSION,
             page_id=page.page_id,
             page_number=page.page_number,
-            source_image_path=prepared_image_path or "",
+            source_image_path=_resolve_source_image_path(
+                root,
+                paths,
+                page_number,
+                source_page_image_path,
+                prepared_image_path,
+            ),
             executed_passes=_executed_passes(page, runner_set),
             witness_artifacts=rewritten_witnesses,
             graph_artifact_path=_relative_path(root, graph_path),
             evaluation_scores_path=_relative_path(root, scores_path),
             evaluation_flags_path=_relative_path(root, flags_path),
-            overlay_state_path=None,
+            overlay_state_path=_resolve_overlay_state_path(root, paths, page_number),
             review_events_path=_relative_path(root, review_events_path),
         )
-        _atomic_write_json(
-            paths.page_manifest(page_number),
-            page_manifest.model_dump(mode="json"),
-        )
+        _rewrite_page_manifest(paths, page_number, page_manifest)
 
     def _copy_witnesses(
         self,
@@ -566,8 +658,21 @@ class BundleLayoutService:
 
         """
         paths = BundlePaths(root)
+        overlay_path = paths.overlay_state(page_number)
         payload = [state.model_dump(mode="json") for state in states]
-        _atomic_write_json(paths.overlay_state(page_number), payload)
+        _atomic_write_json(overlay_path, payload)
+
+        manifest_path = paths.page_manifest(page_number)
+        if manifest_path.exists():
+            page_manifest = PageBundleManifest.model_validate_json(
+                manifest_path.read_text(encoding="utf-8")
+            )
+            updated = page_manifest.model_copy(
+                update={
+                    "overlay_state_path": _relative_path(root, overlay_path),
+                }
+            )
+            _rewrite_page_manifest(paths, page_number, updated)
 
     def read_review_events(
         self,
