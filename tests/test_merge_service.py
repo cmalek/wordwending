@@ -830,6 +830,120 @@ def test_empty_precedence_text_disagreement_abstains() -> None:
     assert len(text_alternates) >= 1
 
 
+def test_text_precedence_picks_first_candidate_for_duplicate_runner_id() -> None:
+    """When multiple IoU-matched spans share a preferred runner, the first wins."""
+    box = BoundingBox(x0=0, y0=0, x1=80, y1=10)
+    alt_box_first = BoundingBox(x0=1, y0=1, x1=79, y1=9)
+    alt_box_second = BoundingBox(x0=2, y0=2, x1=78, y1=8)
+    scaffold = _witness_page(
+        witness_id="wit-scaffold",
+        runner_id="runner-scaffold",
+        regions=[
+            _region(
+                "region-scaffold",
+                reading_order_index=1,
+                line_ids=["line-scaffold"],
+                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=40),
+            )
+        ],
+        lines=[
+            _line(
+                "line-scaffold",
+                region_id="region-scaffold",
+                line_order=1,
+                span_ids=["span-scaffold"],
+                bounding_box=box,
+            )
+        ],
+        spans=[
+            _span(
+                "span-scaffold",
+                line_id="line-scaffold",
+                text="scaffold-text",
+                bounding_box=box,
+            )
+        ],
+    )
+    first_preferred = _witness_page(
+        witness_id="wit-preferred-first",
+        runner_id="runner-preferred",
+        regions=[
+            _region(
+                "region-preferred-first",
+                reading_order_index=1,
+                line_ids=["line-preferred-first"],
+                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=39),
+            )
+        ],
+        lines=[
+            _line(
+                "line-preferred-first",
+                region_id="region-preferred-first",
+                line_order=1,
+                span_ids=["span-preferred-first"],
+                bounding_box=alt_box_first,
+            )
+        ],
+        spans=[
+            _span(
+                "span-preferred-first",
+                line_id="line-preferred-first",
+                text="first-text",
+                bounding_box=alt_box_first,
+            )
+        ],
+    )
+    second_preferred = _witness_page(
+        witness_id="wit-preferred-second",
+        runner_id="runner-preferred",
+        regions=[
+            _region(
+                "region-preferred-second",
+                reading_order_index=1,
+                line_ids=["line-preferred-second"],
+                bounding_box=BoundingBox(x0=2, y0=2, x1=78, y1=38),
+            )
+        ],
+        lines=[
+            _line(
+                "line-preferred-second",
+                region_id="region-preferred-second",
+                line_order=1,
+                span_ids=["span-preferred-second"],
+                bounding_box=alt_box_second,
+            )
+        ],
+        spans=[
+            _span(
+                "span-preferred-second",
+                line_id="line-preferred-second",
+                text="second-text",
+                bounding_box=alt_box_second,
+            )
+        ],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[scaffold, first_preferred, second_preferred],
+    )
+    policy = MergePolicy(
+        policy_id="merge-v1",
+        version="1.0.0",
+        structure_scaffold_runner_ids=["runner-scaffold"],
+        runner_text_precedence=["runner-preferred"],
+        min_merge_confidence_to_accept=0.6,
+    )
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    span = result.page.spans[0]
+    assert span.text_diplomatic == "first-text"
+    assert span.provenance.merge_confidence == 0.7
+    assert result.abstained is False
+
+
 def test_precedence_picks_winner_and_flags_with_confidence_0_7() -> None:
     """Non-empty precedence accepts runner text at 0.7 when texts differ."""
     scaffold, alternate = _aligned_text_witnesses(

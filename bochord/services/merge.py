@@ -1563,7 +1563,10 @@ def _first_candidate_by_runner_precedence(
         First precedence-matching candidate, if any.
 
     """
-    by_runner = {candidate.runner_id: candidate for candidate in candidates}
+    by_runner: dict[str, _SpanCandidate] = {}
+    for candidate in candidates:
+        if candidate.runner_id not in by_runner:
+            by_runner[candidate.runner_id] = candidate
     for runner_id in runner_precedence:
         preferred = by_runner.get(runner_id)
         if preferred is not None:
