@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Any, NamedTuple
+from typing import Any, Callable, NamedTuple
 
 from bochord.models import (
     AlternateCandidate,
@@ -75,6 +75,21 @@ class _MarkerMappingContext(NamedTuple):
     accepted_spans: list[SpanRecord]
     #: Minimum IoU required for geometry matching.
     iou_threshold: float
+
+
+class _NoteLinkResolutionContext(NamedTuple):
+    """Inputs required to resolve note text and marker linkage."""
+
+    #: Accepted spans in the merged page graph.
+    accepted_spans: list[SpanRecord]
+    #: Witness chosen as the structure scaffold.
+    scaffold_witness: PassWitnessPage
+    #: Eligible witnesses aligned to the prepared page.
+    witnesses: list[PassWitnessPage]
+    #: Minimum IoU required for geometry matching.
+    iou_threshold: float
+    #: Normalizer used when emitting normalized note text.
+    text_normalizer: TextNormalizer
 
 
 def _box_iou(left: BoundingBox, right: BoundingBox) -> float:
@@ -362,59 +377,18 @@ class MergeOrchestrator:
             self._policy.iou_match_threshold,
             self._text_normalizer,
         )
-        provenance = span.provenance.model_copy(deep=True)
-        alternates = list(provenance.alternate_candidates)
-        confidence = _MERGE_CONFIDENCE_AGREEMENT
-        diplomatic = span.text_diplomatic
-
         if not candidates:
-            self._add_flag(
-                MergeFlagType.INSUFFICIENT_EVIDENCE,
-                target_object_ids=[span.span_id],
-                message=f"No witness span candidates matched {span.span_id}.",
-            )
-            provenance.merge_confidence = _MERGE_CONFIDENCE_CONFLICT
-            return span.model_copy(
-                update={
-                    "text_normalized": self._text_normalizer.normalize_span_text(
-                        diplomatic
-                    ),
-                    "provenance": provenance,
-                },
-                deep=True,
-            )
-
-        normalized_values = {candidate.normalized_text for candidate in candidates}
-        if len(normalized_values) == 1:
-            diplomatic = candidates[0].span.text_diplomatic
-        else:
-            diplomatic, confidence, text_alternates = _resolve_text_disagreement(
+            return _span_with_insufficient_text_evidence(
                 span,
-                candidates,
-                self._policy.runner_text_precedence,
+                self._text_normalizer,
+                self._add_flag,
             )
-            alternates.extend(text_alternates)
-            self._add_flag(
-                MergeFlagType.TEXT_DISAGREEMENT,
-                target_object_ids=[span.span_id],
-                message=(
-                    f"Witnesses disagree on normalized text for span {span.span_id}."
-                ),
-            )
-
-        provenance.merge_confidence = confidence
-        provenance.alternate_candidates = alternates
-        provenance.witness_ids = _witness_ids_from_candidates(candidates)
-        provenance.runner_ids = _runner_ids_from_candidates(candidates)
-        return span.model_copy(
-            update={
-                "text_diplomatic": diplomatic,
-                "text_normalized": self._text_normalizer.normalize_span_text(
-                    diplomatic
-                ),
-                "provenance": provenance,
-            },
-            deep=True,
+        return _apply_span_text_resolution(
+            span,
+            candidates,
+            self._text_normalizer,
+            self._policy.runner_text_precedence,
+            self._add_flag,
         )
 
     def _resolve_typography(self, span: SpanRecord) -> SpanRecord:
@@ -439,60 +413,7 @@ class MergeOrchestrator:
         )
         if not candidates:
             return span
-
-        typography = span.typography.model_copy(deep=True)
-        provenance = span.provenance.model_copy(deep=True)
-        alternates = list(provenance.alternate_candidates)
-        confidence = provenance.merge_confidence or _MERGE_CONFIDENCE_AGREEMENT
-        roles = list(span.roles)
-        typo_conflict = False
-
-        typography, facet_conflict, typo_alternates = _resolve_typography_facets(
-            typography,
-            candidates,
-        )
-        if facet_conflict:
-            typo_conflict = True
-            alternates.extend(typo_alternates)
-            confidence = _min_merge_confidence(
-                confidence,
-                _MERGE_CONFIDENCE_CONFLICT,
-            )
-
-        role_sets = {frozenset(candidate.span.roles) for candidate in candidates}
-        if len(role_sets) > 1:
-            roles = [TextRole.UNKNOWN]
-            confidence = _min_merge_confidence(
-                confidence,
-                _MERGE_CONFIDENCE_CONFLICT,
-            )
-            self._add_flag(
-                MergeFlagType.ROLE_CONFLICT,
-                target_object_ids=[span.span_id],
-                message=f"Witnesses disagree on roles for span {span.span_id}.",
-            )
-        elif candidates:
-            roles = list(candidates[0].span.roles)
-
-        if typo_conflict:
-            self._add_flag(
-                MergeFlagType.TYPOGRAPHY_CONFLICT,
-                target_object_ids=[span.span_id],
-                message=(
-                    f"Witnesses disagree on typography facets for span {span.span_id}."
-                ),
-            )
-
-        provenance.merge_confidence = confidence
-        provenance.alternate_candidates = alternates
-        return span.model_copy(
-            update={
-                "typography": typography,
-                "roles": roles,
-                "provenance": provenance,
-            },
-            deep=True,
-        )
+        return _apply_span_typography_resolution(span, candidates, self._add_flag)
 
     def _resolve_note_links(self, note: NoteRecord) -> NoteRecord:
         """
@@ -513,78 +434,17 @@ class MergeOrchestrator:
             self._eligible_witnesses,
             self._policy.iou_match_threshold,
         )
-        provenance = note.provenance.model_copy(deep=True)
-        alternates = list(provenance.alternate_candidates)
-        confidence = provenance.merge_confidence or _MERGE_CONFIDENCE_AGREEMENT
-        linked_ids = list(note.linked_marker_span_ids)
-        diplomatic = note.text_diplomatic
-
-        if candidates:
-            diplomatic = candidates[0].note.text_diplomatic
-            mapped_sets: list[frozenset[str]] = []
-            for candidate in candidates:
-                witness = _witness_by_id(self._eligible_witnesses, candidate.witness_id)
-                if witness is None:
-                    mapped_sets.append(frozenset())
-                    continue
-                mapped_sets.append(
-                    frozenset(
-                        _map_marker_span_ids(
-                            candidate.note.linked_marker_span_ids,
-                            _MarkerMappingContext(
-                                witness=witness,
-                                scaffold_witness=self._scaffold_witness,
-                                accepted_spans=self._spans,
-                                iou_threshold=self._policy.iou_match_threshold,
-                            ),
-                        )
-                    )
-                )
-            unique_sets = set(mapped_sets)
-            if len(unique_sets) == 1:
-                linked_ids = sorted(unique_sets.pop())
-                confidence = _min_merge_confidence(
-                    confidence,
-                    _MERGE_CONFIDENCE_AGREEMENT,
-                )
-            else:
-                linked_ids = []
-                confidence = _min_merge_confidence(
-                    confidence,
-                    _MERGE_CONFIDENCE_CONFLICT,
-                )
-                alternates.extend(
-                    _note_link_alternates(
-                        candidates,
-                        self._spans,
-                        self._scaffold_witness,
-                        self._eligible_witnesses,
-                        self._policy.iou_match_threshold,
-                    )
-                )
-                self._add_flag(
-                    MergeFlagType.NOTE_LINK_AMBIGUOUS,
-                    target_object_ids=[note.note_id],
-                    message=(
-                        f"Witnesses supply conflicting note links for {note.note_id}."
-                    ),
-                )
-
-        provenance.merge_confidence = confidence
-        provenance.alternate_candidates = alternates
-        if candidates:
-            provenance.witness_ids = _witness_ids_from_note_candidates(candidates)
-            provenance.runner_ids = _runner_ids_from_note_candidates(candidates)
-        return note.model_copy(
-            update={
-                "text_diplomatic": diplomatic,
-                "text_normalized": self._text_normalizer.normalize_note_text(
-                    diplomatic
-                ),
-                "linked_marker_span_ids": linked_ids,
-                "provenance": provenance,
-            },
-            deep=True,
+        return _apply_note_link_resolution(
+            note,
+            candidates,
+            _NoteLinkResolutionContext(
+                accepted_spans=self._spans,
+                scaffold_witness=self._scaffold_witness,
+                witnesses=self._eligible_witnesses,
+                iou_threshold=self._policy.iou_match_threshold,
+                text_normalizer=self._text_normalizer,
+            ),
+            self._add_flag,
         )
 
     def _emit_result(self) -> MergePageResult:
@@ -1158,23 +1018,320 @@ def _matching_spans_for_witness(
             >= iou_threshold
         ]
 
-    scaffold_line = _line_by_id(scaffold_witness, accepted_span.line_id)
-    if scaffold_line is None:
-        return []
-    witness_line = _match_line_by_reading_order(
-        scaffold_witness,
-        witness,
-        scaffold_line,
-        iou_threshold,
-    )
-    if witness_line is None:
-        return []
-    line_spans = [
-        span for span in witness.spans if span.line_id == witness_line.line_id
-    ]
-    if len(line_spans) == 1:
-        return line_spans
     return []
+
+
+def _span_with_insufficient_text_evidence(
+    span: SpanRecord,
+    text_normalizer: TextNormalizer,
+    add_flag: Callable[..., None],
+) -> SpanRecord:
+    """
+    Return a span flagged for missing witness text evidence.
+
+    Args:
+        span: Accepted span copied from the structure scaffold.
+        text_normalizer: Normalizer used when emitting normalized text.
+        add_flag: Callback that appends one merge flag to the run accumulator.
+
+    Returns:
+        Span with insufficient-evidence confidence and flag applied.
+
+    """
+    add_flag(
+        MergeFlagType.INSUFFICIENT_EVIDENCE,
+        target_object_ids=[span.span_id],
+        message=f"No witness span candidates matched {span.span_id}.",
+    )
+    provenance = span.provenance.model_copy(deep=True)
+    provenance.merge_confidence = _MERGE_CONFIDENCE_CONFLICT
+    return span.model_copy(
+        update={
+            "text_normalized": text_normalizer.normalize_span_text(
+                span.text_diplomatic
+            ),
+            "provenance": provenance,
+        },
+        deep=True,
+    )
+
+
+def _apply_span_text_resolution(
+    span: SpanRecord,
+    candidates: list[_SpanCandidate],
+    text_normalizer: TextNormalizer,
+    runner_precedence: list[str],
+    add_flag: Callable[..., None],
+) -> SpanRecord:
+    """
+    Apply text agreement or disagreement resolution for one span.
+
+    Args:
+        span: Accepted span copied from the structure scaffold.
+        candidates: Matched witness span candidates.
+        text_normalizer: Normalizer used when emitting normalized text.
+        runner_precedence: Preferred runner order for text acceptance.
+        add_flag: Callback that appends one merge flag to the run accumulator.
+
+    Returns:
+        Span with resolved text, confidence, alternates, and flags applied.
+
+    """
+    provenance = span.provenance.model_copy(deep=True)
+    alternates = list(provenance.alternate_candidates)
+    confidence = _MERGE_CONFIDENCE_AGREEMENT
+    diplomatic = span.text_diplomatic
+
+    normalized_values = {candidate.normalized_text for candidate in candidates}
+    if len(normalized_values) == 1:
+        diplomatic = candidates[0].span.text_diplomatic
+    else:
+        diplomatic, confidence, text_alternates = _resolve_text_disagreement(
+            span,
+            candidates,
+            runner_precedence,
+        )
+        alternates.extend(text_alternates)
+        add_flag(
+            MergeFlagType.TEXT_DISAGREEMENT,
+            target_object_ids=[span.span_id],
+            message=(
+                f"Witnesses disagree on normalized text for span {span.span_id}."
+            ),
+        )
+
+    provenance.merge_confidence = confidence
+    provenance.alternate_candidates = alternates
+    provenance.witness_ids = _witness_ids_from_candidates(candidates)
+    provenance.runner_ids = _runner_ids_from_candidates(candidates)
+    return span.model_copy(
+        update={
+            "text_diplomatic": diplomatic,
+            "text_normalized": text_normalizer.normalize_span_text(diplomatic),
+            "provenance": provenance,
+        },
+        deep=True,
+    )
+
+
+def _apply_span_typography_resolution(
+    span: SpanRecord,
+    candidates: list[_SpanCandidate],
+    add_flag: Callable[..., None],
+) -> SpanRecord:
+    """
+    Apply typography and role resolution for one span.
+
+    Args:
+        span: Accepted span with text already resolved.
+        candidates: Matched witness span candidates.
+        add_flag: Callback that appends one merge flag to the run accumulator.
+
+    Returns:
+        Span with resolved typography, roles, confidence, and flags applied.
+
+    """
+    typography = span.typography.model_copy(deep=True)
+    provenance = span.provenance.model_copy(deep=True)
+    alternates = list(provenance.alternate_candidates)
+    confidence = provenance.merge_confidence or _MERGE_CONFIDENCE_AGREEMENT
+    roles = list(span.roles)
+    typo_conflict = False
+
+    typography, facet_conflict, typo_alternates = _resolve_typography_facets(
+        typography,
+        candidates,
+    )
+    if facet_conflict:
+        typo_conflict = True
+        alternates.extend(typo_alternates)
+        confidence = _min_merge_confidence(
+            confidence,
+            _MERGE_CONFIDENCE_CONFLICT,
+        )
+
+    roles, role_conflict, role_alternates = _resolve_span_roles(candidates, roles)
+    if role_conflict:
+        alternates.extend(role_alternates)
+        confidence = _min_merge_confidence(
+            confidence,
+            _MERGE_CONFIDENCE_CONFLICT,
+        )
+        add_flag(
+            MergeFlagType.ROLE_CONFLICT,
+            target_object_ids=[span.span_id],
+            message=f"Witnesses disagree on roles for span {span.span_id}.",
+        )
+
+    if typo_conflict:
+        add_flag(
+            MergeFlagType.TYPOGRAPHY_CONFLICT,
+            target_object_ids=[span.span_id],
+            message=(
+                f"Witnesses disagree on typography facets for span {span.span_id}."
+            ),
+        )
+
+    provenance.merge_confidence = confidence
+    provenance.alternate_candidates = alternates
+    return span.model_copy(
+        update={
+            "typography": typography,
+            "roles": roles,
+            "provenance": provenance,
+        },
+        deep=True,
+    )
+
+
+def _resolve_span_roles(
+    candidates: list[_SpanCandidate],
+    default_roles: list[TextRole],
+) -> tuple[list[TextRole], bool, list[AlternateCandidate]]:
+    """
+    Resolve span roles from matched witness candidates.
+
+    Args:
+        candidates: Matched witness span candidates.
+        default_roles: Starting roles copied from the accepted span.
+
+    Returns:
+        Accepted roles, conflict flag, and role alternates.
+
+    """
+    role_sets = {frozenset(candidate.span.roles) for candidate in candidates}
+    if len(role_sets) > 1:
+        return (
+            [TextRole.UNKNOWN],
+            True,
+            _role_alternates_from_candidates(candidates),
+        )
+    if candidates:
+        return list(candidates[0].span.roles), False, []
+    return default_roles, False, []
+
+
+def _apply_note_link_resolution(
+    note: NoteRecord,
+    candidates: list[_NoteCandidate],
+    context: _NoteLinkResolutionContext,
+    add_flag: Callable[..., None],
+) -> NoteRecord:
+    """
+    Apply note text and marker-link resolution from matched witness notes.
+
+    Args:
+        note: Accepted note copied from the structure scaffold.
+        candidates: Matched witness note candidates.
+        context: Witness, span, and threshold inputs for note-link resolution.
+        add_flag: Callback that appends one merge flag to the run accumulator.
+
+    Returns:
+        Note with resolved text, links, confidence, alternates, and flags.
+
+    """
+    provenance = note.provenance.model_copy(deep=True)
+    alternates = list(provenance.alternate_candidates)
+    confidence = provenance.merge_confidence or _MERGE_CONFIDENCE_AGREEMENT
+    linked_ids = list(note.linked_marker_span_ids)
+    diplomatic = note.text_diplomatic
+
+    if candidates:
+        diplomatic = candidates[0].note.text_diplomatic
+        mapped_sets, mapping_ambiguous = _mapped_note_link_sets(
+            candidates,
+            context,
+        )
+        if mapping_ambiguous:
+            linked_ids = []
+            confidence = _min_merge_confidence(
+                confidence,
+                _MERGE_CONFIDENCE_CONFLICT,
+            )
+            alternates.extend(_note_link_alternates(candidates, context))
+            add_flag(
+                MergeFlagType.NOTE_LINK_AMBIGUOUS,
+                target_object_ids=[note.note_id],
+                message=(
+                    f"Witness marker spans map ambiguously for note {note.note_id}."
+                ),
+            )
+        else:
+            unique_sets = set(mapped_sets)
+            if len(unique_sets) == 1:
+                linked_ids = sorted(unique_sets.pop())
+                confidence = _min_merge_confidence(
+                    confidence,
+                    _MERGE_CONFIDENCE_AGREEMENT,
+                )
+            else:
+                linked_ids = []
+                confidence = _min_merge_confidence(
+                    confidence,
+                    _MERGE_CONFIDENCE_CONFLICT,
+                )
+                alternates.extend(_note_link_alternates(candidates, context))
+                add_flag(
+                    MergeFlagType.NOTE_LINK_AMBIGUOUS,
+                    target_object_ids=[note.note_id],
+                    message=(
+                        f"Witnesses supply conflicting note links for {note.note_id}."
+                    ),
+                )
+
+    provenance.merge_confidence = confidence
+    provenance.alternate_candidates = alternates
+    if candidates:
+        provenance.witness_ids = _witness_ids_from_note_candidates(candidates)
+        provenance.runner_ids = _runner_ids_from_note_candidates(candidates)
+    return note.model_copy(
+        update={
+            "text_diplomatic": diplomatic,
+            "text_normalized": context.text_normalizer.normalize_note_text(
+                diplomatic
+            ),
+            "linked_marker_span_ids": linked_ids,
+            "provenance": provenance,
+        },
+        deep=True,
+    )
+
+
+def _mapped_note_link_sets(
+    candidates: list[_NoteCandidate],
+    context: _NoteLinkResolutionContext,
+) -> tuple[list[frozenset[str]], bool]:
+    """
+    Map each witness note candidate's marker links onto accepted span ids.
+
+    Args:
+        candidates: Matched witness note candidates.
+        context: Witness, span, and threshold inputs for note-link resolution.
+
+    Returns:
+        Mapped link-id sets per candidate and whether any mapping was ambiguous.
+
+    """
+    mapped_sets: list[frozenset[str]] = []
+    mapping_ambiguous = False
+    for candidate in candidates:
+        witness = _witness_by_id(context.witnesses, candidate.witness_id)
+        if witness is None:
+            mapped_sets.append(frozenset())
+            continue
+        mapped_ids, candidate_ambiguous = _map_marker_span_ids(
+            candidate.note.linked_marker_span_ids,
+            _MarkerMappingContext(
+                witness=witness,
+                scaffold_witness=context.scaffold_witness,
+                accepted_spans=context.accepted_spans,
+                iou_threshold=context.iou_threshold,
+            ),
+        )
+        if candidate_ambiguous:
+            mapping_ambiguous = True
+        mapped_sets.append(frozenset(mapped_ids))
+    return mapped_sets, mapping_ambiguous
 
 
 def _resolve_text_disagreement(
@@ -1430,6 +1587,33 @@ def _resolve_optional_float_facet(
     return None, True, _typography_alternates_for_facet(facet_name, candidates)
 
 
+def _role_alternates_from_candidates(
+    candidates: list[_SpanCandidate],
+) -> list[AlternateCandidate]:
+    """
+    Serialize competing role lists as alternate candidates.
+
+    Args:
+        candidates: Matched witness span candidates.
+
+    Returns:
+        Alternate role payloads for each candidate.
+
+    """
+    return [
+        AlternateCandidate(
+            witness_id=candidate.witness_id,
+            runner_id=candidate.runner_id,
+            value_kind="role",
+            value={
+                "roles": [role.value for role in candidate.span.roles],
+            },
+            machine_confidence=candidate.span.provenance.machine_confidence,
+        )
+        for candidate in candidates
+    ]
+
+
 def _typography_alternates_for_facet(
     facet_name: str,
     candidates: list[_SpanCandidate],
@@ -1545,7 +1729,7 @@ def _matching_notes_for_witness(
 def _map_marker_span_ids(
     marker_span_ids: list[str],
     context: _MarkerMappingContext,
-) -> list[str]:
+) -> tuple[list[str], bool]:
     """
     Map witness-local marker span ids onto accepted scaffold span ids.
 
@@ -1554,15 +1738,17 @@ def _map_marker_span_ids(
         context: Witness and accepted-span mapping inputs.
 
     Returns:
-        Accepted scaffold span ids corresponding to the supplied markers.
+        Accepted scaffold span ids and whether any marker mapping was ambiguous.
 
     """
     witness = context.witness
     mapped_ids: list[str] = []
+    ambiguous = False
     for marker_span_id in marker_span_ids:
         marker_span = _span_by_id(witness, marker_span_id)
         if marker_span is None:
             continue
+        matching_accepted_ids: list[str] = []
         for accepted_span in context.accepted_spans:
             matched = _matching_spans_for_witness(
                 accepted_span,
@@ -1571,27 +1757,24 @@ def _map_marker_span_ids(
                 context.iou_threshold,
             )
             if any(span.span_id == marker_span_id for span in matched):
-                mapped_ids.append(accepted_span.span_id)
-                break
-    return mapped_ids
+                matching_accepted_ids.append(accepted_span.span_id)
+        if len(matching_accepted_ids) > 1:
+            ambiguous = True
+        elif len(matching_accepted_ids) == 1:
+            mapped_ids.append(matching_accepted_ids[0])
+    return mapped_ids, ambiguous
 
 
 def _note_link_alternates(
     candidates: list[_NoteCandidate],
-    accepted_spans: list[SpanRecord],
-    scaffold_witness: PassWitnessPage,
-    witnesses: list[PassWitnessPage],
-    iou_threshold: float,
+    context: _NoteLinkResolutionContext,
 ) -> list[AlternateCandidate]:
     """
     Serialize note-link candidate sets as alternate provenance payloads.
 
     Args:
         candidates: Matched witness note candidates.
-        accepted_spans: Accepted spans in the merged page graph.
-        scaffold_witness: Witness chosen as the structure scaffold.
-        witnesses: Eligible witnesses aligned to the prepared page.
-        iou_threshold: Minimum IoU required for geometry matching.
+        context: Witness, span, and threshold inputs for note-link resolution.
 
     Returns:
         Alternate note-link payloads for ambiguous linkage.
@@ -1599,16 +1782,16 @@ def _note_link_alternates(
     """
     alternates: list[AlternateCandidate] = []
     for candidate in candidates:
-        witness = _witness_by_id(witnesses, candidate.witness_id)
+        witness = _witness_by_id(context.witnesses, candidate.witness_id)
         if witness is None:
             continue
-        mapped_ids = _map_marker_span_ids(
+        mapped_ids, _ = _map_marker_span_ids(
             candidate.note.linked_marker_span_ids,
             _MarkerMappingContext(
                 witness=witness,
-                scaffold_witness=scaffold_witness,
-                accepted_spans=accepted_spans,
-                iou_threshold=iou_threshold,
+                scaffold_witness=context.scaffold_witness,
+                accepted_spans=context.accepted_spans,
+                iou_threshold=context.iou_threshold,
             ),
         )
         alternates.append(
@@ -1665,24 +1848,6 @@ def _span_by_id(witness: PassWitnessPage, span_id: str) -> SpanRecord | None:
     return None
 
 
-def _line_by_id(witness: PassWitnessPage, line_id: str) -> LineRecord | None:
-    """
-    Return one line from a witness by identifier.
-
-    Args:
-        witness: Witness fragment to search.
-        line_id: Line identifier to locate.
-
-    Returns:
-        Matching line record, if present.
-
-    """
-    for line in witness.lines:
-        if line.line_id == line_id:
-            return line
-    return None
-
-
 def _note_by_id(witness: PassWitnessPage, note_id: str) -> NoteRecord | None:
     """
     Return one note from a witness by identifier.
@@ -1698,122 +1863,4 @@ def _note_by_id(witness: PassWitnessPage, note_id: str) -> NoteRecord | None:
     for note in witness.notes:
         if note.note_id == note_id:
             return note
-    return None
-
-
-def _match_line_by_reading_order(
-    scaffold_witness: PassWitnessPage,
-    witness: PassWitnessPage,
-    scaffold_line: LineRecord,
-    iou_threshold: float,
-) -> LineRecord | None:
-    """
-    Match one scaffold line to a witness line by region and line order.
-
-    Args:
-        scaffold_witness: Witness chosen as the structure scaffold.
-        witness: Witness fragment to search for a matching line.
-        scaffold_line: Line from the scaffold witness to align.
-        iou_threshold: Minimum IoU required for region geometry matching.
-
-    Returns:
-        Matching line from the supplied witness, if found.
-
-    """
-    scaffold_regions = _regions_by_reading_order(scaffold_witness.regions)
-    witness_regions = _regions_by_reading_order(witness.regions)
-    scaffold_region = _region_by_id(scaffold_witness, scaffold_line.region_id)
-    if scaffold_region is None:
-        return None
-
-    witness_region = _match_region_by_reading_order_or_iou(
-        scaffold_region,
-        scaffold_regions,
-        witness_regions,
-        iou_threshold,
-    )
-    if witness_region is None:
-        return None
-
-    scaffold_lines = sorted(
-        [
-            line
-            for line in scaffold_witness.lines
-            if line.region_id == scaffold_line.region_id
-        ],
-        key=lambda line: line.line_order,
-    )
-    witness_lines = sorted(
-        [line for line in witness.lines if line.region_id == witness_region.region_id],
-        key=lambda line: line.line_order,
-    )
-    try:
-        line_index = scaffold_lines.index(scaffold_line)
-    except ValueError:
-        return None
-    if line_index >= len(witness_lines):
-        return None
-    return witness_lines[line_index]
-
-
-def _region_by_id(witness: PassWitnessPage, region_id: str) -> RegionRecord | None:
-    """
-    Return one region from a witness by identifier.
-
-    Args:
-        witness: Witness fragment to search.
-        region_id: Region identifier to locate.
-
-    Returns:
-        Matching region record, if present.
-
-    """
-    for region in witness.regions:
-        if region.region_id == region_id:
-            return region
-    return None
-
-
-def _match_region_by_reading_order_or_iou(
-    scaffold_region: RegionRecord,
-    scaffold_regions: list[RegionRecord],
-    witness_regions: list[RegionRecord],
-    iou_threshold: float,
-) -> RegionRecord | None:
-    """
-    Match one scaffold region to a witness region.
-
-    Args:
-        scaffold_region: Region from the scaffold witness to align.
-        scaffold_regions: Scaffold regions sorted by reading order.
-        witness_regions: Witness regions sorted by reading order.
-        iou_threshold: Minimum IoU required for geometry matching.
-
-    Returns:
-        Matching region from the witness, if found.
-
-    """
-    try:
-        region_index = scaffold_regions.index(scaffold_region)
-    except ValueError:
-        region_index = -1
-    if 0 <= region_index < len(witness_regions):
-        witness_region = witness_regions[region_index]
-        scaffold_box = scaffold_region.bounding_box
-        witness_box = witness_region.bounding_box
-        if scaffold_box is None or witness_box is None:
-            return witness_region
-        if _box_iou(scaffold_box, witness_box) >= iou_threshold:
-            return witness_region
-
-    if scaffold_region.bounding_box is None:
-        return None
-    for witness_region in witness_regions:
-        if witness_region.bounding_box is None:
-            continue
-        if (
-            _box_iou(scaffold_region.bounding_box, witness_region.bounding_box)
-            >= iou_threshold
-        ):
-            return witness_region
     return None
