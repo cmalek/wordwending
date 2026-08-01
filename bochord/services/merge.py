@@ -3,13 +3,14 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, NamedTuple
+from typing import Any, Callable, NamedTuple, TypeVar
 
 from bochord.models import (
     AlternateCandidate,
     BaselineShift,
     BoundingBox,
     BundlePage,
+    CoordinateSpace,
     FontSlant,
     FontWeight,
     LineRecord,
@@ -38,6 +39,9 @@ _MERGE_CONFIDENCE_AGREEMENT = 1.0
 _MERGE_CONFIDENCE_PRECEDENCE = 0.7
 #: Fixed merge confidence for material disagreement or weak evidence.
 _MERGE_CONFIDENCE_CONFLICT = 0.3
+
+#: Type variable for region and line layout objects.
+_LayoutObject = TypeVar("_LayoutObject", RegionRecord, LineRecord)
 
 
 class _SpanCandidate(NamedTuple):
@@ -194,6 +198,8 @@ class MergeOrchestrator:
         self._geometry_alternates: list[AlternateCandidate] = []
         #: Monotonic counter for generated flag identifiers.
         self._next_flag_id = 1
+        #: Whether a material structure scaffold conflict was detected.
+        self._structure_scaffold_conflict = False
 
     def run(self) -> MergePageResult:
         """
@@ -225,11 +231,10 @@ class MergeOrchestrator:
                 "coordinate normalization."
             )
             raise RuntimeError(msg)
-        expected_id = self._prepared_page.prepared_page_id
         self._eligible_witnesses = []
         self._skipped_witnesses = []
         for witness in self._page_input.witnesses:
-            if witness.prepared_page_id == expected_id:
+            if _witness_skip_reason(self._prepared_page, witness) is None:
                 self._eligible_witnesses.append(witness)
             else:
                 self._skipped_witnesses.append(witness)
@@ -307,6 +312,7 @@ class MergeOrchestrator:
             )
             if conflict:
                 self._geometry_alternates.extend(alternates)
+                self._structure_scaffold_conflict = True
                 self._add_flag(
                     MergeFlagType.STRUCTURE_SCAFFOLD_CONFLICT,
                     target_object_ids=[
@@ -334,11 +340,25 @@ class MergeOrchestrator:
             self._scaffold_witness,
             merge_provenance,
         )
+        layout_confidence = (
+            _MERGE_CONFIDENCE_CONFLICT
+            if self._structure_scaffold_conflict
+            else _MERGE_CONFIDENCE_AGREEMENT
+        )
+        self._regions = _apply_layout_merge_confidence(self._regions, layout_confidence)
+        self._lines = _apply_layout_merge_confidence(self._lines, layout_confidence)
         if self._regions:
+            if self._prepared_page is None:
+                msg = (
+                    "Prepared page variant must be selected before "
+                    "attaching region alternates."
+                )
+                raise RuntimeError(msg)
             self._regions = _attach_region_alternates(
                 self._regions,
                 self._skipped_witnesses,
                 self._geometry_alternates,
+                prepared_page=self._prepared_page,
             )
 
     def _merge_text(self) -> None:
@@ -563,6 +583,17 @@ class AbstainingMergeService:
             Accepted page graph plus flags and abstention state.
 
         """
+        if (
+            policy.text_normalization_policy_id
+            != self._text_normalizer.policy.policy_id
+        ):
+            msg = (
+                "MergePolicy text_normalization_policy_id "
+                f"{policy.text_normalization_policy_id!r} does not match "
+                "TextNormalizer policy_id "
+                f"{self._text_normalizer.policy.policy_id!r}"
+            )
+            raise ValueError(msg)
         orchestrator = MergeOrchestrator(
             policy=policy,
             page_input=page_input,
@@ -648,10 +679,84 @@ def _copy_scaffold_layout(
     return regions, lines, spans, notes
 
 
+def _witness_coordinate_space_matches(
+    expected: CoordinateSpace,
+    witness_space: CoordinateSpace,
+) -> bool:
+    """
+    Return whether a witness coordinate space aligns with the prepared page.
+
+    Args:
+        expected: Coordinate space from the accepted prepared page.
+        witness_space: Coordinate space declared by one witness fragment.
+
+    Returns:
+        ``True`` when space identity and dimensions match.
+
+    """
+    return (
+        witness_space.space_id == expected.space_id
+        and witness_space.width_px == expected.width_px
+        and witness_space.height_px == expected.height_px
+    )
+
+
+def _witness_skip_reason(
+    prepared_page: PreparedPage,
+    witness: PassWitnessPage,
+) -> str | None:
+    """
+    Return the skip reason for a witness excluded from merge eligibility.
+
+    Args:
+        prepared_page: Accepted prepared page variant for this merge run.
+        witness: Candidate witness fragment to evaluate.
+
+    Returns:
+        Skip reason string, or ``None`` when the witness is eligible.
+
+    """
+    if witness.prepared_page_id != prepared_page.prepared_page_id:
+        return "cross_variant_excluded"
+    if not _witness_coordinate_space_matches(
+        prepared_page.coordinate_space,
+        witness.coordinate_space,
+    ):
+        return "coordinate_space_mismatch"
+    return None
+
+
+def _apply_layout_merge_confidence(
+    objects: list[_LayoutObject],
+    confidence: float,
+) -> list[_LayoutObject]:
+    """
+    Stamp merge confidence onto accepted layout objects.
+
+    Args:
+        objects: Accepted region or line nodes copied from the scaffold.
+        confidence: Merge confidence to record on each object.
+
+    Returns:
+        Layout objects with updated provenance merge confidence.
+
+    """
+    updated: list[_LayoutObject] = []
+    for obj in objects:
+        provenance = obj.provenance.model_copy(deep=True)
+        provenance.merge_confidence = confidence
+        updated.append(
+            obj.model_copy(update={"provenance": provenance}, deep=True)
+        )
+    return updated
+
+
 def _attach_region_alternates(
     regions: list[RegionRecord],
     skipped_witnesses: list[PassWitnessPage],
     geometry_alternates: list[AlternateCandidate],
+    *,
+    prepared_page: PreparedPage,
 ) -> list[RegionRecord]:
     """
     Attach skipped and geometry alternates to the first accepted region.
@@ -660,6 +765,9 @@ def _attach_region_alternates(
         regions: Accepted region nodes copied from the scaffold.
         skipped_witnesses: Cross-variant witnesses excluded from merge.
         geometry_alternates: Losing geometry payloads from scaffold conflicts.
+
+    Keyword Args:
+        prepared_page: Accepted prepared page used to classify skip reasons.
 
     Returns:
         Region list with alternates attached to the first region.
@@ -672,7 +780,7 @@ def _attach_region_alternates(
             value_kind="skipped_witness",
             value={
                 "prepared_page_id": witness.prepared_page_id,
-                "reason": "cross_variant_excluded",
+                "reason": _witness_skip_reason(prepared_page, witness),
             },
         )
         for witness in skipped_witnesses

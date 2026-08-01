@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from bochord.models import (
     BaselineShift,
     BoundingBox,
@@ -30,6 +32,10 @@ from bochord.models import (
     Typography,
 )
 from bochord.services.merge import AbstainingMergeService
+from bochord.services.text_normalization import (
+    DEFAULT_TEXT_NORMALIZATION_POLICY,
+    TextNormalizer,
+)
 
 
 def _provenance() -> ObjectProvenance:
@@ -138,6 +144,7 @@ def _witness_page(  # noqa: PLR0913
     witness_id: str,
     runner_id: str,
     prepared_page_id: str = "prepared-page-1",
+    coordinate_space: CoordinateSpace | None = None,
     regions: list[RegionRecord] | None = None,
     lines: list[LineRecord] | None = None,
     spans: list[SpanRecord] | None = None,
@@ -148,7 +155,7 @@ def _witness_page(  # noqa: PLR0913
         witness_id=witness_id,
         runner_id=runner_id,
         prepared_page_id=prepared_page_id,
-        coordinate_space=_coordinate_space(),
+        coordinate_space=coordinate_space or _coordinate_space(),
         regions=regions or [],
         lines=lines or [],
         spans=spans or [],
@@ -2235,3 +2242,136 @@ def test_note_link_ambiguous_fixture_smoke() -> None:
         flag.flag_type == MergeFlagType.NOTE_LINK_AMBIGUOUS for flag in result.flags
     )
     assert result.page.notes[0].linked_marker_span_ids == []
+
+
+def test_aligned_layout_regions_and_lines_have_merge_confidence_one() -> None:
+    """Uncontested scaffold layout assigns merge_confidence 1.0 to regions and lines."""
+    witness = _witness_page(
+        witness_id="wit-a",
+        runner_id="runner-a",
+        regions=[_region("region-a", reading_order_index=1, line_ids=["line-a"])],
+        lines=[_line("line-a", region_id="region-a", line_order=1, span_ids=["span-a"])],
+        spans=[_span("span-a", line_id="line-a", text="alpha")],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[witness],
+    )
+    policy = MergePolicy(
+        policy_id="merge-v1",
+        version="1.0.0",
+        structure_scaffold_runner_ids=["runner-a"],
+    )
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    assert result.page.regions[0].provenance.merge_confidence == 1.0
+    assert result.page.lines[0].provenance.merge_confidence == 1.0
+    assert result.abstained is False
+
+
+def test_structure_scaffold_conflict_regions_have_low_merge_confidence() -> None:
+    """Structure scaffold conflict assigns merge_confidence 0.3 to layout objects."""
+    page_input = _load_merge_fixture("structure_conflict.json")
+    policy = MergePolicy(
+        policy_id="merge-v1",
+        version="1.0.0",
+        structure_scaffold_runner_ids=["runner-scaffold", "runner-conflict"],
+    )
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    assert result.abstained is True
+    assert result.page.regions[0].provenance.merge_confidence == 0.3
+    assert result.page.lines[0].provenance.merge_confidence == 0.3
+    assert any(
+        flag.flag_type == MergeFlagType.STRUCTURE_SCAFFOLD_CONFLICT
+        for flag in result.flags
+    )
+
+
+def test_coordinate_space_mismatch_excludes_witness_from_merge() -> None:
+    """Same prepared_page_id but mismatched coordinate space skips witness evidence."""
+    aligned = _witness_page(
+        witness_id="wit-aligned",
+        runner_id="runner-aligned",
+        regions=[_region("region-aligned", reading_order_index=1, line_ids=["line-aligned"])],
+        lines=[
+            _line(
+                "line-aligned",
+                region_id="region-aligned",
+                line_order=1,
+                span_ids=["span-aligned"],
+                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+            )
+        ],
+        spans=[_span("span-aligned", line_id="line-aligned", text="aligned")],
+    )
+    mismatched_space = _witness_page(
+        witness_id="wit-space",
+        runner_id="runner-space",
+        coordinate_space=CoordinateSpace(
+            space_id="other-space",
+            width_px=100,
+            height_px=100,
+        ),
+        regions=[_region("region-space", reading_order_index=1, line_ids=["line-space"])],
+        lines=[
+            _line(
+                "line-space",
+                region_id="region-space",
+                line_order=1,
+                span_ids=["span-space"],
+                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=10),
+            )
+        ],
+        spans=[_span("span-space", line_id="line-space", text="space")],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[aligned, mismatched_space],
+    )
+    policy = MergePolicy(policy_id="merge-v1", version="1.0.0")
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    assert result.page.regions[0].region_id == "region-aligned"
+    skipped = [
+        candidate
+        for candidate in result.page.regions[0].provenance.alternate_candidates
+        if candidate.value_kind == "skipped_witness"
+    ]
+    assert len(skipped) == 1
+    assert skipped[0].witness_id == "wit-space"
+    assert skipped[0].value["prepared_page_id"] == "prepared-page-1"
+    assert skipped[0].value["reason"] == "coordinate_space_mismatch"
+
+
+def test_mismatched_text_normalization_policy_id_raises() -> None:
+    """MergePolicy text_normalization_policy_id must match the injected normalizer."""
+    witness = _witness_page(
+        witness_id="wit-a",
+        runner_id="runner-a",
+        regions=[_region("region-a", reading_order_index=1, line_ids=["line-a"])],
+        lines=[_line("line-a", region_id="region-a", line_order=1, span_ids=["span-a"])],
+        spans=[_span("span-a", line_id="line-a", text="alpha")],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[witness],
+    )
+    policy = MergePolicy(
+        policy_id="merge-v1",
+        version="1.0.0",
+        text_normalization_policy_id="text-norm-other",
+    )
+    normalizer = TextNormalizer(DEFAULT_TEXT_NORMALIZATION_POLICY)
+
+    with pytest.raises(ValueError, match="text_normalization_policy_id"):
+        AbstainingMergeService(text_normalizer=normalizer).merge_page(page_input, policy)
