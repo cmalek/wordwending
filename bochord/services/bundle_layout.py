@@ -7,7 +7,7 @@ import json
 import shutil
 from collections.abc import Mapping  # noqa: TC003
 from itertools import chain
-from pathlib import Path  # noqa: TC003
+from pathlib import Path
 
 from bochord.models import (
     BUNDLE_SCHEMA_VERSION,
@@ -339,17 +339,20 @@ class BundleLayoutService:
         """
         rewritten: list[WitnessReference] = []
         for witness in page.witnesses:
-            relative_path = witness.artifact_path
             if witness_files and witness.witness_id in witness_files:
                 source_path = witness_files[witness.witness_id]
-                destination_dir = paths.witnesses_dir(
-                    page.page_number,
-                    witness.witness_kind,
-                )
+                filename = source_path.name
+            else:
+                filename = Path(witness.artifact_path).name
+            destination_dir = paths.witnesses_dir(
+                page.page_number,
+                witness.witness_kind,
+            )
+            relative_path = _relative_path(root, destination_dir / filename)
+            if witness_files and witness.witness_id in witness_files:
                 destination_dir.mkdir(parents=True, exist_ok=True)
-                destination = destination_dir / source_path.name
-                shutil.copy2(source_path, destination)
-                relative_path = _relative_path(root, destination)
+                source_path = witness_files[witness.witness_id]
+                shutil.copy2(source_path, destination_dir / filename)
             rewritten.append(
                 witness.model_copy(update={"artifact_path": relative_path})
             )

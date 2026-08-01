@@ -355,3 +355,54 @@ def test_read_document_manifest_round_trip(tmp_path) -> None:
     assert restored == written
     assert restored.schema_version == BUNDLE_SCHEMA_VERSION
     assert restored.bundle_schema_version == BUNDLE_SCHEMA_VERSION
+
+
+def test_write_document_bundle_rewrites_witness_paths_without_files(tmp_path) -> None:
+    """Page manifest rewrites witness paths even when no file is copied."""
+    bundle = load_minimal_bundle()
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, _witness_files = _write_minimal_inputs(
+        tmp_path
+    )
+    pre_write_path = bundle.pages[0].witnesses[0].artifact_path
+    assert pre_write_path.endswith("olmocr-response.json")
+
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=None,
+    )
+
+    page_manifest = service.read_page_manifest(root, 1)
+    assert page_manifest.witness_artifacts[0].artifact_path == (
+        "pages/page-0001/witnesses/text/olmocr-response.json"
+    )
+    assert page_manifest.witness_artifacts[0].artifact_path.startswith("pages/")
+
+
+def test_write_document_bundle_writes_page_exports(tmp_path) -> None:
+    """Optional page export text files land under pages/page-NNNN/exports/."""
+    bundle = load_minimal_bundle()
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, witness_files = _write_minimal_inputs(
+        tmp_path
+    )
+
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=witness_files,
+        page_exports={"page-0001": {"reading.txt": "hello"}},
+    )
+
+    export_path = root / "pages" / "page-0001" / "exports" / "reading.txt"
+    assert export_path.exists()
+    assert export_path.read_text(encoding="utf-8") == "hello"
