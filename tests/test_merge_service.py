@@ -957,6 +957,102 @@ def test_text_precedence_picks_first_candidate_for_duplicate_runner_id() -> None
     assert second_text_alternates[0].runner_id == "runner-preferred"
 
 
+def test_text_alternates_keep_cross_witness_same_span_id() -> None:
+    """Alternates include losing witnesses even when span_id strings match."""
+    shared_span_id = "span-shared"
+    box = BoundingBox(x0=0, y0=0, x1=80, y1=10)
+    alt_box = BoundingBox(x0=1, y0=1, x1=79, y1=9)
+    scaffold = _witness_page(
+        witness_id="wit-scaffold",
+        runner_id="runner-scaffold",
+        regions=[
+            _region(
+                "region-scaffold",
+                reading_order_index=1,
+                line_ids=["line-scaffold"],
+                bounding_box=BoundingBox(x0=0, y0=0, x1=80, y1=40),
+            )
+        ],
+        lines=[
+            _line(
+                "line-scaffold",
+                region_id="region-scaffold",
+                line_order=1,
+                span_ids=[shared_span_id],
+                bounding_box=box,
+            )
+        ],
+        spans=[
+            _span(
+                shared_span_id,
+                line_id="line-scaffold",
+                text="scaffold-text",
+                bounding_box=box,
+            )
+        ],
+    )
+    alternate = _witness_page(
+        witness_id="wit-alt",
+        runner_id="runner-alt",
+        regions=[
+            _region(
+                "region-alt",
+                reading_order_index=1,
+                line_ids=["line-alt"],
+                bounding_box=BoundingBox(x0=1, y0=1, x1=79, y1=39),
+            )
+        ],
+        lines=[
+            _line(
+                "line-alt",
+                region_id="region-alt",
+                line_order=1,
+                span_ids=[shared_span_id],
+                bounding_box=alt_box,
+            )
+        ],
+        spans=[
+            _span(
+                shared_span_id,
+                line_id="line-alt",
+                text="alternate-text",
+                bounding_box=alt_box,
+            )
+        ],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[scaffold, alternate],
+    )
+    policy = MergePolicy(
+        policy_id="merge-v1",
+        version="1.0.0",
+        structure_scaffold_runner_ids=["runner-scaffold"],
+        runner_text_precedence=["runner-scaffold", "runner-alt"],
+        min_merge_confidence_to_accept=0.6,
+    )
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    span = result.page.spans[0]
+    assert span.text_diplomatic == "scaffold-text"
+    assert span.provenance.merge_confidence == 0.7
+    text_alternates = [
+        candidate
+        for candidate in span.provenance.alternate_candidates
+        if candidate.value_kind == "text"
+    ]
+    alternate_text = [
+        candidate
+        for candidate in text_alternates
+        if candidate.value.get("text_diplomatic") == "alternate-text"
+    ]
+    assert len(alternate_text) == 1
+    assert alternate_text[0].witness_id == "wit-alt"
+
+
 def test_precedence_picks_winner_and_flags_with_confidence_0_7() -> None:
     """Non-empty precedence accepts runner text at 0.7 when texts differ."""
     scaffold, alternate = _aligned_text_witnesses(

@@ -1591,7 +1591,10 @@ def _text_alternates_from_candidates(
     """
     alternates: list[AlternateCandidate] = []
     for candidate in candidates:
-        if winner is not None and candidate.span.span_id == winner.span.span_id:
+        if winner is not None and (
+            candidate.witness_id == winner.witness_id
+            and candidate.span.span_id == winner.span.span_id
+        ):
             continue
         alternates.append(
             AlternateCandidate(
