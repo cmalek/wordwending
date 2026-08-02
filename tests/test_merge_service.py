@@ -559,6 +559,73 @@ def test_cross_variant_witnesses_are_excluded_from_merge() -> None:
         assert skipped[0].value["prepared_page_id"] == "prepared-page-2"
 
 
+def test_region_bearing_scaffold_skipped_witness_on_regions_and_lines() -> None:
+    """Region-bearing scaffolds attach skipped-witness alternates to every accepted layout object."""
+    aligned = _witness_page(
+        witness_id="wit-aligned",
+        runner_id="runner-aligned",
+        regions=[_region("region-aligned", reading_order_index=1, line_ids=["line-aligned"])],
+        lines=[
+            _line(
+                "line-aligned",
+                region_id="region-aligned",
+                line_order=1,
+                span_ids=["span-aligned"],
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
+            )
+        ],
+        spans=[_span("span-aligned", line_id="line-aligned", text="aligned")],
+    )
+    cross_variant = _witness_page(
+        witness_id="wit-cross",
+        runner_id="runner-cross",
+        prepared_page_id="prepared-page-2",
+        regions=[_region("region-cross", reading_order_index=1, line_ids=["line-cross"])],
+        lines=[
+            _line(
+                "line-cross",
+                region_id="region-cross",
+                line_order=1,
+                span_ids=["span-cross"],
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
+            )
+        ],
+        spans=[_span("span-cross", line_id="line-cross", text="cross")],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[aligned, cross_variant],
+    )
+    policy = MergePolicy(policy_id="merge-v1", version="1.0.0")
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    assert len(result.page.regions) == 1
+    assert len(result.page.lines) == 1
+    for region in result.page.regions:
+        skipped = [
+            candidate
+            for candidate in region.provenance.alternate_candidates
+            if candidate.value_kind == "skipped_witness"
+        ]
+        assert len(skipped) == 1
+        assert skipped[0].witness_id == "wit-cross"
+        assert skipped[0].runner_id == "runner-cross"
+        assert skipped[0].value["prepared_page_id"] == "prepared-page-2"
+    for line in result.page.lines:
+        skipped = [
+            candidate
+            for candidate in line.provenance.alternate_candidates
+            if candidate.value_kind == "skipped_witness"
+        ]
+        assert len(skipped) == 1
+        assert skipped[0].witness_id == "wit-cross"
+        assert skipped[0].runner_id == "runner-cross"
+        assert skipped[0].value["prepared_page_id"] == "prepared-page-2"
+
+
 def test_structure_scaffold_conflict_flags_and_abstains() -> None:
     """Incompatible region scaffolds emit conflict flags and alternate geometry."""
     page_input = _load_merge_fixture("structure_conflict.json")

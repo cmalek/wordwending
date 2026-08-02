@@ -899,7 +899,7 @@ def _attach_layout_alternates(
     if skipped_alternates:
         if regions:
             regions = _attach_alternates_to_objects(regions, skipped_alternates)
-        elif lines:
+        if lines:
             lines = _attach_alternates_to_objects(lines, skipped_alternates)
 
     if geometry_alternates:
