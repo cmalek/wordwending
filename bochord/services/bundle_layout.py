@@ -29,6 +29,30 @@ from bochord.models import (
 _WITNESS_FAMILIES = ("text", "layout", "style", "table")
 
 
+def _safe_basename(value: str, *, label: str) -> str:
+    """
+    Reject path segments that are not bare basenames.
+
+    Args:
+        value: Caller-supplied path segment.
+
+    Keyword Args:
+        label: Field name used in error messages.
+
+    Returns:
+        The validated basename.
+
+    Raises:
+        ValueError: If ``value`` is empty, ``.`` / ``..``, or contains path
+            separators.
+
+    """
+    if not value or value in {".", ".."} or "/" in value or "\\" in value:
+        msg = f"unsafe {label} basename {value!r}: must be a bare filename"
+        raise ValueError(msg)
+    return value
+
+
 def _atomic_write_text(path: Path, payload: str) -> None:
     """
     Atomically write ``payload`` to ``path`` via a sibling temporary file.
@@ -272,7 +296,19 @@ class BundleLayoutService:
         Returns:
             The written document manifest.
 
+        Raises:
+            ValueError: If ``bundle.pages`` contains duplicate ``page_number``
+                values, or if a caller-supplied path segment is unsafe.
+
         """
+        page_numbers = [page.page_number for page in bundle.pages]
+        if len(page_numbers) != len(set(page_numbers)):
+            msg = (
+                "duplicate page_number values in document bundle: "
+                f"{sorted(page_numbers)}"
+            )
+            raise ValueError(msg)
+
         paths = BundlePaths(root)
         root.mkdir(parents=True, exist_ok=True)
         paths.source_dir().mkdir(parents=True, exist_ok=True)
@@ -280,7 +316,8 @@ class BundleLayoutService:
 
         if source_files:
             for basename, source_path in source_files.items():
-                shutil.copy2(source_path, paths.source_dir() / basename)
+                safe_name = _safe_basename(basename, label="source_files")
+                shutil.copy2(source_path, paths.source_dir() / safe_name)
 
         provenance_payload = {
             "bibliographic_provenance": bundle.bibliographic_provenance.model_dump(
@@ -419,7 +456,12 @@ class BundleLayoutService:
             paths=paths,
             witness_files=witness_files,
         )
-        page_for_graph = page.model_copy(update={"witnesses": rewritten_witnesses})
+        graph_updates: dict[str, object] = {"witnesses": rewritten_witnesses}
+        if prepared_image_path is not None:
+            graph_updates["prepared_page"] = page.prepared_page.model_copy(
+                update={"image_path": prepared_image_path}
+            )
+        page_for_graph = page.model_copy(update=graph_updates)
         graph_path = paths.page_graph(page_number)
         _atomic_write_json(graph_path, page_for_graph.model_dump(mode="json"))
 
@@ -511,7 +553,8 @@ class BundleLayoutService:
 
         if page_exports and page.page_id in page_exports:
             for export_name, content in page_exports[page.page_id].items():
-                _atomic_write_text(paths.page_export(page_number, export_name), content)
+                safe_name = _safe_basename(export_name, label="page_exports")
+                _atomic_write_text(paths.page_export(page_number, safe_name), content)
 
         review_events_path = paths.review_events(page_number)
         review_events_path.parent.mkdir(parents=True, exist_ok=True)
@@ -577,7 +620,7 @@ class BundleLayoutService:
                 basename = source_path.name
             else:
                 basename = Path(witness.artifact_path).name
-            # ponytail: witness_id prefix avoids same-basename overwrite
+            # Prefix with witness_id so same-basename artifacts cannot collide.
             filename = f"{witness.witness_id}_{basename}"
             destination_dir = paths.witnesses_dir(
                 page.page_number,
@@ -653,7 +696,9 @@ class BundleLayoutService:
         Append JSONL review events; never rewrite prior lines.
 
         Side Effects:
-            Creates/appends ``overlays/review_events.jsonl``.
+            Creates/appends ``overlays/review_events.jsonl``. When an existing
+            file is non-empty and lacks a trailing newline, writes one before
+            appending so prior lines stay parseable.
 
         Args:
             root: Filesystem root for one document bundle tree.
@@ -670,7 +715,12 @@ class BundleLayoutService:
             json.dumps(event.model_dump(mode="json"), separators=(",", ":"))
             for event in events
         ]
-        with review_events_path.open("a", encoding="utf-8") as handle:
+        with review_events_path.open("a+", encoding="utf-8") as handle:
+            handle.seek(0, 2)
+            if handle.tell() > 0:
+                handle.seek(handle.tell() - 1)
+                if handle.read(1) != "\n":
+                    handle.write("\n")
             handle.write("\n".join(lines) + "\n")
 
     def write_overlay_state(
@@ -714,7 +764,7 @@ class BundleLayoutService:
                 update={"overlay_state_path": overlay_relative}
             )
         else:
-            # ponytail: stub manifest so overlay presence is recorded before
+            # Stub manifest so overlay presence is recorded before
             # write_document_bundle; full write replaces all other fields.
             updated = PageBundleManifest(
                 schema_version=BUNDLE_SCHEMA_VERSION,
@@ -742,15 +792,29 @@ class BundleLayoutService:
         Returns:
             Parsed JSON objects for each non-blank JSONL line.
 
+        Raises:
+            ValueError: If a non-blank line is not valid JSON; the message
+                names the review-events file and 1-based line number.
+
         """
         paths = BundlePaths(root)
         review_events_path = paths.review_events(page_number)
         if not review_events_path.exists():
             return []
         events: list[dict[str, Any]] = []
-        for line in review_events_path.read_text(encoding="utf-8").splitlines():
+        for line_number, line in enumerate(
+            review_events_path.read_text(encoding="utf-8").splitlines(),
+            start=1,
+        ):
             stripped = line.strip()
             if not stripped:
                 continue
-            events.append(json.loads(stripped))
+            try:
+                events.append(json.loads(stripped))
+            except json.JSONDecodeError as exc:
+                msg = (
+                    f"invalid JSON in {review_events_path.name} "
+                    f"line {line_number}: {exc.msg}"
+                )
+                raise ValueError(msg) from exc
         return events

@@ -37,7 +37,7 @@
         "prepared_page_id": "prepared-page-1",
         "preparation_mode": "full-page",
         "page_class": "ordinary-prose",
-        "image_path": "pages/page-0001/image/prepared.jp2",
+        "image_path": "/opt/bochord-work/prepared_0001.tif",
         "source_artifact_id": "source-page-1",
         "image_checksum": "sha256:prepared",
         "preparation_recipe_id": "prep-v1",

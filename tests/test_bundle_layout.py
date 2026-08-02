@@ -276,6 +276,7 @@ def test_write_document_bundle_creates_spec_tree(tmp_path) -> None:
     assert graph.spans[0].text_diplomatic == "hello"
     assert len(graph.notes) == 1
     assert graph.notes[0].text_diplomatic == "footnote text"
+    assert graph.prepared_page.image_path == "pages/page-0001/image/prepared.jp2"
     assert graph.witnesses[0].artifact_path == (
         "pages/page-0001/witnesses/text/wit-1_olmocr-response.json"
     )
@@ -716,7 +717,9 @@ def test_write_document_bundle_uses_prepared_image_path_fallback(tmp_path) -> No
     service.write_document_bundle(bundle, root)
 
     page_manifest = service.read_page_manifest(root, 1)
-    assert page_manifest.source_image_path == "pages/page-0001/image/prepared.jp2"
+    assert page_manifest.source_image_path == "/opt/bochord-work/prepared_0001.tif"
+    graph = service.read_page_graph(root, 1)
+    assert graph.prepared_page.image_path == "/opt/bochord-work/prepared_0001.tif"
 
 
 def test_write_document_bundle_rejects_missing_source_image_path(tmp_path) -> None:
@@ -839,3 +842,141 @@ def test_write_document_bundle_keeps_same_basename_witnesses(tmp_path) -> None:
     graph = service.read_page_graph(root, 1)
     graph_paths = {ref.witness_id: ref.artifact_path for ref in graph.witnesses}
     assert graph_paths == artifact_paths
+
+
+def test_write_document_bundle_rewrites_prepared_image_path_in_graph(tmp_path) -> None:
+    """Copied prepared images rewrite page_graph prepared_page.image_path."""
+    bundle = load_minimal_bundle()
+    assert bundle.pages[0].prepared_page.image_path.startswith("/")
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
+    )
+    prepared = tmp_path / "inputs" / "prepared_0001.tif"
+    prepared.write_bytes(b"fake-tif-bytes")
+    page_images = {"page-0001": prepared}
+
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=witness_files,
+    )
+
+    graph = service.read_page_graph(root, 1)
+    assert graph.prepared_page.image_path == (
+        "pages/page-0001/image/prepared_0001.tif"
+    )
+    assert (root / "pages" / "page-0001" / "image" / "prepared_0001.tif").exists()
+
+
+def test_write_document_bundle_rejects_duplicate_page_numbers(tmp_path) -> None:
+    """Duplicate page_number values must fail before silent page overwrite."""
+    bundle = load_minimal_bundle()
+    first = bundle.pages[0]
+    second = first.model_copy(
+        update={
+            "page_id": "page-0001-dup",
+            "spans": [
+                first.spans[0].model_copy(
+                    update={"span_id": "span-2", "text_diplomatic": "SECOND PAGE TEXT"}
+                )
+            ],
+        }
+    )
+    bundle = bundle.model_copy(update={"pages": [first, second]})
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+
+    with pytest.raises(ValueError, match="duplicate page_number"):
+        service.write_document_bundle(bundle, root)
+
+
+def test_write_document_bundle_rejects_unsafe_source_basename(tmp_path) -> None:
+    """source_files keys must be bare basenames, not path segments."""
+    bundle = load_minimal_bundle()
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_pdf = tmp_path / "inputs" / "sample.pdf"
+    source_pdf.parent.mkdir(parents=True, exist_ok=True)
+    source_pdf.write_bytes(b"%PDF-1.4 minimal")
+
+    with pytest.raises(ValueError, match="basename"):
+        service.write_document_bundle(
+            bundle,
+            root,
+            source_files={"../escaped.pdf": source_pdf},
+        )
+
+
+def test_write_document_bundle_rejects_unsafe_page_export_name(tmp_path) -> None:
+    """page_exports basenames must not escape the page exports directory."""
+    bundle = load_minimal_bundle()
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
+    )
+
+    with pytest.raises(ValueError, match="basename"):
+        service.write_document_bundle(
+            bundle,
+            root,
+            source_files=source_files,
+            source_page_images=source_page_images,
+            page_images=page_images,
+            witness_files=witness_files,
+            page_exports={"page-0001": {"../escaped.txt": "nope"}},
+        )
+
+
+def test_append_review_events_heals_missing_trailing_newline(tmp_path) -> None:
+    """Append inserts a separator when prior JSONL lacks a trailing newline."""
+    bundle = load_minimal_bundle()
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
+    )
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=witness_files,
+    )
+
+    review_path = root / "pages" / "page-0001" / "overlays" / "review_events.jsonl"
+    review_path.write_bytes(b'{"event_id":"partial"}')
+    service.append_review_events(root, 1, [_accept_review_event("evt-1")])
+
+    events = service.read_review_events(root, 1)
+    assert [event["event_id"] for event in events] == ["partial", "evt-1"]
+
+
+def test_read_review_events_reports_corrupt_line(tmp_path) -> None:
+    """Corrupt JSONL lines name the file and line number."""
+    bundle = load_minimal_bundle()
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
+    )
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=witness_files,
+    )
+
+    review_path = root / "pages" / "page-0001" / "overlays" / "review_events.jsonl"
+    review_path.write_text('{"ok":true}\n{not-json}\n', encoding="utf-8")
+
+    with pytest.raises(ValueError, match=r"review_events\.jsonl.*line 2"):
+        service.read_review_events(root, 1)
