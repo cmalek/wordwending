@@ -281,11 +281,12 @@ class MergeOrchestrator:
                 candidates,
                 self._policy.structure_scaffold_runner_ids,
             )
-            return preferred if preferred is not None else candidates[0]
+            if preferred is not None:
+                return preferred
+        # ponytail: earlier input order wins ties on coordinate-rich line count
         return max(
             candidates,
             key=lambda witness: (
-                bool(witness.regions),
                 _coordinate_rich_line_count(witness),
                 -self._eligible_witnesses.index(witness),
             ),

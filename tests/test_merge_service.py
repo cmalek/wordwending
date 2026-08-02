@@ -616,8 +616,73 @@ def test_aligned_layout_fixture_produces_valid_bundle_page() -> None:
     assert result.page.regions[0].region_id == "region-b-1"
 
 
-def test_lines_only_witness_not_chosen_when_regions_available() -> None:
-    """Lines-only witnesses are ineligible; region-bearing witness wins scaffold."""
+def test_region_bearing_witness_wins_when_more_coordinate_rich_lines() -> None:
+    """Region-bearing witness wins scaffold when it has more geometry-rich lines."""
+    lines_only = _witness_page(
+        witness_id="wit-lines",
+        runner_id="runner-lines",
+        lines=[
+            _line(
+                "line-only-1",
+                region_id="missing-region",
+                line_order=1,
+                span_ids=["span-only-1"],
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
+            ),
+        ],
+        spans=[_span("span-only-1", line_id="line-only-1", text="one")],
+    )
+    with_regions = _witness_page(
+        witness_id="wit-regions",
+        runner_id="runner-regions",
+        regions=[
+            _region(
+                "region-with-structure",
+                reading_order_index=1,
+                line_ids=["line-regions-1", "line-regions-2"],
+            )
+        ],
+        lines=[
+            _line(
+                "line-regions-1",
+                region_id="region-with-structure",
+                line_order=1,
+                span_ids=["span-regions-1"],
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
+            ),
+            _line(
+                "line-regions-2",
+                region_id="region-with-structure",
+                line_order=2,
+                span_ids=["span-regions-2"],
+                baseline=[(0.0, 20.0), (80.0, 20.0)],
+            ),
+        ],
+        spans=[
+            _span("span-regions-1", line_id="line-regions-1", text="one"),
+            _span("span-regions-2", line_id="line-regions-2", text="two"),
+        ],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[lines_only, with_regions],
+    )
+    policy = MergePolicy(policy_id="merge-v1", version="1.0.0")
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    assert result.page.regions[0].region_id == "region-with-structure"
+    assert {line.line_id for line in result.page.lines} == {
+        "line-regions-1",
+        "line-regions-2",
+    }
+    assert result.abstained is False
+
+
+def test_lines_only_witness_beats_sparse_region_when_more_coordinate_rich_lines() -> None:
+    """Without runner order, coordinate-rich line count beats sparse region structure."""
     lines_only = _witness_page(
         witness_id="wit-lines",
         runner_id="runner-lines",
@@ -642,7 +707,7 @@ def test_lines_only_witness_not_chosen_when_regions_available() -> None:
             _span("span-only-2", line_id="line-only-2", text="two"),
         ],
     )
-    with_regions = _witness_page(
+    sparse_region = _witness_page(
         witness_id="wit-regions",
         runner_id="runner-regions",
         regions=[
@@ -666,14 +731,78 @@ def test_lines_only_witness_not_chosen_when_regions_available() -> None:
         page_id="page-0001",
         page_number=1,
         prepared_page=_prepared_page(),
-        witnesses=[lines_only, with_regions],
+        witnesses=[sparse_region, lines_only],
     )
     policy = MergePolicy(policy_id="merge-v1", version="1.0.0")
 
     result = AbstainingMergeService().merge_page(page_input, policy)
 
-    assert result.page.regions[0].region_id == "region-with-structure"
-    assert result.page.lines[0].line_id == "line-regions"
+    assert result.page.regions == []
+    assert {line.line_id for line in result.page.lines} == {
+        "line-only-1",
+        "line-only-2",
+    }
+    assert any(
+        flag.flag_type == MergeFlagType.STRUCTURE_SCAFFOLD_CONFLICT
+        for flag in result.flags
+    )
+
+
+def test_missing_scaffold_runner_ids_fall_back_to_coordinate_rich_lines() -> None:
+    """Missing preferred runners fall back to the most coordinate-rich scaffold."""
+    sparse_first = _witness_page(
+        witness_id="wit-sparse",
+        runner_id="runner-sparse",
+        lines=[
+            _line(
+                "line-sparse",
+                region_id="orphan-sparse",
+                line_order=1,
+                span_ids=["span-sparse"],
+            )
+        ],
+        spans=[_span("span-sparse", line_id="line-sparse", text="sparse")],
+    )
+    rich_second = _witness_page(
+        witness_id="wit-rich",
+        runner_id="runner-rich",
+        lines=[
+            _line(
+                "line-rich-1",
+                region_id="orphan-rich",
+                line_order=1,
+                span_ids=["span-rich-1"],
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
+            ),
+            _line(
+                "line-rich-2",
+                region_id="orphan-rich",
+                line_order=2,
+                span_ids=["span-rich-2"],
+                baseline=[(0.0, 20.0), (80.0, 20.0)],
+            ),
+        ],
+        spans=[
+            _span("span-rich-1", line_id="line-rich-1", text="one"),
+            _span("span-rich-2", line_id="line-rich-2", text="two"),
+        ],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[sparse_first, rich_second],
+    )
+    policy = MergePolicy(
+        policy_id="merge-v1",
+        version="1.0.0",
+        structure_scaffold_runner_ids=["missing-runner"],
+    )
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    assert result.page.regions == []
+    assert {line.line_id for line in result.page.lines} == {"line-rich-1", "line-rich-2"}
     assert result.abstained is False
 
 
