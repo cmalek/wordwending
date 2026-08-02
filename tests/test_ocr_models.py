@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from pydantic import TypeAdapter, ValidationError
@@ -80,6 +81,9 @@ from bochord.models import (
     TrustState,
     Typography,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 FIXTURES = Path(__file__).parent / "fixtures" / "runner"
 
@@ -746,17 +750,22 @@ def runner_policy_payload(**overrides: object) -> dict[str, object]:
     return payload
 
 
-def test_runner_reference_rejects_mutable_model_revision() -> None:
+@pytest.mark.parametrize(
+    "model_revision",
+    [
+        pytest.param("main", id="main"),
+        pytest.param("Master", id="Master"),
+        pytest.param("LATEST", id="LATEST"),
+        pytest.param("  HEAD  ", id="HEAD-whitespace"),
+        pytest.param("head", id="head"),
+    ],
+)
+def test_runner_reference_rejects_mutable_model_revision(
+    model_revision: str,
+) -> None:
     with pytest.raises(ValidationError, match="mutable"):
-        RunnerReference(
-            runner_id="olmocr",
-            model_name="allenai/olmOCR-7B",
-            model_revision="main",
-            hardware_class="nvidia-l40s",
-            runtime_name="huggingface-endpoint",
-            runtime_revision="ep-rev-1",
-            config_digest="cfg",
-            prompt_digest="prompt",
+        RunnerReference.model_validate(
+            model_runner_payload(model_revision=model_revision),
         )
 
 
@@ -832,15 +841,18 @@ def test_spec_0013_batch_fixtures_round_trip_by_status() -> None:
 
 
 @pytest.mark.parametrize(
-    ("model_kind", "overrides", "match"),
+    ("model", "make_payload", "overrides", "match"),
     [
-        (
-            "capability",
+        pytest.param(
+            RunnerCapability,
+            capability_payload,
             {"accepted_input_kinds": []},
             "accepted_input_kinds must not be empty",
+            id="accepted_input_kinds-empty",
         ),
-        (
-            "batch",
+        pytest.param(
+            RunnerExecutionBatch,
+            execution_batch_payload,
             {
                 "batch_size": 2,
                 "items": [
@@ -857,51 +869,65 @@ def test_spec_0013_batch_fixtures_round_trip_by_status() -> None:
                 ],
             },
             "batch item ids must be unique",
+            id="batch-item-ids-unique",
         ),
-        (
-            "batch",
+        pytest.param(
+            RunnerExecutionBatch,
+            execution_batch_payload,
             {
                 "result_status": "succeeded",
                 "failure_item_ids": ["item-1"],
             },
             "succeeded batches cannot contain failed items",
+            id="succeeded-no-failures",
         ),
-        (
-            "batch",
+        pytest.param(
+            RunnerExecutionBatch,
+            execution_batch_payload,
             {
                 "result_status": "partial",
                 "failure_item_ids": ["missing-item"],
             },
             "failure_item_ids must identify submitted batch items",
+            id="failure-item-ids-submitted",
         ),
-        (
-            "batch",
+        pytest.param(
+            RunnerExecutionBatch,
+            execution_batch_payload,
             {"result_status": "partial", "failure_item_ids": []},
             "partial batches require some but not all items to fail",
+            id="partial-no-failures",
         ),
-        (
-            "batch",
+        pytest.param(
+            RunnerExecutionBatch,
+            execution_batch_payload,
             {
                 "result_status": "partial",
                 "failure_item_ids": ["item-1", "item-2"],
             },
             "partial batches require some but not all items to fail",
+            id="partial-all-failures",
         ),
-        (
-            "batch",
+        pytest.param(
+            RunnerExecutionBatch,
+            execution_batch_payload,
             {"result_status": "failed", "failure_item_ids": ["item-1"]},
             "failed batches must identify every submitted item as failed",
+            id="failed-partial-failures",
         ),
-        (
-            "batch",
+        pytest.param(
+            RunnerExecutionBatch,
+            execution_batch_payload,
             {
                 "started_at_utc": "2026-07-31T12:05:00+00:00",
                 "finished_at_utc": "2026-07-31T12:00:00+00:00",
             },
             "finished_at_utc cannot precede started_at_utc",
+            id="finished-before-started",
         ),
-        (
-            "batch",
+        pytest.param(
+            RunnerExecutionBatch,
+            execution_batch_payload,
             {
                 "output_artifacts": [
                     {
@@ -914,22 +940,18 @@ def test_spec_0013_batch_fixtures_round_trip_by_status() -> None:
                 ],
             },
             "output artifacts must identify submitted batch items",
+            id="output-artifacts-submitted",
         ),
     ],
 )
 def test_spec_0013_runner_invariants_reject_invalid_payloads(
-    model_kind: str,
+    model: type[RunnerCapability | RunnerExecutionBatch],
+    make_payload: Callable[..., dict[str, object]],
     overrides: dict[str, object],
     match: str,
 ) -> None:
-    if model_kind == "capability":
-        payload = capability_payload(**overrides)
-        validator = RunnerCapability.model_validate
-    else:
-        payload = execution_batch_payload(**overrides)
-        validator = RunnerExecutionBatch.model_validate
     with pytest.raises(ValidationError, match=match):
-        validator(payload)
+        model.model_validate(make_payload(**overrides))
 
 
 def test_throughput_summary_rejects_inconsistent_items_per_second() -> None:
