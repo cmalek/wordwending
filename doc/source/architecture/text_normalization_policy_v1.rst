@@ -71,12 +71,14 @@ codepoints are left unchanged.
 Transform Order
 ===============
 
-When multiple optional transforms apply to note text, ``TextNormalizer`` runs
-them in this fixed order after Unicode and whitespace normalization:
+``TextNormalizer`` applies transforms in this fixed order:
 
-1. Superscript flattening (when ``superscript_form`` is ``FLATTEN``)
-2. Note-marker placeholder replacement (when ``note_marker_form`` is
-   ``PLACEHOLDER``)
+1. Unicode normalization (configured form; v1 uses NFC)
+2. Whitespace collapse (when ``collapse_whitespace`` is enabled)
+3. Leading and trailing strip (when ``strip`` is enabled)
+4. Superscript flattening (when ``superscript_form`` is ``FLATTEN``)
+5. Note-marker placeholder replacement (when ``note_marker_form`` is
+   ``PLACEHOLDER``; ``normalize_note_text`` only)
 
 Shared codepoints such as ``¹``, ``²``, and ``³`` appear in both the
 superscript table and the note-marker placeholder set. Flattening runs first so
@@ -102,6 +104,6 @@ page graph objects in v1.
 Dual Text Contract
 ==================
 
-``text_diplomatic`` remains evidence-preserving. ``text_normalized`` is always
-regenerated deterministically from diplomatic text; operators must not edit both
-fields independently.
+``text_diplomatic`` remains evidence-preserving. Human ``correct_text`` review
+events replace diplomatic text only; ``text_normalized`` is always regenerated
+deterministically from diplomatic text and is never operator input.
