@@ -160,10 +160,6 @@ class InputKind(StrEnum):
     PDF = "pdf"
 
 
-#: Model revision labels that move over time and cannot be replayed faithfully.
-_MUTABLE_MODEL_REVISIONS = frozenset({"main", "master", "latest", "HEAD"})
-
-
 class BatchUnitKind(StrEnum):
     """Batch grouping units for runner execution."""
 
@@ -503,6 +499,10 @@ class SourceDescriptor(SchemaModel):
     checksum: str | None = None
 
 
+#: Model revision labels that move over time and cannot be replayed faithfully.
+_MUTABLE_MODEL_REVISIONS = frozenset({"main", "master", "latest", "head"})
+
+
 class RunnerReference(SchemaModel):
     """Identity for one runner implementation and model revision."""
 
@@ -552,10 +552,7 @@ class RunnerReference(SchemaModel):
             )
             raise ValueError(msg)
         if self.model_name is not None and self.model_revision is not None:
-            revision = self.model_revision.strip()
-            if revision.casefold() in {
-                item.casefold() for item in _MUTABLE_MODEL_REVISIONS
-            }:
+            if self.model_revision.strip().casefold() in _MUTABLE_MODEL_REVISIONS:
                 msg = "mutable model revisions such as main are not reproducible"
                 raise ValueError(msg)
         if self.model_name is not None and (

@@ -45,7 +45,7 @@
     "semantic_hash": "8df17ef54effa6ceca3857a1acb53dc6"
   },
   "bochord/models/__init__.py": {
-    "mtime": 1785633534.2077847,
+    "mtime": 1785559219.4120588,
     "ast_hash": "9cf04f40e9bbb81bba8819b59f7764d4",
     "semantic_hash": ""
   },
@@ -55,8 +55,8 @@
     "semantic_hash": "965fb65d9783278048adb6e53affc510"
   },
   "bochord/models/ocr.py": {
-    "mtime": 1785638788.6552272,
-    "ast_hash": "e475234ba6ea6abd2ffac437c193ce86",
+    "mtime": 1785559034.926952,
+    "ast_hash": "6de1906b67e3ce08fae7ed7dbb3eb9e3",
     "semantic_hash": ""
   },
   "bochord/models/preparation.py": {
@@ -200,8 +200,8 @@
     "semantic_hash": "126c8c90aa3a38af615b0227e0bf1bc1"
   },
   "tests/test_ocr_models.py": {
-    "mtime": 1785638788.6781843,
-    "ast_hash": "7e74694e3bb60c183f47b7a02d1032dc",
+    "mtime": 1785559034.9304798,
+    "ast_hash": "139140427679844ff731645c3d4a95f2",
     "semantic_hash": ""
   },
   "tests/test_page_interchange.py": {
@@ -220,7 +220,7 @@
     "semantic_hash": "7efa36cfc7f6c76036452a31705db25e"
   },
   ".github/workflows/update-requirements.yml": {
-    "mtime": 1785634930.6117635,
+    "mtime": 1784991716.2398105,
     "ast_hash": "5d795ec50fab0715c7d375a85c7986f4",
     "semantic_hash": "5d795ec50fab0715c7d375a85c7986f4"
   },
@@ -609,6 +609,36 @@
     "ast_hash": "2a34d3e60ba93028e1f31522c2669d10",
     "semantic_hash": "2a34d3e60ba93028e1f31522c2669d10"
   },
+  "sources/I Spent the Summer Testing 14 OCR Engines _ by Ida Silfverski\u00f6ld _ Jul, 2026 _ Level Up Coding.pdf": {
+    "mtime": 1785347799.591247,
+    "ast_hash": "25dba7846e056c49b265e2616ef8b0a0",
+    "semantic_hash": "25dba7846e056c49b265e2616ef8b0a0"
+  },
+  "sources/Kiparsky-PhonologyOldEnglish-1976.pdf": {
+    "mtime": 1785015039.1334028,
+    "ast_hash": "999b8e325d5132e5b606c77cd67dca0c",
+    "semantic_hash": "999b8e325d5132e5b606c77cd67dca0c"
+  },
+  "sources/Old English, A Guide to (Mitchell & Robinson).pdf": {
+    "mtime": 1785024126.8593338,
+    "ast_hash": "d4a1ac84ab7a742e288073f74fd36e2a",
+    "semantic_hash": "d4a1ac84ab7a742e288073f74fd36e2a"
+  },
+  "sources/Ondej_Tich_40-54-1.pdf": {
+    "mtime": 1785024151.476663,
+    "ast_hash": "e03f319c00fe46bc2e454d4f992b8db9",
+    "semantic_hash": "e03f319c00fe46bc2e454d4f992b8db9"
+  },
+  "sources/WrightAndWright.pdf": {
+    "mtime": 1785024126.9403841,
+    "ast_hash": "f2aedacacbc7cd67576a112bf331c791",
+    "semantic_hash": "f2aedacacbc7cd67576a112bf331c791"
+  },
+  "sources/anglo_saxon_dictionary_concise.pdf": {
+    "mtime": 1785014661.4687254,
+    "ast_hash": "4c633865060b29a1b2d2d42bf6bca8d8",
+    "semantic_hash": "4c633865060b29a1b2d2d42bf6bca8d8"
+  },
   "tests/fixtures/evaluation/cohort-records.json": {
     "mtime": 1785472171.9820282,
     "ast_hash": "fa54a0d3441469e2bffa1b69fbdbbf8a",
@@ -700,23 +730,23 @@
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-07-31-spec-0002-bundle-layout.md": {
-    "mtime": 1785635694.9148605,
-    "ast_hash": "c15de08efbab482a65e3ff409b8a8116",
+    "mtime": 1785560389.2376177,
+    "ast_hash": "c3082c89c214c806d2b065dd27803077",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-07-31-spec-0008-text-normalization.md": {
-    "mtime": 1785635694.5886781,
-    "ast_hash": "a428c03f6d23bac4eaba58bc78f05ee9",
+    "mtime": 1785537973.8785446,
+    "ast_hash": "e8a05877de30fb269826c0a9cca0d1e1",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-07-31-spec-0009-merge-policy.md": {
-    "mtime": 1785635694.7539334,
-    "ast_hash": "885b9287758acf494112995747ce63c4",
+    "mtime": 1785559034.9278064,
+    "ast_hash": "f6ec93f841c2dad1ed8288a17f498849",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-07-31-spec-0013-pass-runner-interface-schema.md": {
-    "mtime": 1785635694.4127955,
-    "ast_hash": "9eae8d435ddad3474f9422a607206e02",
+    "mtime": 1785535561.158971,
+    "ast_hash": "0fe7b38a63ac5391d33acd4c06953e04",
     "semantic_hash": ""
   },
   "bochord/models/text_normalization.py": {
@@ -785,28 +815,23 @@
     "semantic_hash": ""
   },
   "bochord/models/bundle_layout.py": {
-    "mtime": 1785633534.2081404,
+    "mtime": 1785559454.4330559,
     "ast_hash": "f3750211f78cea3da3c0ab3e57981afc",
     "semantic_hash": ""
   },
   "tests/test_bundle_layout.py": {
-    "mtime": 1785633534.2099252,
+    "mtime": 1785561121.6825233,
     "ast_hash": "00bf27319a0be5d7767af3f012355802",
     "semantic_hash": ""
   },
   "bochord/services/bundle_layout.py": {
-    "mtime": 1785633534.2084596,
+    "mtime": 1785561121.6824234,
     "ast_hash": "39abddfdb1c0a2b427568ca2a134affd",
     "semantic_hash": ""
   },
   "tests/fixtures/bundle_layout/minimal_document.json": {
-    "mtime": 1785633534.209594,
+    "mtime": 1785559622.3949387,
     "ast_hash": "d18b9518279e149776f345a193de8efa",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/plans/2026-08-01-text-normalization-policy-v1.md": {
-    "mtime": 1785635720.5557337,
-    "ast_hash": "36079efe4ffc46300a5c35af9e00bbc0",
     "semantic_hash": ""
   }
 }
