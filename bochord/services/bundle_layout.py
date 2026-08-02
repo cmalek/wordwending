@@ -560,14 +560,25 @@ class BundleLayoutService:
         Returns:
             Witness references with bundle-relative ``artifact_path`` values.
 
+        Raises:
+            ValueError: If ``witness_kind`` is not a Spec 0002 witness family.
+
         """
         rewritten: list[WitnessReference] = []
         for witness in page.witnesses:
+            if witness.witness_kind not in _WITNESS_FAMILIES:
+                msg = (
+                    f"unsupported witness_kind {witness.witness_kind!r}; "
+                    f"expected one of {_WITNESS_FAMILIES}"
+                )
+                raise ValueError(msg)
             if witness_files and witness.witness_id in witness_files:
                 source_path = witness_files[witness.witness_id]
-                filename = source_path.name
+                basename = source_path.name
             else:
-                filename = Path(witness.artifact_path).name
+                basename = Path(witness.artifact_path).name
+            # ponytail: witness_id prefix avoids same-basename overwrite
+            filename = f"{witness.witness_id}_{basename}"
             destination_dir = paths.witnesses_dir(
                 page.page_number,
                 witness.witness_kind,

@@ -252,7 +252,12 @@ def test_write_document_bundle_creates_spec_tree(tmp_path) -> None:
     assert (root / "pages" / "page-0001" / "image" / "prepared.jp2").exists()
     assert not (root / "pages" / "page-0001" / "image" / "page.png").exists()
     assert (
-        root / "pages" / "page-0001" / "witnesses" / "text" / "olmocr-response.json"
+        root
+        / "pages"
+        / "page-0001"
+        / "witnesses"
+        / "text"
+        / "wit-1_olmocr-response.json"
     ).exists()
     for family in ("text", "layout", "style", "table"):
         assert (root / "pages" / "page-0001" / "witnesses" / family).is_dir()
@@ -263,7 +268,7 @@ def test_write_document_bundle_creates_spec_tree(tmp_path) -> None:
     assert len(page_manifest.executed_passes) == 1
     assert page_manifest.executed_passes[0].runner_id == "olmocr"
     assert page_manifest.witness_artifacts[0].artifact_path == (
-        "pages/page-0001/witnesses/text/olmocr-response.json"
+        "pages/page-0001/witnesses/text/wit-1_olmocr-response.json"
     )
 
     graph = service.read_page_graph(root, 1)
@@ -272,7 +277,7 @@ def test_write_document_bundle_creates_spec_tree(tmp_path) -> None:
     assert len(graph.notes) == 1
     assert graph.notes[0].text_diplomatic == "footnote text"
     assert graph.witnesses[0].artifact_path == (
-        "pages/page-0001/witnesses/text/olmocr-response.json"
+        "pages/page-0001/witnesses/text/wit-1_olmocr-response.json"
     )
 
     review_events_path = (
@@ -414,13 +419,13 @@ def test_write_document_bundle_rewrites_witness_paths_without_files(tmp_path) ->
 
     page_manifest = service.read_page_manifest(root, 1)
     assert page_manifest.witness_artifacts[0].artifact_path == (
-        "pages/page-0001/witnesses/text/olmocr-response.json"
+        "pages/page-0001/witnesses/text/wit-1_olmocr-response.json"
     )
     assert page_manifest.witness_artifacts[0].artifact_path.startswith("pages/")
 
     graph = service.read_page_graph(root, 1)
     assert graph.witnesses[0].artifact_path == (
-        "pages/page-0001/witnesses/text/olmocr-response.json"
+        "pages/page-0001/witnesses/text/wit-1_olmocr-response.json"
     )
 
 
@@ -729,3 +734,108 @@ def test_write_document_bundle_rejects_missing_source_image_path(tmp_path) -> No
 
     with pytest.raises(ValueError, match="source_image_path"):
         service.write_document_bundle(bundle, root)
+
+
+def test_write_document_bundle_rejects_unknown_witness_kind(tmp_path) -> None:
+    """witness_kind outside Spec 0002 families must not become path segments."""
+    bundle = load_minimal_bundle()
+    page = bundle.pages[0]
+    bad_witness = page.witnesses[0].model_copy(update={"witness_kind": "handwriting"})
+    bundle = bundle.model_copy(
+        update={"pages": [page.model_copy(update={"witnesses": [bad_witness]})]}
+    )
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
+    )
+
+    with pytest.raises(ValueError, match="witness_kind"):
+        service.write_document_bundle(
+            bundle,
+            root,
+            source_files=source_files,
+            source_page_images=source_page_images,
+            page_images=page_images,
+            witness_files=witness_files,
+        )
+
+
+def test_write_document_bundle_rejects_traversing_witness_kind(tmp_path) -> None:
+    """Path-traversal witness_kind values must be rejected before copy."""
+    bundle = load_minimal_bundle()
+    page = bundle.pages[0]
+    bad_witness = page.witnesses[0].model_copy(
+        update={"witness_kind": "../../../../escaped"}
+    )
+    bundle = bundle.model_copy(
+        update={"pages": [page.model_copy(update={"witnesses": [bad_witness]})]}
+    )
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
+    )
+
+    with pytest.raises(ValueError, match="witness_kind"):
+        service.write_document_bundle(
+            bundle,
+            root,
+            source_files=source_files,
+            source_page_images=source_page_images,
+            page_images=page_images,
+            witness_files=witness_files,
+        )
+    assert not (tmp_path / "escaped").exists()
+
+
+def test_write_document_bundle_keeps_same_basename_witnesses(tmp_path) -> None:
+    """Two text witnesses sharing a basename must both survive under unique names."""
+    bundle = load_minimal_bundle()
+    page = bundle.pages[0]
+    wit_a = page.witnesses[0].model_copy(update={"witness_id": "wit-a"})
+    wit_b = page.witnesses[0].model_copy(update={"witness_id": "wit-b"})
+    bundle = bundle.model_copy(
+        update={"pages": [page.model_copy(update={"witnesses": [wit_a, wit_b]})]}
+    )
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, _ = _write_minimal_inputs(tmp_path)
+    inputs = tmp_path / "inputs"
+    witness_a = inputs / "dir-a" / "response.json"
+    witness_b = inputs / "dir-b" / "response.json"
+    witness_a.parent.mkdir(parents=True)
+    witness_b.parent.mkdir(parents=True)
+    witness_a.write_text('{"text": "alpha"}', encoding="utf-8")
+    witness_b.write_text('{"text": "beta"}', encoding="utf-8")
+
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files={"wit-a": witness_a, "wit-b": witness_b},
+    )
+
+    text_dir = root / "pages" / "page-0001" / "witnesses" / "text"
+    path_a = text_dir / "wit-a_response.json"
+    path_b = text_dir / "wit-b_response.json"
+    assert path_a.read_text(encoding="utf-8") == '{"text": "alpha"}'
+    assert path_b.read_text(encoding="utf-8") == '{"text": "beta"}'
+    assert not (text_dir / "response.json").exists()
+
+    page_manifest = service.read_page_manifest(root, 1)
+    artifact_paths = {
+        ref.witness_id: ref.artifact_path for ref in page_manifest.witness_artifacts
+    }
+    assert artifact_paths["wit-a"] == (
+        "pages/page-0001/witnesses/text/wit-a_response.json"
+    )
+    assert artifact_paths["wit-b"] == (
+        "pages/page-0001/witnesses/text/wit-b_response.json"
+    )
+
+    graph = service.read_page_graph(root, 1)
+    graph_paths = {ref.witness_id: ref.artifact_path for ref in graph.witnesses}
+    assert graph_paths == artifact_paths
