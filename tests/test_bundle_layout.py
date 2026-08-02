@@ -792,6 +792,33 @@ def test_write_document_bundle_rejects_traversing_witness_kind(tmp_path) -> None
     assert not (tmp_path / "escaped").exists()
 
 
+def test_write_document_bundle_rejects_unsafe_witness_id(tmp_path) -> None:
+    """Path-traversal witness_id must not become a destination filename segment."""
+    bundle = load_minimal_bundle()
+    page = bundle.pages[0]
+    unsafe_id = "../../../../"
+    bad_witness = page.witnesses[0].model_copy(update={"witness_id": unsafe_id})
+    bundle = bundle.model_copy(
+        update={"pages": [page.model_copy(update={"witnesses": [bad_witness]})]}
+    )
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, _ = _write_minimal_inputs(tmp_path)
+    witness_src = tmp_path / "inputs" / "olmocr-response.json"
+
+    with pytest.raises(ValueError, match="witness_id"):
+        service.write_document_bundle(
+            bundle,
+            root,
+            source_files=source_files,
+            source_page_images=source_page_images,
+            page_images=page_images,
+            witness_files={unsafe_id: witness_src},
+        )
+    assert not (root / "_olmocr-response.json").exists()
+    assert not (tmp_path / "_olmocr-response.json").exists()
+
+
 def test_write_document_bundle_keeps_same_basename_witnesses(tmp_path) -> None:
     """Two text witnesses sharing a basename must both survive under unique names."""
     bundle = load_minimal_bundle()

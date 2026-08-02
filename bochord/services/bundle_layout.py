@@ -604,7 +604,8 @@ class BundleLayoutService:
             Witness references with bundle-relative ``artifact_path`` values.
 
         Raises:
-            ValueError: If ``witness_kind`` is not a Spec 0002 witness family.
+            ValueError: If ``witness_kind`` is not a Spec 0002 witness family,
+                or if ``witness_id`` is not a bare basename.
 
         """
         rewritten: list[WitnessReference] = []
@@ -615,13 +616,14 @@ class BundleLayoutService:
                     f"expected one of {_WITNESS_FAMILIES}"
                 )
                 raise ValueError(msg)
+            safe_id = _safe_basename(witness.witness_id, label="witness_id")
             if witness_files and witness.witness_id in witness_files:
                 source_path = witness_files[witness.witness_id]
                 basename = source_path.name
             else:
                 basename = Path(witness.artifact_path).name
             # Prefix with witness_id so same-basename artifacts cannot collide.
-            filename = f"{witness.witness_id}_{basename}"
+            filename = f"{safe_id}_{basename}"
             destination_dir = paths.witnesses_dir(
                 page.page_number,
                 witness.witness_kind,
