@@ -985,6 +985,37 @@ def test_append_review_events_heals_missing_trailing_newline(tmp_path) -> None:
     assert [event["event_id"] for event in events] == ["partial", "evt-1"]
 
 
+def test_append_review_events_heals_missing_newline_after_multibyte_utf8(
+    tmp_path,
+) -> None:
+    """Heal must not UnicodeDecodeError when prior JSONL ends on multi-byte UTF-8."""
+    bundle = load_minimal_bundle()
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
+    )
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=witness_files,
+    )
+
+    review_path = root / "pages" / "page-0001" / "overlays" / "review_events.jsonl"
+    # Ends on multi-byte UTF-8 'é' (U+00E9 → c3 a9), no trailing newline
+    review_path.write_bytes(b'{"event_id":"partial","note":"caf\xc3\xa9')
+
+    service.append_review_events(root, 1, [_accept_review_event("evt-1")])
+
+    raw = review_path.read_bytes()
+    assert raw.endswith(b"\n")
+    assert b'"event_id":"evt-1"' in raw or b'"event_id": "evt-1"' in raw
+    # Damaged first line may still be unreadable; append itself must succeed.
+
+
 def test_read_review_events_reports_corrupt_line(tmp_path) -> None:
     """Corrupt JSONL lines name the file and line number."""
     bundle = load_minimal_bundle()

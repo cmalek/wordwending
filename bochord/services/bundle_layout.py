@@ -91,6 +91,24 @@ def _atomic_write_json(path: Path, payload: object) -> None:
     _atomic_write_text(path, json.dumps(payload, indent=2))
 
 
+def _needs_trailing_newline(path: Path) -> bool:
+    r"""
+    Return True when ``path`` exists, is non-empty, and does not end with ``\n``.
+
+    Args:
+        path: JSONL file path.
+
+    Returns:
+        Whether a separator newline should be written before appending.
+
+    """
+    if not path.exists() or path.stat().st_size == 0:
+        return False
+    with path.open("rb") as handle:
+        handle.seek(-1, 2)
+        return handle.read(1) != b"\n"
+
+
 def _relative_path(root: Path, path: Path) -> str:
     """
     Return ``path`` relative to ``root`` without a leading ``./``.
@@ -717,12 +735,10 @@ class BundleLayoutService:
             json.dumps(event.model_dump(mode="json"), separators=(",", ":"))
             for event in events
         ]
-        with review_events_path.open("a+", encoding="utf-8") as handle:
-            handle.seek(0, 2)
-            if handle.tell() > 0:
-                handle.seek(handle.tell() - 1)
-                if handle.read(1) != "\n":
-                    handle.write("\n")
+        needs_newline = _needs_trailing_newline(review_events_path)
+        with review_events_path.open("a", encoding="utf-8") as handle:
+            if needs_newline:
+                handle.write("\n")
             handle.write("\n".join(lines) + "\n")
 
     def write_overlay_state(
