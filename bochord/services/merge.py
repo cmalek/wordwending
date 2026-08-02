@@ -241,7 +241,7 @@ class MergeOrchestrator:
 
     def _choose_structure_scaffold(self) -> None:
         """Pick one coordinate-rich structure scaffold and detect layout conflicts."""
-        candidates = _region_bearing_witnesses(self._eligible_witnesses)
+        candidates = _structure_bearing_witnesses(self._eligible_witnesses)
         if not candidates:
             self._abstain_without_scaffold()
             return
@@ -251,14 +251,14 @@ class MergeOrchestrator:
             self._flag_scaffold_conflicts(self._scaffold_witness)
 
     def _abstain_without_scaffold(self) -> None:
-        """Record insufficient evidence when no region scaffold is available."""
+        """Record insufficient evidence when no layout scaffold is available."""
         self._scaffold_witness = None
         self._abstained = True
         self._add_flag(
             MergeFlagType.INSUFFICIENT_EVIDENCE,
             target_object_ids=[],
             message=(
-                "No witness supplies region structure for scaffold selection."
+                "No witness supplies region or line structure for scaffold selection."
             ),
         )
 
@@ -267,10 +267,10 @@ class MergeOrchestrator:
         candidates: list[PassWitnessPage],
     ) -> PassWitnessPage:
         """
-        Select one scaffold witness from region-bearing candidates.
+        Select one scaffold witness from structure-bearing candidates.
 
         Args:
-            candidates: Eligible witnesses that supply region structure.
+            candidates: Eligible witnesses that supply region or line structure.
 
         Returns:
             Chosen scaffold witness.
@@ -285,6 +285,7 @@ class MergeOrchestrator:
         return max(
             candidates,
             key=lambda witness: (
+                bool(witness.regions),
                 _coordinate_rich_line_count(witness),
                 -self._eligible_witnesses.index(witness),
             ),
@@ -348,19 +349,19 @@ class MergeOrchestrator:
         )
         self._regions = _apply_layout_merge_confidence(self._regions, layout_confidence)
         self._lines = _apply_layout_merge_confidence(self._lines, layout_confidence)
-        if self._regions:
-            if self._prepared_page is None:
-                msg = (
-                    "Prepared page variant must be selected before "
-                    "attaching region alternates."
-                )
-                raise RuntimeError(msg)
-            self._regions = _attach_region_alternates(
-                self._regions,
-                self._skipped_witnesses,
-                self._geometry_alternates,
-                prepared_page=self._prepared_page,
+        if self._prepared_page is None:
+            msg = (
+                "Prepared page variant must be selected before "
+                "attaching layout alternates."
             )
+            raise RuntimeError(msg)
+        self._regions, self._lines = _attach_layout_alternates(
+            self._regions,
+            self._lines,
+            self._skipped_witnesses,
+            self._geometry_alternates,
+            prepared_page=self._prepared_page,
+        )
 
     def _merge_text(self) -> None:
         """Resolve diplomatic text for each accepted span from witness candidates."""
@@ -615,6 +616,26 @@ class AbstainingMergeService:
         return orchestrator.run()
 
 
+def _structure_bearing_witnesses(
+    witnesses: list[PassWitnessPage],
+) -> list[PassWitnessPage]:
+    """
+    Return witnesses that supply layout structure for scaffold selection.
+
+    Args:
+        witnesses: Eligible witnesses aligned to the accepted prepared page.
+
+    Returns:
+        Witnesses with at least one region or line node.
+
+    """
+    return [
+        witness
+        for witness in witnesses
+        if witness.regions or witness.lines
+    ]
+
+
 def _region_bearing_witnesses(
     witnesses: list[PassWitnessPage],
 ) -> list[PassWitnessPage]:
@@ -639,7 +660,7 @@ def _first_witness_by_runner_preference(
     Pick the first eligible witness for the earliest preferred runner id.
 
     Args:
-        candidates: Region-bearing witnesses in input order.
+        candidates: Structure-bearing witnesses in input order.
         runner_ids: Preferred runner ids in precedence order.
 
     Returns:
@@ -811,18 +832,47 @@ def _apply_layout_merge_confidence(
     return updated
 
 
-def _attach_region_alternates(
+def _attach_alternates_to_objects(
+    objects: list[_LayoutObject],
+    alternates: list[AlternateCandidate],
+) -> list[_LayoutObject]:
+    """
+    Attach the same alternate payloads to every layout object.
+
+    Args:
+        objects: Accepted region or line nodes.
+        alternates: Alternate payloads to append to each object provenance.
+
+    Returns:
+        Layout objects with alternates attached to each provenance.
+
+    """
+    if not alternates:
+        return objects
+    updated: list[_LayoutObject] = []
+    for obj in objects:
+        provenance = obj.provenance.model_copy(deep=True)
+        provenance.alternate_candidates.extend(alternates)
+        updated.append(
+            obj.model_copy(update={"provenance": provenance}, deep=True)
+        )
+    return updated
+
+
+def _attach_layout_alternates(
     regions: list[RegionRecord],
+    lines: list[LineRecord],
     skipped_witnesses: list[PassWitnessPage],
     geometry_alternates: list[AlternateCandidate],
     *,
     prepared_page: PreparedPage,
-) -> list[RegionRecord]:
+) -> tuple[list[RegionRecord], list[LineRecord]]:
     """
-    Attach skipped and geometry alternates to the first accepted region.
+    Attach skipped and geometry alternates to affected layout objects.
 
     Args:
         regions: Accepted region nodes copied from the scaffold.
+        lines: Accepted line nodes copied from the scaffold.
         skipped_witnesses: Cross-variant witnesses excluded from merge.
         geometry_alternates: Losing geometry payloads from scaffold conflicts.
 
@@ -830,10 +880,10 @@ def _attach_region_alternates(
         prepared_page: Accepted prepared page used to classify skip reasons.
 
     Returns:
-        Region list with alternates attached to the first region.
+        Region and line lists with alternates attached per object.
 
     """
-    alternates = [
+    skipped_alternates = [
         AlternateCandidate(
             witness_id=witness.witness_id,
             runner_id=witness.runner_id,
@@ -845,16 +895,19 @@ def _attach_region_alternates(
         )
         for witness in skipped_witnesses
     ]
-    alternates.extend(geometry_alternates)
-    if not alternates:
-        return regions
+    if skipped_alternates:
+        if regions:
+            regions = _attach_alternates_to_objects(regions, skipped_alternates)
+        elif lines:
+            lines = _attach_alternates_to_objects(lines, skipped_alternates)
 
-    region = regions[0]
-    provenance = region.provenance.model_copy(deep=True)
-    provenance.alternate_candidates.extend(alternates)
-    updated_regions = list(regions)
-    updated_regions[0] = region.model_copy(update={"provenance": provenance}, deep=True)
-    return updated_regions
+    if geometry_alternates:
+        if regions:
+            regions = _attach_alternates_to_objects(regions, geometry_alternates)
+        if lines:
+            lines = _attach_alternates_to_objects(lines, geometry_alternates)
+
+    return regions, lines
 
 
 def _coordinate_rich_line_count(witness: PassWitnessPage) -> int:
@@ -1616,7 +1669,40 @@ def _apply_note_link_resolution(
     diplomatic = note.text_diplomatic
 
     if candidates:
-        diplomatic = candidates[0].note.text_diplomatic
+        normalized_values = {
+            context.text_normalizer.normalize_note_text(candidate.note.text_diplomatic)
+            for candidate in candidates
+        }
+        if len(normalized_values) == 1:
+            diplomatic = candidates[0].note.text_diplomatic
+        else:
+            diplomatic = note.text_diplomatic
+            confidence = _min_merge_confidence(
+                confidence,
+                _MERGE_CONFIDENCE_CONFLICT,
+            )
+            scaffold_candidate = next(
+                (
+                    candidate
+                    for candidate in candidates
+                    if candidate.witness_id == context.scaffold_witness.witness_id
+                ),
+                None,
+            )
+            alternates.extend(
+                _note_text_alternates_from_candidates(
+                    candidates,
+                    context.text_normalizer,
+                    winner=scaffold_candidate,
+                )
+            )
+            add_flag(
+                MergeFlagType.TEXT_DISAGREEMENT,
+                target_object_ids=[note.note_id],
+                message=(
+                    f"Witnesses disagree on normalized text for note {note.note_id}."
+                ),
+            )
         link_state = _NoteLinkMergeState(
             confidence=confidence,
             alternates=alternates,
@@ -1774,6 +1860,50 @@ def _text_alternates_from_candidates(
                     "text_normalized": candidate.normalized_text,
                 },
                 machine_confidence=candidate.span.provenance.machine_confidence,
+            )
+        )
+    return alternates
+
+
+def _note_text_alternates_from_candidates(
+    candidates: list[_NoteCandidate],
+    text_normalizer: TextNormalizer,
+    *,
+    winner: _NoteCandidate | None = None,
+) -> list[AlternateCandidate]:
+    """
+    Serialize non-winning note text as alternate candidates.
+
+    Args:
+        candidates: Matched witness note candidates.
+        text_normalizer: Normalizer used when emitting normalized text.
+
+    Keyword Args:
+        winner: Accepted candidate to exclude from alternates.
+
+    Returns:
+        Alternate text payloads for losing candidates.
+
+    """
+    alternates: list[AlternateCandidate] = []
+    for candidate in candidates:
+        if winner is not None and (
+            candidate.witness_id == winner.witness_id
+            and candidate.note.note_id == winner.note.note_id
+        ):
+            continue
+        alternates.append(
+            AlternateCandidate(
+                witness_id=candidate.witness_id,
+                runner_id=candidate.runner_id,
+                value_kind="text",
+                value={
+                    "text_diplomatic": candidate.note.text_diplomatic,
+                    "text_normalized": text_normalizer.normalize_note_text(
+                        candidate.note.text_diplomatic
+                    ),
+                },
+                machine_confidence=candidate.note.provenance.machine_confidence,
             )
         )
     return alternates

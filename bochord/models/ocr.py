@@ -1079,7 +1079,7 @@ class BundlePage(SchemaModel):
                 msg = f"region {region.region_id} references an unknown note"
                 raise ValueError(msg)
         for line in self.lines:
-            if line.region_id not in region_id_set:
+            if region_id_set and line.region_id not in region_id_set:
                 msg = f"line {line.line_id} references an unknown region"
                 raise ValueError(msg)
             if not set(line.span_ids).issubset(span_id_set):

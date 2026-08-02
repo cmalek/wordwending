@@ -547,15 +547,16 @@ def test_cross_variant_witnesses_are_excluded_from_merge() -> None:
     result = AbstainingMergeService().merge_page(page_input, policy)
 
     assert result.page.regions[0].region_id == "region-aligned"
-    skipped = [
-        candidate
-        for candidate in result.page.regions[0].provenance.alternate_candidates
-        if candidate.value_kind == "skipped_witness"
-    ]
-    assert len(skipped) == 1
-    assert skipped[0].witness_id == "wit-cross"
-    assert skipped[0].runner_id == "runner-cross"
-    assert skipped[0].value["prepared_page_id"] == "prepared-page-2"
+    for region in result.page.regions:
+        skipped = [
+            candidate
+            for candidate in region.provenance.alternate_candidates
+            if candidate.value_kind == "skipped_witness"
+        ]
+        assert len(skipped) == 1
+        assert skipped[0].witness_id == "wit-cross"
+        assert skipped[0].runner_id == "runner-cross"
+        assert skipped[0].value["prepared_page_id"] == "prepared-page-2"
 
 
 def test_structure_scaffold_conflict_flags_and_abstains() -> None:
@@ -577,15 +578,24 @@ def test_structure_scaffold_conflict_flags_and_abstains() -> None:
     ]
     assert len(conflict_flags) == 1
     assert result.page.regions[0].region_id == "region-scaffold-1"
-    geometry_alternates = [
-        candidate
-        for candidate in result.page.regions[0].provenance.alternate_candidates
-        if candidate.value_kind == "geometry"
-    ]
-    assert len(geometry_alternates) >= 1
-    assert any(
-        candidate.witness_id == "wit-conflict" for candidate in geometry_alternates
-    )
+    for region in result.page.regions:
+        geometry_alternates = [
+            candidate
+            for candidate in region.provenance.alternate_candidates
+            if candidate.value_kind == "geometry"
+        ]
+        assert len(geometry_alternates) >= 1
+        assert any(
+            candidate.witness_id == "wit-conflict" for candidate in geometry_alternates
+        )
+    for line in result.page.lines:
+        if line.provenance.merge_confidence == 0.3:
+            geometry_alternates = [
+                candidate
+                for candidate in line.provenance.alternate_candidates
+                if candidate.value_kind == "geometry"
+            ]
+            assert len(geometry_alternates) >= 1
 
 
 def test_aligned_layout_fixture_produces_valid_bundle_page() -> None:
@@ -667,8 +677,8 @@ def test_lines_only_witness_not_chosen_when_regions_available() -> None:
     assert result.abstained is False
 
 
-def test_lines_only_witnesses_abstain_insufficient_evidence() -> None:
-    """When no witness has regions, merge abstains without crashing."""
+def test_lines_only_witnesses_select_coordinate_rich_scaffold() -> None:
+    """Line-only witnesses pick the coordinate-richest scaffold and accept lines."""
     lines_only_a = _witness_page(
         witness_id="wit-a",
         runner_id="runner-a",
@@ -692,10 +702,21 @@ def test_lines_only_witnesses_abstain_insufficient_evidence() -> None:
                 region_id="orphan-b",
                 line_order=1,
                 span_ids=["span-b"],
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
                 baseline=[(0.0, 10.0), (80.0, 10.0)],
-            )
+            ),
+            _line(
+                "line-b-extra",
+                region_id="orphan-b",
+                line_order=2,
+                span_ids=["span-b-extra"],
+                baseline=[(0.0, 20.0), (80.0, 20.0)],
+            ),
         ],
-        spans=[_span("span-b", line_id="line-b", text="beta")],
+        spans=[
+            _span("span-b", line_id="line-b", text="beta"),
+            _span("span-b-extra", line_id="line-b-extra", text="extra"),
+        ],
     )
     page_input = MergePageInput(
         page_id="page-0001",
@@ -707,10 +728,11 @@ def test_lines_only_witnesses_abstain_insufficient_evidence() -> None:
 
     result = AbstainingMergeService().merge_page(page_input, policy)
 
-    assert result.abstained is True
     assert result.page.regions == []
-    assert result.page.lines == []
-    assert any(
+    assert len(result.page.lines) == 2
+    assert {line.line_id for line in result.page.lines} == {"line-b", "line-b-extra"}
+    assert {span.span_id for span in result.page.spans} == {"span-b", "span-b-extra"}
+    assert not any(
         flag.flag_type == MergeFlagType.INSUFFICIENT_EVIDENCE for flag in result.flags
     )
 
@@ -2298,6 +2320,171 @@ def test_unambiguous_note_link_accepted() -> None:
     assert not any(
         flag.flag_type == MergeFlagType.NOTE_LINK_AMBIGUOUS for flag in result.flags
     )
+
+
+def test_note_text_disagreement_flags_and_lowers_confidence() -> None:
+    """IoU-matched notes with agreeing links but differing text emit TEXT_DISAGREEMENT."""
+    note_box = _bounding_box(x0=0, y0=20, x1=80, y1=35)
+    alt_note_box = _bounding_box(x0=1, y0=21, x1=79, y1=34)
+    scaffold = _witness_page(
+        witness_id="wit-scaffold",
+        runner_id="runner-scaffold",
+        regions=[
+            _region(
+                "region-scaffold",
+                reading_order_index=1,
+                line_ids=["line-scaffold"],
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=40),
+            )
+        ],
+        lines=[
+            _line(
+                "line-scaffold",
+                region_id="region-scaffold",
+                line_order=1,
+                span_ids=["span-marker-a"],
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
+            )
+        ],
+        spans=[
+            _span(
+                "span-marker-a",
+                line_id="line-scaffold",
+                text="1",
+                bounding_box=_bounding_box(x0=0, y0=0, x1=10, y1=10),
+                roles=[TextRole.FOOTNOTE_MARKER],
+            )
+        ],
+        notes=[
+            _note(
+                "note-scaffold",
+                text="Primary footnote body.",
+                linked_marker_span_ids=["span-marker-a"],
+                bounding_box=note_box,
+                region_id="region-scaffold",
+            )
+        ],
+    )
+    alternate = _witness_page(
+        witness_id="wit-alt",
+        runner_id="runner-alt",
+        regions=[
+            _region(
+                "region-alt",
+                reading_order_index=1,
+                line_ids=["line-alt"],
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=39),
+            )
+        ],
+        lines=[
+            _line(
+                "line-alt",
+                region_id="region-alt",
+                line_order=1,
+                span_ids=["span-marker-b"],
+                bounding_box=_bounding_box(x0=1, y0=1, x1=79, y1=9),
+            )
+        ],
+        spans=[
+            _span(
+                "span-marker-b",
+                line_id="line-alt",
+                text="1",
+                bounding_box=_bounding_box(x0=1, y0=1, x1=9, y1=9),
+                roles=[TextRole.FOOTNOTE_MARKER],
+            )
+        ],
+        notes=[
+            _note(
+                "note-alt",
+                text="Alternate footnote body.",
+                linked_marker_span_ids=["span-marker-b"],
+                bounding_box=alt_note_box,
+                region_id="region-alt",
+            )
+        ],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[scaffold, alternate],
+    )
+    policy = MergePolicy(
+        policy_id="merge-v1",
+        version="1.0.0",
+        structure_scaffold_runner_ids=["runner-scaffold"],
+    )
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    note = result.page.notes[0]
+    assert note.text_diplomatic == "Primary footnote body."
+    assert note.linked_marker_span_ids == ["span-marker-a"]
+    assert note.provenance.merge_confidence == 0.3
+    text_alternates = [
+        candidate
+        for candidate in note.provenance.alternate_candidates
+        if candidate.value_kind == "text"
+    ]
+    assert len(text_alternates) == 1
+    assert text_alternates[0].witness_id == "wit-alt"
+    assert text_alternates[0].value["text_diplomatic"] == "Alternate footnote body."
+    assert any(
+        flag.flag_type == MergeFlagType.TEXT_DISAGREEMENT for flag in result.flags
+    )
+
+
+def test_line_only_scaffold_skipped_witness_on_all_lines() -> None:
+    """Line-only scaffolds attach skipped-witness alternates to every accepted line."""
+    aligned = _witness_page(
+        witness_id="wit-aligned",
+        runner_id="runner-aligned",
+        lines=[
+            _line(
+                "line-aligned",
+                region_id="orphan",
+                line_order=1,
+                span_ids=["span-aligned"],
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
+            )
+        ],
+        spans=[_span("span-aligned", line_id="line-aligned", text="aligned")],
+    )
+    cross_variant = _witness_page(
+        witness_id="wit-cross",
+        runner_id="runner-cross",
+        prepared_page_id="prepared-page-2",
+        lines=[
+            _line(
+                "line-cross",
+                region_id="orphan-cross",
+                line_order=1,
+                span_ids=["span-cross"],
+                bounding_box=_bounding_box(x0=0, y0=0, x1=80, y1=10),
+            )
+        ],
+        spans=[_span("span-cross", line_id="line-cross", text="cross")],
+    )
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[aligned, cross_variant],
+    )
+    policy = MergePolicy(policy_id="merge-v1", version="1.0.0")
+
+    result = AbstainingMergeService().merge_page(page_input, policy)
+
+    assert result.page.regions == []
+    assert len(result.page.lines) == 1
+    skipped = [
+        candidate
+        for candidate in result.page.lines[0].provenance.alternate_candidates
+        if candidate.value_kind == "skipped_witness"
+    ]
+    assert len(skipped) == 1
+    assert skipped[0].witness_id == "wit-cross"
 
 
 def test_text_disagreement_fixture_smoke() -> None:
