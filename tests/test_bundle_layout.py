@@ -20,6 +20,7 @@ from bochord.models import (
     DocumentBundleManifest,
     OverlayState,
     PageBundleManifest,
+    PageOverlay,
     ReviewDimension,
     ReviewScope,
     RunnerReference,
@@ -36,6 +37,9 @@ from bochord.services.bundle_layout import (
 
 FIXTURE_PATH = (
     Path(__file__).parent / "fixtures" / "bundle_layout" / "minimal_document.json"
+)
+OVERLAY_V1_FIXTURE = (
+    Path(__file__).parent / "fixtures" / "review_overlay" / "page-overlay-v1.json"
 )
 
 
@@ -520,6 +524,55 @@ def test_write_document_bundle_after_append_does_not_rewrite_jsonl(tmp_path) -> 
 
     assert review_path.read_bytes() == bytes_after_append
     assert service.read_review_events(root, 1)[0]["event_id"] == "evt-append"
+
+
+def test_overlay_v1_bundle_rerun_preserves_review_events_and_state(
+    tmp_path,
+) -> None:
+    """Rewriting bundle after overlay_v1 write keeps JSONL and state intact."""
+    overlay = PageOverlay.model_validate_json(
+        OVERLAY_V1_FIXTURE.read_text(encoding="utf-8")
+    )
+    bundle = load_minimal_bundle()
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
+    )
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=witness_files,
+    )
+
+    service.append_review_events(root, 1, overlay.review_events)
+    service.write_overlay_state(root, 1, overlay.current_state)
+    review_path = root / "pages" / "page-0001" / "overlays" / "review_events.jsonl"
+    state_path = root / "pages" / "page-0001" / "overlays" / "current_state.json"
+    review_bytes = review_path.read_bytes()
+    state_bytes = state_path.read_bytes()
+
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=witness_files,
+    )
+
+    page_manifest = service.read_page_manifest(root, 1)
+    assert review_path.read_bytes() == review_bytes
+    assert state_path.read_bytes() == state_bytes
+    assert page_manifest.overlay_state_path == (
+        "pages/page-0001/overlays/current_state.json"
+    )
+    assert page_manifest.review_events_path == (
+        "pages/page-0001/overlays/review_events.jsonl"
+    )
 
 
 def test_write_overlay_state_updates_page_manifest_pointer(tmp_path) -> None:

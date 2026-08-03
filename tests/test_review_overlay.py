@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -39,6 +41,10 @@ from bochord.models import (
     UnlinkNoteReviewEvent,
 )
 from bochord.services.review_overlay import ReviewOverlayService
+
+OVERLAY_V1_FIXTURE = (
+    Path(__file__).parent / "fixtures" / "review_overlay" / "page-overlay-v1.json"
+)
 
 
 def _ts() -> datetime:
@@ -327,6 +333,16 @@ def _replay_overlay() -> PageOverlay:
         review_events=events,
         current_state=[],
     )
+
+
+def test_overlay_v1_fixture_replay_matches_current_state() -> None:
+    """Replay of frozen fixture events must equal fixture current_state."""
+    raw = json.loads(OVERLAY_V1_FIXTURE.read_text(encoding="utf-8"))
+    overlay = PageOverlay.model_validate(raw)
+    materialized = ReviewOverlayService().materialize(overlay)
+    assert [state.model_dump(mode="json") for state in materialized] == raw[
+        "current_state"
+    ]
 
 
 def test_replay_materializes_only_append_only_event_effects() -> None:

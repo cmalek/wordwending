@@ -1,0 +1,522 @@
+{
+  "schema_version": "1.0.0",
+  "overlay_id": "overlay-v1",
+  "page_id": "page-0001",
+  "source_run_id": "run-1",
+  "base_graph_revision": "graph-1",
+  "prepared_image_checksum": "sha256:prepared",
+  "predecessor_overlay_id": null,
+  "review_tasks": [
+    {
+      "task_id": "task-text",
+      "task_type": "text",
+      "dimensions": [
+        "text"
+      ],
+      "target_scope": "span",
+      "target_object_ids": [
+        "span-1"
+      ],
+      "related_object_ids": [],
+      "question": "Inspect the target.",
+      "required_evidence": [
+        "prepared-page",
+        "witness"
+      ],
+      "allowed_actions": [
+        "accept",
+        "correct_text",
+        "mark_illegible",
+        "flag",
+        "resolve_flag"
+      ],
+      "completion_criteria": [
+        "evidence inspected"
+      ],
+      "guideline_id": "review",
+      "guideline_version": "1.0.0",
+      "calibration_example_ids": [],
+      "base_run_id": "run-1",
+      "base_graph_revision": "graph-1",
+      "prepared_image_checksum": "sha256:prepared",
+      "supports_abstention": true,
+      "status": "pending",
+      "certified_coverage_ids": []
+    },
+    {
+      "task_id": "task-style",
+      "task_type": "typography",
+      "dimensions": [
+        "typography"
+      ],
+      "target_scope": "span",
+      "target_object_ids": [
+        "span-1"
+      ],
+      "related_object_ids": [],
+      "question": "Inspect the target.",
+      "required_evidence": [
+        "prepared-page",
+        "witness"
+      ],
+      "allowed_actions": [
+        "correct_style"
+      ],
+      "completion_criteria": [
+        "evidence inspected"
+      ],
+      "guideline_id": "review",
+      "guideline_version": "1.0.0",
+      "calibration_example_ids": [],
+      "base_run_id": "run-1",
+      "base_graph_revision": "graph-1",
+      "prepared_image_checksum": "sha256:prepared",
+      "supports_abstention": true,
+      "status": "pending",
+      "certified_coverage_ids": []
+    },
+    {
+      "task_id": "task-geo",
+      "task_type": "layout",
+      "dimensions": [
+        "structure"
+      ],
+      "target_scope": "span",
+      "target_object_ids": [
+        "span-1"
+      ],
+      "related_object_ids": [],
+      "question": "Inspect the target.",
+      "required_evidence": [
+        "prepared-page",
+        "witness"
+      ],
+      "allowed_actions": [
+        "correct_geometry"
+      ],
+      "completion_criteria": [
+        "evidence inspected"
+      ],
+      "guideline_id": "review",
+      "guideline_version": "1.0.0",
+      "calibration_example_ids": [],
+      "base_run_id": "run-1",
+      "base_graph_revision": "graph-1",
+      "prepared_image_checksum": "sha256:prepared",
+      "supports_abstention": true,
+      "status": "pending",
+      "certified_coverage_ids": []
+    },
+    {
+      "task_id": "task-region",
+      "task_type": "layout",
+      "dimensions": [
+        "structure"
+      ],
+      "target_scope": "region",
+      "target_object_ids": [
+        "region-1"
+      ],
+      "related_object_ids": [],
+      "question": "Inspect the target.",
+      "required_evidence": [
+        "prepared-page",
+        "witness"
+      ],
+      "allowed_actions": [
+        "reclassify_region"
+      ],
+      "completion_criteria": [
+        "evidence inspected"
+      ],
+      "guideline_id": "review",
+      "guideline_version": "1.0.0",
+      "calibration_example_ids": [],
+      "base_run_id": "run-1",
+      "base_graph_revision": "graph-1",
+      "prepared_image_checksum": "sha256:prepared",
+      "supports_abstention": true,
+      "status": "pending",
+      "certified_coverage_ids": []
+    },
+    {
+      "task_id": "task-note",
+      "task_type": "note-linkage",
+      "dimensions": [
+        "note-linkage"
+      ],
+      "target_scope": "note",
+      "target_object_ids": [
+        "note-1"
+      ],
+      "related_object_ids": [],
+      "question": "Inspect the target.",
+      "required_evidence": [
+        "prepared-page",
+        "witness"
+      ],
+      "allowed_actions": [
+        "link_note",
+        "unlink_note"
+      ],
+      "completion_criteria": [
+        "evidence inspected"
+      ],
+      "guideline_id": "review",
+      "guideline_version": "1.0.0",
+      "calibration_example_ids": [],
+      "base_run_id": "run-1",
+      "base_graph_revision": "graph-1",
+      "prepared_image_checksum": "sha256:prepared",
+      "supports_abstention": true,
+      "status": "pending",
+      "certified_coverage_ids": []
+    }
+  ],
+  "review_events": [
+    {
+      "event_id": "evt-accept",
+      "task_id": "task-text",
+      "target_object_id": "span-1",
+      "target_scope": "span",
+      "review_dimensions": [
+        "text"
+      ],
+      "base_run_id": "run-1",
+      "base_graph_revision": "graph-1",
+      "guideline_version": "1.0.0",
+      "prior_trust_state": "machine",
+      "new_trust_state": "reviewed",
+      "operator_id": "editor-1",
+      "timestamp_utc": "2026-08-03T00:00:00Z",
+      "operator_note": null,
+      "action": "accept"
+    },
+    {
+      "event_id": "evt-text",
+      "task_id": "task-text",
+      "target_object_id": "span-1",
+      "target_scope": "span",
+      "review_dimensions": [
+        "text"
+      ],
+      "base_run_id": "run-1",
+      "base_graph_revision": "graph-1",
+      "guideline_version": "1.0.0",
+      "prior_trust_state": "reviewed",
+      "new_trust_state": "corrected",
+      "operator_id": "editor-1",
+      "timestamp_utc": "2026-08-03T00:00:00Z",
+      "operator_note": null,
+      "action": "correct_text",
+      "text_diplomatic": "emended",
+      "correction_reason": null
+    },
+    {
+      "event_id": "evt-style",
+      "task_id": "task-style",
+      "target_object_id": "span-1",
+      "target_scope": "span",
+      "review_dimensions": [
+        "typography"
+      ],
+      "base_run_id": "run-1",
+      "base_graph_revision": "graph-1",
+      "guideline_version": "1.0.0",
+      "prior_trust_state": "corrected",
+      "new_trust_state": "corrected",
+      "operator_id": "editor-1",
+      "timestamp_utc": "2026-08-03T00:00:00Z",
+      "operator_note": null,
+      "action": "correct_style",
+      "prior_typography": null,
+      "new_typography": {
+        "font_families": [],
+        "font_size_points": null,
+        "font_size_confidence": null,
+        "weight": "bold",
+        "slant": "italic",
+        "baseline_shift": "superscript",
+        "small_caps": null,
+        "letter_spaced": null
+      },
+      "new_roles": [
+        "footnote-marker"
+      ],
+      "correction_reason": null
+    },
+    {
+      "event_id": "evt-geo",
+      "task_id": "task-geo",
+      "target_object_id": "span-1",
+      "target_scope": "span",
+      "review_dimensions": [
+        "structure"
+      ],
+      "base_run_id": "run-1",
+      "base_graph_revision": "graph-1",
+      "guideline_version": "1.0.0",
+      "prior_trust_state": "corrected",
+      "new_trust_state": "corrected",
+      "operator_id": "editor-1",
+      "timestamp_utc": "2026-08-03T00:00:00Z",
+      "operator_note": null,
+      "action": "correct_geometry",
+      "bounding_box": null,
+      "polygon": {
+        "coordinate_space_id": "prepared-page-1",
+        "points": [
+          {
+            "x": 0.0,
+            "y": 0.0
+          },
+          {
+            "x": 12.0,
+            "y": 0.0
+          },
+          {
+            "x": 12.0,
+            "y": 8.0
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt-reclass",
+      "task_id": "task-region",
+      "target_object_id": "region-1",
+      "target_scope": "region",
+      "review_dimensions": [
+        "structure"
+      ],
+      "base_run_id": "run-1",
+      "base_graph_revision": "graph-1",
+      "guideline_version": "1.0.0",
+      "prior_trust_state": "machine",
+      "new_trust_state": "corrected",
+      "operator_id": "editor-1",
+      "timestamp_utc": "2026-08-03T00:00:00Z",
+      "operator_note": null,
+      "action": "reclassify_region",
+      "prior_region_kind": null,
+      "new_region_kind": "footnote"
+    },
+    {
+      "event_id": "evt-link",
+      "task_id": "task-note",
+      "target_object_id": "note-1",
+      "target_scope": "note",
+      "review_dimensions": [
+        "note-linkage"
+      ],
+      "base_run_id": "run-1",
+      "base_graph_revision": "graph-1",
+      "guideline_version": "1.0.0",
+      "prior_trust_state": "machine",
+      "new_trust_state": "corrected",
+      "operator_id": "editor-1",
+      "timestamp_utc": "2026-08-03T00:00:00Z",
+      "operator_note": null,
+      "action": "link_note",
+      "marker_span_ids": [
+        "marker-1",
+        "marker-2"
+      ],
+      "note_id": "note-1"
+    },
+    {
+      "event_id": "evt-unlink",
+      "task_id": "task-note",
+      "target_object_id": "note-1",
+      "target_scope": "note",
+      "review_dimensions": [
+        "note-linkage"
+      ],
+      "base_run_id": "run-1",
+      "base_graph_revision": "graph-1",
+      "guideline_version": "1.0.0",
+      "prior_trust_state": "corrected",
+      "new_trust_state": "corrected",
+      "operator_id": "editor-1",
+      "timestamp_utc": "2026-08-03T00:00:00Z",
+      "operator_note": null,
+      "action": "unlink_note",
+      "marker_span_ids": [
+        "marker-1"
+      ],
+      "note_id": "note-1"
+    },
+    {
+      "event_id": "evt-illegible",
+      "task_id": "task-text",
+      "target_object_id": "span-1",
+      "target_scope": "span",
+      "review_dimensions": [
+        "text"
+      ],
+      "base_run_id": "run-1",
+      "base_graph_revision": "graph-1",
+      "guideline_version": "1.0.0",
+      "prior_trust_state": "corrected",
+      "new_trust_state": "corrected",
+      "operator_id": "editor-1",
+      "timestamp_utc": "2026-08-03T00:00:00Z",
+      "operator_note": null,
+      "action": "mark_illegible",
+      "reason": "ink lost at gutter"
+    },
+    {
+      "event_id": "evt-flag",
+      "task_id": "task-text",
+      "target_object_id": "span-1",
+      "target_scope": "span",
+      "review_dimensions": [
+        "text"
+      ],
+      "base_run_id": "run-1",
+      "base_graph_revision": "graph-1",
+      "guideline_version": "1.0.0",
+      "prior_trust_state": "corrected",
+      "new_trust_state": "corrected",
+      "operator_id": "editor-1",
+      "timestamp_utc": "2026-08-03T00:00:00Z",
+      "operator_note": null,
+      "action": "flag",
+      "flag_id": "flag-1",
+      "flag_type": "uncertain-glyph",
+      "severity": "warning",
+      "message": "possible long-s confusion"
+    },
+    {
+      "event_id": "evt-resolve",
+      "task_id": "task-text",
+      "target_object_id": "span-1",
+      "target_scope": "span",
+      "review_dimensions": [
+        "text"
+      ],
+      "base_run_id": "run-1",
+      "base_graph_revision": "graph-1",
+      "guideline_version": "1.0.0",
+      "prior_trust_state": "corrected",
+      "new_trust_state": "corrected",
+      "operator_id": "editor-1",
+      "timestamp_utc": "2026-08-03T00:00:00Z",
+      "operator_note": null,
+      "action": "resolve_flag",
+      "flag_id": "flag-1",
+      "resolution": "confirmed long-s"
+    }
+  ],
+  "current_state": [
+    {
+      "object_id": "span-1",
+      "scope": "span",
+      "trust_state": "corrected",
+      "reviewed_dimensions": [
+        "text",
+        "typography",
+        "structure"
+      ],
+      "corrected_dimensions": [
+        "text",
+        "typography",
+        "structure"
+      ],
+      "active_flag_ids": [],
+      "applied_event_ids": [
+        "evt-accept",
+        "evt-text",
+        "evt-style",
+        "evt-geo",
+        "evt-illegible",
+        "evt-flag",
+        "evt-resolve"
+      ],
+      "text_diplomatic_override": "emended",
+      "typography_override": {
+        "font_families": [],
+        "font_size_points": null,
+        "font_size_confidence": null,
+        "weight": "bold",
+        "slant": "italic",
+        "baseline_shift": "superscript",
+        "small_caps": null,
+        "letter_spaced": null
+      },
+      "role_overrides": [
+        "footnote-marker"
+      ],
+      "bounding_box_override": null,
+      "polygon_override": {
+        "coordinate_space_id": "prepared-page-1",
+        "points": [
+          {
+            "x": 0.0,
+            "y": 0.0
+          },
+          {
+            "x": 12.0,
+            "y": 0.0
+          },
+          {
+            "x": 12.0,
+            "y": 8.0
+          }
+        ]
+      },
+      "region_kind_override": null,
+      "illegible": true,
+      "linked_marker_span_ids": []
+    },
+    {
+      "object_id": "region-1",
+      "scope": "region",
+      "trust_state": "corrected",
+      "reviewed_dimensions": [
+        "structure"
+      ],
+      "corrected_dimensions": [
+        "structure"
+      ],
+      "active_flag_ids": [],
+      "applied_event_ids": [
+        "evt-reclass"
+      ],
+      "text_diplomatic_override": null,
+      "typography_override": null,
+      "role_overrides": [],
+      "bounding_box_override": null,
+      "polygon_override": null,
+      "region_kind_override": "footnote",
+      "illegible": false,
+      "linked_marker_span_ids": []
+    },
+    {
+      "object_id": "note-1",
+      "scope": "note",
+      "trust_state": "corrected",
+      "reviewed_dimensions": [
+        "note-linkage"
+      ],
+      "corrected_dimensions": [
+        "note-linkage"
+      ],
+      "active_flag_ids": [],
+      "applied_event_ids": [
+        "evt-link",
+        "evt-unlink"
+      ],
+      "text_diplomatic_override": null,
+      "typography_override": null,
+      "role_overrides": [],
+      "bounding_box_override": null,
+      "polygon_override": null,
+      "region_kind_override": null,
+      "illegible": false,
+      "linked_marker_span_ids": [
+        "marker-2"
+      ]
+    }
+  ]
+}

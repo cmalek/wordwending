@@ -96,6 +96,9 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 FIXTURES = Path(__file__).parent / "fixtures" / "runner"
+OVERLAY_V1_FIXTURE = (
+    Path(__file__).parent / "fixtures" / "review_overlay" / "page-overlay-v1.json"
+)
 
 
 def _provenance() -> ObjectProvenance:
@@ -283,6 +286,13 @@ def _minimal_page_overlay(**overrides: object) -> PageOverlay:
     }
     defaults.update(overrides)
     return PageOverlay(**defaults)  # type: ignore[arg-type]
+
+
+def test_page_overlay_v1_fixture_round_trips_json() -> None:
+    """Frozen page-overlay-v1.json must validate and dump identically."""
+    raw = json.loads(OVERLAY_V1_FIXTURE.read_text(encoding="utf-8"))
+    overlay = PageOverlay.model_validate(raw)
+    assert overlay.model_dump(mode="json") == raw
 
 
 class TestOcrModels:
