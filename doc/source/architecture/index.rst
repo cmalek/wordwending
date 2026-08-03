@@ -23,6 +23,7 @@ Read in this order:
    adr_0007_v1_engine_strategy
    adr_0008_stable_ids_and_review_history
    adr_0009_ocrd_page_escriptorium
+   ../adr/adr_0010_structured_output_boundary
 
 .. toctree::
    :maxdepth: 1
