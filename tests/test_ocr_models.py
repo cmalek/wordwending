@@ -23,6 +23,8 @@ from bochord.models import (
     BundlePage,
     ChunkType,
     CoordinateSpace,
+    DecidePreparationReviewEvent,
+    DecideSourceTriageReviewEvent,
     DocumentBundle,
     DocumentEvaluationSummary,
     EvaluationCohortKey,
@@ -50,6 +52,7 @@ from bochord.models import (
     PageEvaluationSummary,
     PageOverlay,
     PreparationAssessment,
+    PreparationDecision,
     PreparationMode,
     PreparationRecipe,
     PreparedArtifactRef,
@@ -74,6 +77,7 @@ from bochord.models import (
     RunnerReference,
     RunnerThroughputSummary,
     SourceDescriptor,
+    SourceTriageDecision,
     SourceType,
     SpanRecord,
     StyleEvaluationSummary,
@@ -229,6 +233,104 @@ class TestOcrModels:
 
         assert isinstance(parsed, LinkNoteReviewEvent)
         assert parsed.review_dimensions == [ReviewDimension.NOTE_LINKAGE]
+
+    def test_review_event_union_parses_source_triage_decision(self):
+        """Source-triage events carry an explicit disposition and optional reason."""
+        payload = {
+            **_review_base(),
+            "target_object_id": "page-1",
+            "target_scope": "page",
+            "review_dimensions": ["source-quality"],
+            "action": "decide_source_triage",
+            "decision": "usable-with-warning",
+            "reason": "gutter shadow at left margin",
+        }
+
+        parsed = TypeAdapter(ReviewEvent).validate_python(payload)
+
+        assert isinstance(parsed, DecideSourceTriageReviewEvent)
+        assert parsed.decision is SourceTriageDecision.USABLE_WITH_WARNING
+        assert parsed.reason == "gutter shadow at left margin"
+
+    def test_review_event_union_parses_preparation_decision(self):
+        """Preparation events carry full-page or subdivide plus optional reason."""
+        payload = {
+            **_review_base(),
+            "target_object_id": "page-1",
+            "target_scope": "page",
+            "review_dimensions": ["preparation"],
+            "action": "decide_preparation",
+            "decision": "subdivide",
+            "reason": None,
+        }
+
+        parsed = TypeAdapter(ReviewEvent).validate_python(payload)
+
+        assert isinstance(parsed, DecidePreparationReviewEvent)
+        assert parsed.decision is PreparationDecision.SUBDIVIDE
+        assert parsed.reason is None
+
+    def test_page_overlay_rejects_source_triage_with_wrong_dimension(self):
+        """Source-triage tasks must certify only source-quality."""
+        with pytest.raises(ValidationError, match="source-quality"):
+            PageOverlay(
+                schema_version="1.0.0",
+                overlay_id="overlay-1",
+                page_id="page-1",
+                source_run_id="run-1",
+                base_graph_revision="graph-1",
+                prepared_image_checksum="sha256:prepared",
+                review_tasks=[
+                    ReviewTask(
+                        task_id="task-1",
+                        task_type=ReviewTaskType.SOURCE_TRIAGE,
+                        dimensions=[ReviewDimension.TEXT],
+                        target_scope=ReviewScope.PAGE,
+                        target_object_ids=["page-1"],
+                        question="Is the source usable?",
+                        required_evidence=["prepared-page"],
+                        allowed_actions=["accept", "decide_source_triage", "flag"],
+                        completion_criteria=["whole-page inspected"],
+                        guideline_id="source-review",
+                        guideline_version="1.0.0",
+                        base_run_id="run-1",
+                        base_graph_revision="graph-1",
+                        prepared_image_checksum="sha256:prepared",
+                    )
+                ],
+                review_events=[],
+            )
+
+    def test_page_overlay_rejects_preparation_with_wrong_dimension(self):
+        """Preparation tasks must certify only preparation."""
+        with pytest.raises(ValidationError, match="preparation"):
+            PageOverlay(
+                schema_version="1.0.0",
+                overlay_id="overlay-1",
+                page_id="page-1",
+                source_run_id="run-1",
+                base_graph_revision="graph-1",
+                prepared_image_checksum="sha256:prepared",
+                review_tasks=[
+                    ReviewTask(
+                        task_id="task-1",
+                        task_type=ReviewTaskType.PREPARATION,
+                        dimensions=[ReviewDimension.STRUCTURE],
+                        target_scope=ReviewScope.PAGE,
+                        target_object_ids=["page-1"],
+                        question="Full-page or subdivide?",
+                        required_evidence=["prepared-page"],
+                        allowed_actions=["accept", "decide_preparation", "flag"],
+                        completion_criteria=["transform chain inspected"],
+                        guideline_id="prep-review",
+                        guideline_version="1.0.0",
+                        base_run_id="run-1",
+                        base_graph_revision="graph-1",
+                        prepared_image_checksum="sha256:prepared",
+                    )
+                ],
+                review_events=[],
+            )
 
     def test_review_task_tells_operator_what_to_inspect_and_certify(self):
         """A review task should be actionable without undocumented context."""

@@ -306,10 +306,36 @@ class ReviewAction(StrEnum):
     SPLIT_REGION = "split_region"
     #: Human replaces multiple accepted regions with one merged region.
     MERGE_REGION = "merge_region"
+    #: Human records an explicit source-triage disposition for the page.
+    DECIDE_SOURCE_TRIAGE = "decide_source_triage"
+    #: Human records an explicit preparation / subdivision decision for the page.
+    DECIDE_PREPARATION = "decide_preparation"
     #: Human records ambiguity or a problem without forcing a correction.
     FLAG = "flag"
     #: Human closes an existing review flag with an auditable resolution.
     RESOLVE_FLAG = "resolve_flag"
+
+
+class SourceTriageDecision(StrEnum):
+    """Explicit dispositions for page-scoped source-quality triage."""
+
+    #: Acquired source is fit for preparation and OCR without special warning.
+    USABLE = "usable"
+    #: Acquired source is usable, but material defects must stay visible.
+    USABLE_WITH_WARNING = "usable-with-warning"
+    #: Source needs preparation changes before OCR should continue.
+    REPREPARE = "reprepare"
+    #: Source must be reacquired; expensive OCR is blocked without override.
+    REACQUIRE = "reacquire"
+
+
+class PreparationDecision(StrEnum):
+    """Explicit page-local preparation / subdivision choices."""
+
+    #: Keep recognition on the full prepared page.
+    FULL_PAGE = "full-page"
+    #: Subdivide the prepared page into smaller recognition units.
+    SUBDIVIDE = "subdivide"
 
 
 class TransformKind(StrEnum):
@@ -1602,6 +1628,30 @@ class MarkIllegibleReviewEvent(ReviewEventBase):
     reason: str
 
 
+class DecideSourceTriageReviewEvent(ReviewEventBase):
+    """Event recording an explicit source-quality triage disposition."""
+
+    #: Fixed discriminator for JSON schema generation.
+    action: Literal[ReviewAction.DECIDE_SOURCE_TRIAGE] = (
+        ReviewAction.DECIDE_SOURCE_TRIAGE
+    )
+    #: Chosen source-triage disposition for the target page.
+    decision: SourceTriageDecision
+    #: Optional operator explanation for the disposition.
+    reason: str | None = None
+
+
+class DecidePreparationReviewEvent(ReviewEventBase):
+    """Event recording an explicit preparation / subdivision decision."""
+
+    #: Fixed discriminator for JSON schema generation.
+    action: Literal[ReviewAction.DECIDE_PREPARATION] = ReviewAction.DECIDE_PREPARATION
+    #: Chosen full-page or subdivision preparation outcome.
+    decision: PreparationDecision
+    #: Optional operator explanation for the preparation choice.
+    reason: str | None = None
+
+
 #: Discriminated union for every persisted append-only review event.
 ReviewEvent = Annotated[
     AcceptReviewEvent
@@ -1616,9 +1666,17 @@ ReviewEvent = Annotated[
     | CorrectGeometryReviewEvent
     | ReorderReviewEvent
     | ReclassifyRegionReviewEvent
-    | MarkIllegibleReviewEvent,
+    | MarkIllegibleReviewEvent
+    | DecideSourceTriageReviewEvent
+    | DecidePreparationReviewEvent,
     Field(discriminator="action"),
 ]
+
+#: Required exclusive dimensions for source and preparation task types.
+_SOURCE_PREP_TASK_DIMENSIONS: dict[ReviewTaskType, ReviewDimension] = {
+    ReviewTaskType.SOURCE_TRIAGE: ReviewDimension.SOURCE_QUALITY,
+    ReviewTaskType.PREPARATION: ReviewDimension.PREPARATION,
+}
 
 
 class PageOverlay(SchemaModel):
@@ -1669,6 +1727,15 @@ class PageOverlay(SchemaModel):
                 or task.base_graph_revision != self.base_graph_revision
             ):
                 msg = "review tasks must match the overlay run and graph revision"
+                raise ValueError(msg)
+            expected_dimension = _SOURCE_PREP_TASK_DIMENSIONS.get(task.task_type)
+            if expected_dimension is not None and task.dimensions != [
+                expected_dimension
+            ]:
+                msg = (
+                    f"{task.task_type.value} tasks require exclusive "
+                    f"{expected_dimension.value} dimension"
+                )
                 raise ValueError(msg)
         for event in self.review_events:
             if event.event_id in event_ids:

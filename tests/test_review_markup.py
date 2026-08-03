@@ -13,6 +13,7 @@ from bochord.models import (
     NoteRecord,
     ObjectProvenance,
     PageClass,
+    PreparationDecision,
     PreparationMode,
     PreparedPage,
     RegionKind,
@@ -20,6 +21,7 @@ from bochord.models import (
     ReviewAction,
     ReviewDimension,
     ReviewScope,
+    SourceTriageDecision,
     SpanRecord,
 )
 from bochord.services.review_markup import HumanMarkupService
@@ -347,3 +349,60 @@ def test_create_note_linkage_task_rejects_unknown_related_span_ids(
             run_id="run-1",
             graph_revision="graph-1",
         )
+
+
+def test_source_triage_packet_is_page_scoped_with_disposition_controls(
+    page: BundlePage,
+) -> None:
+    service = HumanMarkupService("review-v1", "1.0.0", ["cal-1"])
+    task = service.create_source_triage_task(
+        page, run_id="run-1", graph_revision="graph-1"
+    )
+    assert task.target_scope is ReviewScope.PAGE
+    assert task.target_object_ids == ["page-1"]
+    assert task.dimensions == [ReviewDimension.SOURCE_QUALITY]
+    assert task.supports_abstention is True
+    assert task.allowed_actions == [
+        ReviewAction.ACCEPT,
+        ReviewAction.DECIDE_SOURCE_TRIAGE,
+        ReviewAction.FLAG,
+    ]
+    assert "whole-page" in task.question.lower()
+    assert "small-font" in task.question.lower()
+    assert "checksum" in task.question.lower()
+    assert task.required_evidence == _EXPECTED_EVIDENCE
+    assert task.prepared_image_checksum == "sha256:image"
+    assert {decision.value for decision in SourceTriageDecision} == {
+        "usable",
+        "usable-with-warning",
+        "reprepare",
+        "reacquire",
+    }
+
+
+def test_preparation_packet_is_page_scoped_with_decision_controls(
+    page: BundlePage,
+) -> None:
+    service = HumanMarkupService("review-v1", "1.0.0", ["cal-1"])
+    task = service.create_preparation_task(
+        page, run_id="run-1", graph_revision="graph-1"
+    )
+    assert task.target_scope is ReviewScope.PAGE
+    assert task.target_object_ids == ["page-1"]
+    assert task.dimensions == [ReviewDimension.PREPARATION]
+    assert task.supports_abstention is True
+    assert task.allowed_actions == [
+        ReviewAction.ACCEPT,
+        ReviewAction.DECIDE_PREPARATION,
+        ReviewAction.FLAG,
+    ]
+    assert "whole-page" in task.question.lower() or "full-page" in task.question.lower()
+    assert "small-font" in task.question.lower()
+    assert "checksum" in task.question.lower()
+    assert "transform" in task.question.lower()
+    assert task.required_evidence == _EXPECTED_EVIDENCE
+    assert task.prepared_image_checksum == "sha256:image"
+    assert {decision.value for decision in PreparationDecision} == {
+        "full-page",
+        "subdivide",
+    }

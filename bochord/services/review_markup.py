@@ -62,6 +62,20 @@ _NOTE_LINKAGE_ALLOWED_ACTIONS: list[ReviewAction] = [
     ReviewAction.FLAG,
 ]
 
+#: Actions permitted for page-scoped source triage.
+_SOURCE_TRIAGE_ALLOWED_ACTIONS: list[ReviewAction] = [
+    ReviewAction.ACCEPT,
+    ReviewAction.DECIDE_SOURCE_TRIAGE,
+    ReviewAction.FLAG,
+]
+
+#: Actions permitted for page-scoped preparation review.
+_PREPARATION_ALLOWED_ACTIONS: list[ReviewAction] = [
+    ReviewAction.ACCEPT,
+    ReviewAction.DECIDE_PREPARATION,
+    ReviewAction.FLAG,
+]
+
 #: Concrete question the operator must answer for text review.
 _TEXT_QUESTION = (
     "Does the diplomatic text for the target spans match the prepared "
@@ -84,6 +98,20 @@ _TYPOGRAPHY_QUESTION = (
 _NOTE_LINKAGE_QUESTION = (
     "Does the marker-to-note linkage for the target note match the "
     "prepared page image?"
+)
+
+#: Concrete question the operator must answer for source triage.
+_SOURCE_TRIAGE_QUESTION = (
+    "After whole-page and small-font inspection with the prepared-image "
+    "checksum visible, is this acquired page usable, usable-with-warning, "
+    "needing reprepare, or requiring reacquire?"
+)
+
+#: Concrete question the operator must answer for preparation review.
+_PREPARATION_QUESTION = (
+    "With transform overlays and the prepared-image checksum visible, "
+    "and after whole-page plus small-font inspection, should this page "
+    "use full-page preparation or subdivide?"
 )
 
 #: Observable completion check for diplomatic-text review.
@@ -112,6 +140,22 @@ _NOTE_LINKAGE_COMPLETION_CRITERIA: list[str] = [
     (
         "marker and note body were reviewed separately and every asserted "
         "link resolves to existing object ids"
+    ),
+]
+
+#: Observable completion check for source triage.
+_SOURCE_TRIAGE_COMPLETION_CRITERIA: list[str] = [
+    (
+        "whole-page and at least one small-font area were inspected with "
+        "checksum evidence visible, and a disposition or abstention recorded"
+    ),
+]
+
+#: Observable completion check for preparation review.
+_PREPARATION_COMPLETION_CRITERIA: list[str] = [
+    (
+        "transform chain and image checksum remained visible while choosing "
+        "full-page or subdivision, or an abstention was recorded"
     ),
 ]
 
@@ -353,6 +397,74 @@ class HumanMarkupService:
             question=_NOTE_LINKAGE_QUESTION,
             allowed_actions=_NOTE_LINKAGE_ALLOWED_ACTIONS,
             completion_criteria=_NOTE_LINKAGE_COMPLETION_CRITERIA,
+            run_id=run_id,
+            graph_revision=graph_revision,
+        )
+
+    def create_source_triage_task(
+        self,
+        page: BundlePage,
+        *,
+        run_id: str,
+        graph_revision: str,
+    ) -> ReviewTask:
+        """
+        Build a page-scoped source-quality triage task packet.
+
+        Args:
+            page: Accepted page graph supplying page id and image binding.
+
+        Keyword Args:
+            run_id: Machine run against which the task was prepared.
+            graph_revision: Accepted graph revision for the task.
+
+        Returns:
+            A self-contained source-triage task bound to the prepared image.
+
+        """
+        return self._build_task(
+            page,
+            task_type=ReviewTaskType.SOURCE_TRIAGE,
+            dimensions=[ReviewDimension.SOURCE_QUALITY],
+            target_scope=ReviewScope.PAGE,
+            target_object_ids=[page.page_id],
+            question=_SOURCE_TRIAGE_QUESTION,
+            allowed_actions=_SOURCE_TRIAGE_ALLOWED_ACTIONS,
+            completion_criteria=_SOURCE_TRIAGE_COMPLETION_CRITERIA,
+            run_id=run_id,
+            graph_revision=graph_revision,
+        )
+
+    def create_preparation_task(
+        self,
+        page: BundlePage,
+        *,
+        run_id: str,
+        graph_revision: str,
+    ) -> ReviewTask:
+        """
+        Build a page-scoped preparation / subdivision task packet.
+
+        Args:
+            page: Accepted page graph supplying page id and image binding.
+
+        Keyword Args:
+            run_id: Machine run against which the task was prepared.
+            graph_revision: Accepted graph revision for the task.
+
+        Returns:
+            A self-contained preparation task bound to the prepared image.
+
+        """
+        return self._build_task(
+            page,
+            task_type=ReviewTaskType.PREPARATION,
+            dimensions=[ReviewDimension.PREPARATION],
+            target_scope=ReviewScope.PAGE,
+            target_object_ids=[page.page_id],
+            question=_PREPARATION_QUESTION,
+            allowed_actions=_PREPARATION_ALLOWED_ACTIONS,
+            completion_criteria=_PREPARATION_COMPLETION_CRITERIA,
             run_id=run_id,
             graph_revision=graph_revision,
         )
