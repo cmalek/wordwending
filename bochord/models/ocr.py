@@ -1306,6 +1306,8 @@ class ReviewTask(SchemaModel):
     target_scope: ReviewScope
     #: Exact graph objects or page ids the operator must inspect.
     target_object_ids: list[str] = Field(min_length=1)
+    #: Related objects that contextualize targets without becoming primary scope.
+    related_object_ids: list[str] = Field(default_factory=list)
     #: Concrete question the operator must answer.
     question: str
     #: Evidence views that must be inspected before completion.
@@ -1332,6 +1334,31 @@ class ReviewTask(SchemaModel):
     status: ReviewTaskStatus = ReviewTaskStatus.PENDING
     #: Coverage records certified when the task is completed.
     certified_coverage_ids: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_related_object_ids(self) -> ReviewTask:
+        """
+        Reject duplicate related ids and overlap with primary targets.
+
+        Returns:
+            The validated review task.
+
+        Raises:
+            ValueError: If related ids duplicate or overlap target ids.
+
+        """
+        related = self.related_object_ids
+        if len(related) != len(set(related)):
+            msg = "related_object_ids must not contain duplicates"
+            raise ValueError(msg)
+        overlap = sorted(set(related) & set(self.target_object_ids))
+        if overlap:
+            msg = (
+                "related_object_ids must not overlap target_object_ids; "
+                f"overlap: {overlap}"
+            )
+            raise ValueError(msg)
+        return self
 
 
 class OverlayState(SchemaModel):

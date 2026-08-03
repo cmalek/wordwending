@@ -275,6 +275,48 @@ class TestOcrModels:
                 base_graph_revision="graph-1",
             )
 
+    def test_review_task_rejects_related_object_id_overlap(self):
+        """Related ids must not duplicate or overlap primary targets."""
+        with pytest.raises(ValidationError, match="overlap"):
+            ReviewTask(
+                task_id="task-1",
+                task_type=ReviewTaskType.NOTE_LINKAGE,
+                dimensions=[ReviewDimension.NOTE_LINKAGE],
+                target_scope=ReviewScope.NOTE,
+                target_object_ids=["note-1"],
+                related_object_ids=["note-1"],
+                question="Does the marker map to this note?",
+                required_evidence=["prepared-page", "note-witness"],
+                allowed_actions=["accept", "link_note", "unlink_note", "flag"],
+                completion_criteria=["marker and note body inspected"],
+                guideline_id="note-review",
+                guideline_version="1.0.0",
+                base_run_id="run-1",
+                base_graph_revision="graph-1",
+                prepared_image_checksum="sha256:prepared",
+            )
+
+    def test_review_task_rejects_duplicate_related_object_ids(self):
+        """Related object ids must be unique."""
+        with pytest.raises(ValidationError, match="duplicates"):
+            ReviewTask(
+                task_id="task-1",
+                task_type=ReviewTaskType.NOTE_LINKAGE,
+                dimensions=[ReviewDimension.NOTE_LINKAGE],
+                target_scope=ReviewScope.NOTE,
+                target_object_ids=["note-1"],
+                related_object_ids=["span-1", "span-1"],
+                question="Does the marker map to this note?",
+                required_evidence=["prepared-page", "note-witness"],
+                allowed_actions=["accept", "link_note", "unlink_note", "flag"],
+                completion_criteria=["marker and note body inspected"],
+                guideline_id="note-review",
+                guideline_version="1.0.0",
+                base_run_id="run-1",
+                base_graph_revision="graph-1",
+                prepared_image_checksum="sha256:prepared",
+            )
+
     def test_document_bundle_and_rag_models_round_trip(self):
         """Bundle and RAG contracts should round-trip one valid page graph."""
         timestamp = datetime(2026, 7, 26, tzinfo=UTC)
