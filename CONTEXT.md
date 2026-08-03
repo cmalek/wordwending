@@ -45,6 +45,10 @@ Out of scope:
 - lexicographic normalization as a product domain
 - downstream philological interpretation beyond OCR witness production
 - full document-semantic knowledge extraction
+- document-specific structured transforms (dictionary, grammar, reader,
+  translation, or TEI-inspired targets); those belong in downstream packages
+- acting as a general structured-data transformer rather than an OCR framework
+  for faithful evidence-preserving output
 - generic training-platform work
 
 ## Canonical Terms
