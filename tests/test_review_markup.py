@@ -48,15 +48,36 @@ def _flag(
         target_object_ids=target_object_ids,
     )
 
-_EXPECTED_EVIDENCE = [
-    "prepared-page-image",
-    "scope-overlay",
-    "raw-text-witnesses",
+_EVIDENCE_TAIL = [
     "independent-witnesses",
     "accepted-page-graph",
     "evaluation-and-prior-review",
     "decision-controls-and-checklist",
 ]
+
+
+def _expected_evidence(dimension_witness: str) -> list[str]:
+    """Return Spec 0005 evidence order with a dimension-specific item 3."""
+    return [
+        "prepared-page-image",
+        "scope-overlay",
+        dimension_witness,
+        *_EVIDENCE_TAIL,
+    ]
+
+
+_TEXT_EVIDENCE = _expected_evidence("raw-text-witnesses")
+_LAYOUT_EVIDENCE = _expected_evidence("raw-structure-witnesses")
+_TYPOGRAPHY_EVIDENCE = _expected_evidence("raw-typography-witnesses")
+_NOTE_LINKAGE_EVIDENCE = _expected_evidence("raw-note-linkage-witnesses")
+_SOURCE_TRIAGE_EVIDENCE = _expected_evidence("raw-source-quality-evidence")
+_PREPARATION_EVIDENCE = [
+    "source-vs-prepared-images",
+    "scope-overlay",
+    "checksum-and-transform-overlays",
+    *_EVIDENCE_TAIL,
+]
+_ADJUDICATION_EVIDENCE = _expected_evidence("raw-flagged-dimension-witnesses")
 
 
 def _provenance() -> ObjectProvenance:
@@ -161,7 +182,7 @@ def test_text_packet_has_exact_scope_and_evidence_order(page: BundlePage) -> Non
     assert task.target_object_ids == ["span-2"]
     assert task.dimensions == [ReviewDimension.TEXT]
     assert ReviewDimension.TYPOGRAPHY not in task.dimensions
-    assert task.required_evidence == _EXPECTED_EVIDENCE
+    assert task.required_evidence == _TEXT_EVIDENCE
     assert task.allowed_actions == [
         ReviewAction.ACCEPT,
         ReviewAction.CORRECT_TEXT,
@@ -178,6 +199,7 @@ def test_text_packet_has_exact_scope_and_evidence_order(page: BundlePage) -> Non
         "expected_scope",
         "expected_dimension",
         "expected_actions",
+        "expected_evidence",
         "question_fragment",
     ),
     [
@@ -196,6 +218,7 @@ def test_text_packet_has_exact_scope_and_evidence_order(page: BundlePage) -> Non
                 ReviewAction.MERGE_REGION,
                 ReviewAction.FLAG,
             ],
+            _LAYOUT_EVIDENCE,
             "region",
         ),
         (
@@ -209,6 +232,7 @@ def test_text_packet_has_exact_scope_and_evidence_order(page: BundlePage) -> Non
                 ReviewAction.CORRECT_STYLE,
                 ReviewAction.FLAG,
             ],
+            _TYPOGRAPHY_EVIDENCE,
             "typography",
         ),
         (
@@ -223,6 +247,7 @@ def test_text_packet_has_exact_scope_and_evidence_order(page: BundlePage) -> Non
                 ReviewAction.UNLINK_NOTE,
                 ReviewAction.FLAG,
             ],
+            _NOTE_LINKAGE_EVIDENCE,
             "note",
         ),
     ],
@@ -236,6 +261,7 @@ def test_dimension_specific_packets(  # noqa: PLR0913, PLR0917
     expected_scope: ReviewScope,
     expected_dimension: ReviewDimension,
     expected_actions: list[ReviewAction],
+    expected_evidence: list[str],
     question_fragment: str,
 ) -> None:
     service = HumanMarkupService("review-v1", "1.0.0", ["cal-1"])
@@ -265,12 +291,14 @@ def test_dimension_specific_packets(  # noqa: PLR0913, PLR0917
     assert task.target_object_ids == target_object_ids
     assert task.supports_abstention is True
     assert task.allowed_actions == expected_actions
-    assert task.required_evidence == _EXPECTED_EVIDENCE
+    assert task.required_evidence == expected_evidence
     assert task.prepared_image_checksum == "sha256:image"
     text_task = service.create_text_task(
         page, ["span-2"], run_id="run-1", graph_revision="graph-1"
     )
     assert ReviewDimension.TYPOGRAPHY not in text_task.dimensions
+    assert text_task.required_evidence == _TEXT_EVIDENCE
+    assert text_task.required_evidence != expected_evidence
 
 
 def test_layout_split_merge_scope_includes_every_source_region(
@@ -392,7 +420,7 @@ def test_source_triage_packet_is_page_scoped_with_disposition_controls(
     assert "whole-page" in task.question.lower()
     assert "small-font" in task.question.lower()
     assert "checksum" in task.question.lower()
-    assert task.required_evidence == _EXPECTED_EVIDENCE
+    assert task.required_evidence == _SOURCE_TRIAGE_EVIDENCE
     assert task.prepared_image_checksum == "sha256:image"
     assert {decision.value for decision in SourceTriageDecision} == {
         "usable",
@@ -422,7 +450,9 @@ def test_preparation_packet_is_page_scoped_with_decision_controls(
     assert "small-font" in task.question.lower()
     assert "checksum" in task.question.lower()
     assert "transform" in task.question.lower()
-    assert task.required_evidence == _EXPECTED_EVIDENCE
+    assert task.required_evidence == _PREPARATION_EVIDENCE
+    assert "source-vs-prepared-images" in task.required_evidence
+    assert "checksum-and-transform-overlays" in task.required_evidence
     assert task.prepared_image_checksum == "sha256:image"
     assert {decision.value for decision in PreparationDecision} == {
         "full-page",
@@ -518,6 +548,7 @@ def test_build_review_tasks_preserves_dimension_specific_coverage(
     assert ReviewAction.ACCEPT not in adjudication.allowed_actions
     assert adjudication.supports_abstention is True
     assert adjudication.prepared_image_checksum == "sha256:image"
+    assert adjudication.required_evidence == _ADJUDICATION_EVIDENCE
     assert ReviewDimension.TEXT in adjudication.dimensions
 
     sort_keys = [

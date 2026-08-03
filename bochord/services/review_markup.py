@@ -19,16 +19,80 @@ from bochord.models import (
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-#: Fixed evidence presentation order for every review packet.
-_REQUIRED_EVIDENCE: list[str] = [
-    "prepared-page-image",
-    "scope-overlay",
-    "raw-text-witnesses",
+#: Shared evidence slots after the dimension-specific raw witness (Spec 0005 items 4-7).
+_EVIDENCE_TAIL: list[str] = [
     "independent-witnesses",
     "accepted-page-graph",
     "evaluation-and-prior-review",
     "decision-controls-and-checklist",
 ]
+
+
+def _evidence_with_witness(dimension_witness: str) -> list[str]:
+    """
+    Build Spec 0005 evidence order with a dimension-specific item 3.
+
+    Args:
+        dimension_witness: Raw witness label for the dimension under review.
+
+    Returns:
+        Ordered required-evidence labels for a review packet.
+
+    """
+    return [
+        "prepared-page-image",
+        "scope-overlay",
+        dimension_witness,
+        *_EVIDENCE_TAIL,
+    ]
+
+
+#: Evidence sequence for diplomatic-text review.
+_TEXT_REQUIRED_EVIDENCE: list[str] = _evidence_with_witness("raw-text-witnesses")
+
+#: Evidence sequence for layout/structure review.
+_LAYOUT_REQUIRED_EVIDENCE: list[str] = _evidence_with_witness(
+    "raw-structure-witnesses"
+)
+
+#: Evidence sequence for typography review.
+_TYPOGRAPHY_REQUIRED_EVIDENCE: list[str] = _evidence_with_witness(
+    "raw-typography-witnesses"
+)
+
+#: Evidence sequence for note-linkage review.
+_NOTE_LINKAGE_REQUIRED_EVIDENCE: list[str] = _evidence_with_witness(
+    "raw-note-linkage-witnesses"
+)
+
+#: Evidence sequence for page-scoped source triage.
+_SOURCE_TRIAGE_REQUIRED_EVIDENCE: list[str] = _evidence_with_witness(
+    "raw-source-quality-evidence"
+)
+
+#: Evidence sequence for preparation review (source-vs-prepared + transforms).
+_PREPARATION_REQUIRED_EVIDENCE: list[str] = [
+    "source-vs-prepared-images",
+    "scope-overlay",
+    "checksum-and-transform-overlays",
+    *_EVIDENCE_TAIL,
+]
+
+#: Evidence sequence for unknown-target adjudication.
+_ADJUDICATION_REQUIRED_EVIDENCE: list[str] = _evidence_with_witness(
+    "raw-flagged-dimension-witnesses"
+)
+
+#: Required evidence keyed by review task type.
+_REQUIRED_EVIDENCE_BY_TYPE: dict[ReviewTaskType, list[str]] = {
+    ReviewTaskType.TEXT: _TEXT_REQUIRED_EVIDENCE,
+    ReviewTaskType.LAYOUT: _LAYOUT_REQUIRED_EVIDENCE,
+    ReviewTaskType.TYPOGRAPHY: _TYPOGRAPHY_REQUIRED_EVIDENCE,
+    ReviewTaskType.NOTE_LINKAGE: _NOTE_LINKAGE_REQUIRED_EVIDENCE,
+    ReviewTaskType.SOURCE_TRIAGE: _SOURCE_TRIAGE_REQUIRED_EVIDENCE,
+    ReviewTaskType.PREPARATION: _PREPARATION_REQUIRED_EVIDENCE,
+    ReviewTaskType.ADJUDICATION: _ADJUDICATION_REQUIRED_EVIDENCE,
+}
 
 #: Actions permitted for diplomatic-text review.
 _TEXT_ALLOWED_ACTIONS: list[ReviewAction] = [
@@ -816,7 +880,7 @@ class HumanMarkupService:
         related_object_ids: Sequence[str] = (),
     ) -> ReviewTask:
         """
-        Assemble a dimension-specific packet with shared evidence binding.
+        Assemble a dimension-specific packet with typed evidence binding.
 
         Args:
             page: Accepted page graph supplying the prepared-image checksum.
@@ -838,6 +902,7 @@ class HumanMarkupService:
 
         """
         task_id = self._task_id(page.page_id, task_type, target_object_ids)
+        required_evidence = _REQUIRED_EVIDENCE_BY_TYPE[task_type]
         return ReviewTask(
             task_id=task_id,
             task_type=task_type,
@@ -846,7 +911,7 @@ class HumanMarkupService:
             target_object_ids=list(target_object_ids),
             related_object_ids=list(related_object_ids),
             question=question,
-            required_evidence=list(_REQUIRED_EVIDENCE),
+            required_evidence=list(required_evidence),
             allowed_actions=list(allowed_actions),
             completion_criteria=list(completion_criteria),
             guideline_id=self.guideline_id,
