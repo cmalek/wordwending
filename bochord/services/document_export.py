@@ -57,13 +57,13 @@ class DocumentExportService:
 
     def build_rag_document(self, bundle: DocumentBundle) -> RagDocument:
         """
-        Derive page-local region and footnote chunks from an accepted bundle.
+        Derive page-local and stitched retrieval chunks from an accepted bundle.
 
         Args:
             bundle: Canonical document bundle whose page graphs supply chunk text.
 
         Returns:
-            Retrieval document with region and footnote chunks in graph order.
+            Retrieval document with page-local chunks and cross-page BODY stitches.
 
         """
         chunks: list[RagChunk] = []
@@ -169,51 +169,11 @@ class DocumentExportService:
         """
         if not run:
             return None
-        if any(
-            chunk.retrieval_metadata.region_kind != RegionKind.BODY
-            for chunk in run
-        ):
-            return None
-        page_ids: list[str] = []
-        seen_pages: set[str] = set()
-        for chunk in run:
-            for page_id in chunk.page_ids:
-                if page_id not in seen_pages:
-                    seen_pages.add(page_id)
-                    page_ids.append(page_id)
+        page_ids = self._ordered_page_ids_from_chunks(run)
         if len(page_ids) < MIN_STITCHED_PAGE_COUNT:
             return None
 
         component_chunk_ids = [chunk.chunk_id for chunk in run]
-        source_object_ids: list[str] = []
-        seen_objects: set[str] = set()
-        provenance_pages: list[str] = []
-        provenance_witnesses: list[str] = []
-        provenance_runners: list[str] = []
-        seen_provenance_pages: set[str] = set()
-        seen_provenance_witnesses: set[str] = set()
-        seen_provenance_runners: set[str] = set()
-        for chunk in run:
-            for object_id in chunk.source_object_ids:
-                if object_id not in seen_objects:
-                    seen_objects.add(object_id)
-                    source_object_ids.append(object_id)
-            self._extend_unique(
-                provenance_pages,
-                seen_provenance_pages,
-                chunk.provenance.source_page_ids,
-            )
-            self._extend_unique(
-                provenance_witnesses,
-                seen_provenance_witnesses,
-                chunk.provenance.witness_ids,
-            )
-            self._extend_unique(
-                provenance_runners,
-                seen_provenance_runners,
-                chunk.provenance.runner_ids,
-            )
-
         first_id = component_chunk_ids[0]
         last_id = component_chunk_ids[-1]
         return StitchedChunk(
@@ -222,35 +182,100 @@ class DocumentExportService:
             component_chunk_ids=component_chunk_ids,
             page_ids=page_ids,
             text="\n".join(chunk.text for chunk in run),
-            trust_state=self._aggregate_chunk_trust(run),
-            source_object_ids=source_object_ids,
-            provenance=RetrievalProvenance(
-                source_page_ids=provenance_pages,
-                witness_ids=provenance_witnesses,
-                runner_ids=provenance_runners,
+            trust_state=self._aggregate_trust_states(
+                [chunk.trust_state for chunk in run]
             ),
+            source_object_ids=self._union_chunk_source_object_ids(run),
+            provenance=self._union_chunk_provenance(run),
         )
 
-    def _aggregate_chunk_trust(self, chunks: Sequence[RagChunk]) -> TrustState:
+    def _ordered_page_ids_from_chunks(
+        self,
+        chunks: Sequence[RagChunk],
+    ) -> list[str]:
         """
-        Aggregate trust for stitched component chunks.
+        Collect ordered distinct page ids from component chunks.
 
         Args:
-            chunks: Region chunks whose trust states contribute to the stitch.
+            chunks: Region chunks whose page references define stitch span.
 
         Returns:
-            Corrected when any chunk is corrected, else reviewed when all are
-            reviewed, else machine.
+            Page ids in first-seen component order without duplicates.
 
         """
-        trust_states = [chunk.trust_state for chunk in chunks]
-        if any(state == TrustState.CORRECTED for state in trust_states):
-            return TrustState.CORRECTED
-        if trust_states and all(
-            state == TrustState.REVIEWED for state in trust_states
-        ):
-            return TrustState.REVIEWED
-        return TrustState.MACHINE
+        page_ids: list[str] = []
+        seen_pages: set[str] = set()
+        for chunk in chunks:
+            for page_id in chunk.page_ids:
+                if page_id not in seen_pages:
+                    seen_pages.add(page_id)
+                    page_ids.append(page_id)
+        return page_ids
+
+    def _union_chunk_source_object_ids(
+        self,
+        chunks: Sequence[RagChunk],
+    ) -> list[str]:
+        """
+        Union source object ids from component region chunks.
+
+        Args:
+            chunks: Region chunks contributing graph objects to the stitch.
+
+        Returns:
+            Object ids in first-seen component order without duplicates.
+
+        """
+        object_ids: list[str] = []
+        seen: set[str] = set()
+        for chunk in chunks:
+            for object_id in chunk.source_object_ids:
+                if object_id not in seen:
+                    seen.add(object_id)
+                    object_ids.append(object_id)
+        return object_ids
+
+    def _union_chunk_provenance(
+        self,
+        chunks: Sequence[RagChunk],
+    ) -> RetrievalProvenance:
+        """
+        Union provenance pointers from component region chunks.
+
+        Args:
+            chunks: Region chunks whose provenance contributes to the stitch.
+
+        Returns:
+            Deduplicated page, witness, and runner pointers in first-seen order.
+
+        """
+        source_page_ids: list[str] = []
+        witness_ids: list[str] = []
+        runner_ids: list[str] = []
+        seen_pages: set[str] = set()
+        seen_witnesses: set[str] = set()
+        seen_runners: set[str] = set()
+        for chunk in chunks:
+            self._extend_unique(
+                source_page_ids,
+                seen_pages,
+                chunk.provenance.source_page_ids,
+            )
+            self._extend_unique(
+                witness_ids,
+                seen_witnesses,
+                chunk.provenance.witness_ids,
+            )
+            self._extend_unique(
+                runner_ids,
+                seen_runners,
+                chunk.provenance.runner_ids,
+            )
+        return RetrievalProvenance(
+            source_page_ids=source_page_ids,
+            witness_ids=witness_ids,
+            runner_ids=runner_ids,
+        )
 
     def _build_page_indexes(self, page: BundlePage) -> PageGraphIndex:
         """
@@ -459,10 +484,26 @@ class DocumentExportService:
 
         Returns:
             Corrected when any object is corrected, else reviewed when all are
-            reviewed or corrected, else machine.
+            reviewed, else machine.
 
         """
-        trust_states = [obj.trust_state for obj in objects]
+        return self._aggregate_trust_states([obj.trust_state for obj in objects])
+
+    def _aggregate_trust_states(
+        self,
+        trust_states: Sequence[TrustState],
+    ) -> TrustState:
+        """
+        Aggregate trust from one or more trust-state values.
+
+        Args:
+            trust_states: Trust states contributing to a chunk or stitch.
+
+        Returns:
+            Corrected when any value is corrected, else reviewed when all are
+            reviewed, else machine.
+
+        """
         if any(state == TrustState.CORRECTED for state in trust_states):
             return TrustState.CORRECTED
         if trust_states and all(
