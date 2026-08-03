@@ -1324,6 +1324,8 @@ class ReviewTask(SchemaModel):
     base_run_id: str
     #: Accepted graph revision against which the task was prepared.
     base_graph_revision: str
+    #: Digest binding the task to the prepared image the operator must inspect.
+    prepared_image_checksum: str
     #: Whether the operator may decline to assert an uncertain answer.
     supports_abstention: bool = True
     #: Current task lifecycle state.

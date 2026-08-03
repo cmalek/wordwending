@@ -247,12 +247,33 @@ class TestOcrModels:
             calibration_example_ids=["style-example-1"],
             base_run_id="run-1",
             base_graph_revision="graph-1",
+            prepared_image_checksum="sha256:prepared",
             supports_abstention=True,
             status=ReviewTaskStatus.PENDING,
         )
 
         assert task.supports_abstention is True
         assert task.completion_criteria
+        assert task.prepared_image_checksum == "sha256:prepared"
+
+    def test_review_task_rejects_missing_prepared_image_checksum(self):
+        """Review tasks must bind to the prepared image the operator inspects."""
+        with pytest.raises(ValidationError):
+            ReviewTask(
+                task_id="task-1",
+                task_type=ReviewTaskType.TYPOGRAPHY,
+                dimensions=[ReviewDimension.TYPOGRAPHY],
+                target_scope=ReviewScope.SPAN,
+                target_object_ids=["span-1"],
+                question="Is this span bold, italic, or superscript?",
+                required_evidence=["prepared-page", "style-witness"],
+                allowed_actions=["accept", "correct_style", "flag"],
+                completion_criteria=["weight, slant, and baseline shift inspected"],
+                guideline_id="typography-review",
+                guideline_version="1.0.0",
+                base_run_id="run-1",
+                base_graph_revision="graph-1",
+            )
 
     def test_document_bundle_and_rag_models_round_trip(self):
         """Bundle and RAG contracts should round-trip one valid page graph."""
@@ -475,6 +496,7 @@ class TestOcrModels:
                     guideline_version="1.0.0",
                     base_run_id="run-1",
                     base_graph_revision="graph-1",
+                    prepared_image_checksum="sha256:prepared",
                 )
             ],
             review_events=[
