@@ -23,6 +23,7 @@ from bochord.models import (
     BundlePage,
     ChunkType,
     CoordinateSpace,
+    CorrectGeometryReviewEvent,
     DecidePreparationReviewEvent,
     DecideSourceTriageReviewEvent,
     DocumentBundle,
@@ -32,6 +33,8 @@ from bochord.models import (
     EvaluationCohortSummary,
     EvaluationFamilySummary,
     ExportSummary,
+    FlagReviewEvent,
+    FlagSeverity,
     FontSlant,
     FontWeight,
     GoldCoverage,
@@ -51,6 +54,8 @@ from bochord.models import (
     PageEvaluationRecord,
     PageEvaluationSummary,
     PageOverlay,
+    Point,
+    Polygon,
     PreparationAssessment,
     PreparationDecision,
     PreparationMode,
@@ -61,6 +66,7 @@ from bochord.models import (
     RagDocument,
     RegionKind,
     RegionRecord,
+    RegionRevision,
     RetrievalProvenance,
     ReviewDimension,
     ReviewEvent,
@@ -217,6 +223,68 @@ def _review_base() -> dict[str, object]:
     }
 
 
+def _review_box(*, coordinate_space_id: str = "prepared-page-1") -> BoundingBox:
+    """Return a valid review geometry bounding box."""
+    return BoundingBox(
+        x0=0,
+        y0=0,
+        x1=10,
+        y1=10,
+        coordinate_space_id=coordinate_space_id,
+    )
+
+
+def _review_polygon(*, coordinate_space_id: str = "prepared-page-1") -> Polygon:
+    """Return a valid review geometry polygon."""
+    return Polygon(
+        coordinate_space_id=coordinate_space_id,
+        points=[
+            Point(x=0, y=0),
+            Point(x=10, y=0),
+            Point(x=10, y=10),
+        ],
+    )
+
+
+def _text_review_task(**overrides: object) -> ReviewTask:
+    """Return a minimal text-review task bound to the overlay defaults."""
+    defaults: dict[str, object] = {
+        "task_id": "task-1",
+        "task_type": ReviewTaskType.TEXT,
+        "dimensions": [ReviewDimension.TEXT],
+        "target_scope": ReviewScope.SPAN,
+        "target_object_ids": ["span-1"],
+        "question": "Does the diplomatic text match?",
+        "required_evidence": ["prepared-page", "text-witness"],
+        "allowed_actions": ["accept", "correct_text", "correct_geometry", "flag"],
+        "completion_criteria": ["graphemes inspected"],
+        "guideline_id": "text-review",
+        "guideline_version": "1.0.0",
+        "base_run_id": "run-1",
+        "base_graph_revision": "graph-1",
+        "prepared_image_checksum": "sha256:prepared",
+    }
+    defaults.update(overrides)
+    return ReviewTask(**defaults)  # type: ignore[arg-type]
+
+
+def _minimal_page_overlay(**overrides: object) -> PageOverlay:
+    """Return a minimal page overlay with one text task and no events."""
+    defaults: dict[str, object] = {
+        "schema_version": "1.0.0",
+        "overlay_id": "overlay-1",
+        "page_id": "page-1",
+        "source_run_id": "run-1",
+        "base_graph_revision": "graph-1",
+        "prepared_image_checksum": "sha256:prepared",
+        "review_tasks": [_text_review_task()],
+        "review_events": [],
+        "current_state": [],
+    }
+    defaults.update(overrides)
+    return PageOverlay(**defaults)  # type: ignore[arg-type]
+
+
 class TestOcrModels:
     """Contract checks for persisted OCR schema models."""
 
@@ -356,6 +424,134 @@ class TestOcrModels:
                     )
                 ],
                 review_events=[],
+            )
+
+    def test_correct_geometry_rejects_mismatched_coordinate_space_ids(self) -> None:
+        """Box and polygon must share one coordinate space identity."""
+        with pytest.raises(ValidationError, match="coordinate space"):
+            CorrectGeometryReviewEvent(
+                event_id="evt-geo-1",
+                task_id="task-1",
+                target_object_id="span-1",
+                target_scope=ReviewScope.SPAN,
+                review_dimensions=[ReviewDimension.STRUCTURE],
+                base_run_id="run-1",
+                base_graph_revision="graph-1",
+                guideline_version="1.0.0",
+                prior_trust_state=TrustState.MACHINE,
+                new_trust_state=TrustState.CORRECTED,
+                operator_id="editor-1",
+                timestamp_utc=datetime(2026, 7, 26, tzinfo=UTC),
+                bounding_box=_review_box(coordinate_space_id="prepared-page-1"),
+                polygon=_review_polygon(coordinate_space_id="prepared-unit-1"),
+            )
+
+    def test_region_revision_rejects_mismatched_coordinate_space_ids(self) -> None:
+        """Region revisions must not mix geometry from different spaces."""
+        with pytest.raises(ValidationError, match="coordinate space"):
+            RegionRevision(
+                region_id="region-1",
+                region_kind=RegionKind.BODY,
+                reading_order_index=1,
+                bounding_box=_review_box(coordinate_space_id="prepared-page-1"),
+                polygon=_review_polygon(coordinate_space_id="prepared-unit-1"),
+            )
+
+    def test_region_revision_rejects_missing_coordinate_space_geometry(self) -> None:
+        """Region revisions must include at least one geometry form."""
+        with pytest.raises(ValidationError, match="bounding box or polygon"):
+            RegionRevision(
+                region_id="region-1",
+                region_kind=RegionKind.BODY,
+                reading_order_index=1,
+            )
+
+    def test_page_overlay_rejects_event_target_scope_mismatch_with_task(self) -> None:
+        """Events must use the same target scope as their review task."""
+        with pytest.raises(ValidationError, match="target scope"):
+            _minimal_page_overlay(
+                review_events=[
+                    TypeAdapter(ReviewEvent).validate_python(
+                        {
+                            **_review_base(),
+                            "target_object_id": "span-1",
+                            "target_scope": "region",
+                            "review_dimensions": ["text"],
+                            "guideline_version": "1.0.0",
+                            "action": "accept",
+                        }
+                    )
+                ],
+            )
+
+    def test_page_overlay_rejects_event_guideline_version_mismatch_with_task(
+        self,
+    ) -> None:
+        """Events must bind to the exact guideline revision shown in the task."""
+        with pytest.raises(ValidationError, match="guideline version"):
+            _minimal_page_overlay(
+                review_events=[
+                    TypeAdapter(ReviewEvent).validate_python(
+                        {
+                            **_review_base(),
+                            "target_object_id": "span-1",
+                            "target_scope": "span",
+                            "review_dimensions": ["text"],
+                            "guideline_version": "2.0.0",
+                            "action": "accept",
+                        }
+                    )
+                ],
+            )
+
+    def test_overlay_flag_review_event_rejects_trust_state_change(self) -> None:
+        """Flag events record concern without changing trust state."""
+        with pytest.raises(ValidationError, match="trust state"):
+            FlagReviewEvent(
+                event_id="evt-flag-1",
+                task_id="task-1",
+                target_object_id="span-1",
+                target_scope=ReviewScope.SPAN,
+                review_dimensions=[ReviewDimension.TEXT],
+                base_run_id="run-1",
+                base_graph_revision="graph-1",
+                guideline_version="1.0.0",
+                prior_trust_state=TrustState.MACHINE,
+                new_trust_state=TrustState.REVIEWED,
+                operator_id="editor-1",
+                timestamp_utc=datetime(2026, 7, 26, tzinfo=UTC),
+                flag_id="flag-1",
+                flag_type="ambiguous-glyph",
+                severity=FlagSeverity.WARNING,
+                message="unclear character",
+            )
+
+    def test_page_overlay_rejects_overlay_state_applied_event_object_scope_mismatch(
+        self,
+    ) -> None:
+        """Materialized state must only reference events for the same object."""
+        with pytest.raises(ValidationError, match="another object or scope"):
+            _minimal_page_overlay(
+                review_events=[
+                    TypeAdapter(ReviewEvent).validate_python(
+                        {
+                            **_review_base(),
+                            "target_object_id": "span-1",
+                            "target_scope": "span",
+                            "review_dimensions": ["text"],
+                            "guideline_version": "1.0.0",
+                            "action": "accept",
+                        }
+                    )
+                ],
+                current_state=[
+                    OverlayState(
+                        object_id="span-2",
+                        scope=ReviewScope.SPAN,
+                        trust_state=TrustState.REVIEWED,
+                        applied_event_ids=["evt-1"],
+                    )
+                ],
             )
 
     def test_review_task_tells_operator_what_to_inspect_and_certify(self):
@@ -676,6 +872,7 @@ class TestOcrModels:
                         "target_object_id": "span-1",
                         "target_scope": "span",
                         "review_dimensions": ["text"],
+                        "guideline_version": "1.0.0",
                         "action": "correct_text",
                         "text_diplomatic": "sittan",
                     }
