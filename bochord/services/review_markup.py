@@ -3,10 +3,12 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from bochord.models import (
     BundlePage,
+    EvaluationFlag,
     ReviewAction,
     ReviewDimension,
     ReviewScope,
@@ -76,6 +78,12 @@ _PREPARATION_ALLOWED_ACTIONS: list[ReviewAction] = [
     ReviewAction.FLAG,
 ]
 
+#: Actions permitted for page-scoped adjudication of unknown flag targets.
+_ADJUDICATION_ALLOWED_ACTIONS: list[ReviewAction] = [
+    ReviewAction.ACCEPT,
+    ReviewAction.FLAG,
+]
+
 #: Concrete question the operator must answer for text review.
 _TEXT_QUESTION = (
     "Does the diplomatic text for the target spans match the prepared "
@@ -112,6 +120,13 @@ _PREPARATION_QUESTION = (
     "With transform overlays and the prepared-image checksum visible, "
     "and after whole-page plus small-font inspection, should this page "
     "use full-page preparation or subdivide?"
+)
+
+#: Concrete question for adjudication of empty or unknown flag targets.
+_ADJUDICATION_QUESTION = (
+    "After re-inspecting the prepared page image with checksum evidence "
+    "visible, should each empty or unknown flagged target be accepted or "
+    "flagged without inventing missing object ids?"
 )
 
 #: Observable completion check for diplomatic-text review.
@@ -158,6 +173,31 @@ _PREPARATION_COMPLETION_CRITERIA: list[str] = [
         "full-page or subdivision, or an abstention was recorded"
     ),
 ]
+
+#: Observable completion check for unknown-target adjudication.
+_ADJUDICATION_COMPLETION_CRITERIA: list[str] = [
+    (
+        "every empty or unknown flagged target was accepted or flagged with "
+        "prepared-image checksum evidence visible"
+    ),
+]
+
+
+class _FlagTargetBuckets:
+    """Mutable accumulator for flag-driven queue grouping."""
+
+    def __init__(self) -> None:
+        """Initialize empty primary, related, and adjudication buckets."""
+        #: Compatible primary targets keyed by evaluation family dimension.
+        self.primary: dict[ReviewDimension, set[str]] = defaultdict(set)
+        #: Marker span ids related to note-linkage primary targets.
+        self.note_related: set[str] = set()
+        #: Unknown or incompatible flagged object ids.
+        self.unknown: set[str] = set()
+        #: Dimensions whose flags required page-scoped adjudication.
+        self.adjudication_dimensions: set[ReviewDimension] = set()
+        #: Whether at least one empty or unknown flag target was seen.
+        self.needs_adjudication: bool = False
 
 
 class HumanMarkupService:
@@ -468,6 +508,287 @@ class HumanMarkupService:
             run_id=run_id,
             graph_revision=graph_revision,
         )
+
+    def create_adjudication_flag_task(
+        self,
+        page: BundlePage,
+        *,
+        dimensions: Sequence[ReviewDimension],
+        related_object_ids: Sequence[str] = (),
+        run_id: str,
+        graph_revision: str,
+    ) -> ReviewTask:
+        """
+        Build a page-scoped adjudication task for empty or unknown flag targets.
+
+        Args:
+            page: Accepted page graph supplying page id and image binding.
+
+        Keyword Args:
+            dimensions: Evaluation families whose flags could not be targeted.
+            related_object_ids: Unknown flagged ids preserved for the operator.
+            run_id: Machine run against which the task was prepared.
+            graph_revision: Accepted graph revision for the task.
+
+        Returns:
+            A page-scoped adjudication packet allowing only accept and flag.
+
+        Raises:
+            ValueError: If ``dimensions`` is empty.
+
+        """
+        if not dimensions:
+            msg = "adjudication flag tasks require at least one dimension"
+            raise ValueError(msg)
+        return self._build_task(
+            page,
+            task_type=ReviewTaskType.ADJUDICATION,
+            dimensions=sorted(dimensions, key=lambda item: item.value),
+            target_scope=ReviewScope.PAGE,
+            target_object_ids=[page.page_id],
+            related_object_ids=sorted(related_object_ids),
+            question=_ADJUDICATION_QUESTION,
+            allowed_actions=_ADJUDICATION_ALLOWED_ACTIONS,
+            completion_criteria=_ADJUDICATION_COMPLETION_CRITERIA,
+            run_id=run_id,
+            graph_revision=graph_revision,
+        )
+
+    def build_review_tasks(
+        self,
+        page: BundlePage,
+        *,
+        run_id: str,
+        graph_revision: str,
+    ) -> list[ReviewTask]:
+        """
+        Derive a deterministic review queue from page evaluation flags.
+
+        Flags are flattened from ``PageEvaluationSummary`` families. Compatible
+        targets of one dimension and scope are grouped into one factory packet;
+        empty or unknown targets collapse into one page-scoped adjudication
+        task. Nothing is persisted.
+
+        Args:
+            page: Accepted page graph whose evaluation flags drive the queue.
+
+        Keyword Args:
+            run_id: Machine run against which tasks were prepared.
+            graph_revision: Accepted graph revision for the tasks.
+
+        Returns:
+            Sorted review tasks covering every flagged object id.
+
+        """
+        buckets = self._flag_target_buckets(page)
+        tasks = self._tasks_from_buckets(
+            page, buckets, run_id=run_id, graph_revision=graph_revision
+        )
+        tasks.sort(
+            key=lambda task: (
+                [dimension.value for dimension in task.dimensions],
+                task.target_scope.value,
+                list(task.target_object_ids),
+            )
+        )
+        return tasks
+
+    def _tasks_from_buckets(
+        self,
+        page: BundlePage,
+        buckets: _FlagTargetBuckets,
+        *,
+        run_id: str,
+        graph_revision: str,
+    ) -> list[ReviewTask]:
+        """
+        Build unsorted packets from classified flag-target buckets.
+
+        Args:
+            page: Accepted page graph supplying ids and image binding.
+            buckets: Compatible targets and adjudication inputs.
+
+        Keyword Args:
+            run_id: Machine run against which tasks were prepared.
+            graph_revision: Accepted graph revision for the tasks.
+
+        Returns:
+            Review tasks for non-empty dimension buckets plus adjudication.
+
+        """
+        tasks = self._dimension_tasks_from_buckets(
+            page, buckets, run_id=run_id, graph_revision=graph_revision
+        )
+        if not buckets.primary[ReviewDimension.NOTE_LINKAGE] and buckets.note_related:
+            buckets.unknown.update(buckets.note_related)
+            buckets.adjudication_dimensions.add(ReviewDimension.NOTE_LINKAGE)
+            buckets.needs_adjudication = True
+        if buckets.needs_adjudication:
+            tasks.append(
+                self.create_adjudication_flag_task(
+                    page,
+                    dimensions=sorted(
+                        buckets.adjudication_dimensions,
+                        key=lambda item: item.value,
+                    ),
+                    related_object_ids=sorted(buckets.unknown),
+                    run_id=run_id,
+                    graph_revision=graph_revision,
+                )
+            )
+        return tasks
+
+    def _dimension_tasks_from_buckets(
+        self,
+        page: BundlePage,
+        buckets: _FlagTargetBuckets,
+        *,
+        run_id: str,
+        graph_revision: str,
+    ) -> list[ReviewTask]:
+        """
+        Emit dimension-specific packets for non-empty compatible target sets.
+
+        Args:
+            page: Accepted page graph supplying ids and image binding.
+            buckets: Compatible primary and note-related targets.
+
+        Keyword Args:
+            run_id: Machine run against which tasks were prepared.
+            graph_revision: Accepted graph revision for the tasks.
+
+        Returns:
+            Dimension factory packets for text, layout, typography, and notes.
+
+        """
+        tasks: list[ReviewTask] = []
+        text_ids = sorted(buckets.primary[ReviewDimension.TEXT])
+        if text_ids:
+            tasks.append(
+                self.create_text_task(
+                    page, text_ids, run_id=run_id, graph_revision=graph_revision
+                )
+            )
+        region_ids = sorted(buckets.primary[ReviewDimension.STRUCTURE])
+        if region_ids:
+            tasks.append(
+                self.create_layout_task(
+                    page, region_ids, run_id=run_id, graph_revision=graph_revision
+                )
+            )
+        typography_ids = sorted(buckets.primary[ReviewDimension.TYPOGRAPHY])
+        if typography_ids:
+            tasks.append(
+                self.create_typography_task(
+                    page,
+                    typography_ids,
+                    run_id=run_id,
+                    graph_revision=graph_revision,
+                )
+            )
+        note_ids = sorted(buckets.primary[ReviewDimension.NOTE_LINKAGE])
+        if note_ids:
+            tasks.append(
+                self.create_note_linkage_task(
+                    page,
+                    note_ids,
+                    related_object_ids=sorted(buckets.note_related),
+                    run_id=run_id,
+                    graph_revision=graph_revision,
+                )
+            )
+        return tasks
+
+    def _flag_target_buckets(self, page: BundlePage) -> _FlagTargetBuckets:
+        """
+        Classify evaluation-flag targets into dimension buckets.
+
+        Args:
+            page: Accepted page graph supplying ids and evaluation flags.
+
+        Returns:
+            Compatible primary targets, note-related spans, and adjudication
+            inputs for empty or unknown ids.
+
+        """
+        span_ids = {span.span_id for span in page.spans}
+        region_ids = {region.region_id for region in page.regions}
+        note_ids = {note.note_id for note in page.notes}
+        buckets = _FlagTargetBuckets()
+        summary = page.evaluation_summary
+        families: list[tuple[ReviewDimension, list[EvaluationFlag]]] = [
+            (ReviewDimension.TEXT, summary.text.flags),
+            (ReviewDimension.STRUCTURE, summary.structure.flags),
+            (ReviewDimension.TYPOGRAPHY, summary.style.typography.flags),
+            (ReviewDimension.NOTE_LINKAGE, summary.style.note_linkage.flags),
+        ]
+        for dimension, flags in families:
+            for flag in flags:
+                self._classify_flag_targets(
+                    flag,
+                    dimension,
+                    span_ids=span_ids,
+                    region_ids=region_ids,
+                    note_ids=note_ids,
+                    buckets=buckets,
+                )
+        return buckets
+
+    @staticmethod
+    def _classify_flag_targets(  # noqa: PLR0913
+        flag: EvaluationFlag,
+        dimension: ReviewDimension,
+        *,
+        span_ids: set[str],
+        region_ids: set[str],
+        note_ids: set[str],
+        buckets: _FlagTargetBuckets,
+    ) -> None:
+        """
+        Route one flag's target ids into compatible or adjudication buckets.
+
+        Args:
+            flag: Evaluation flag whose targets are classified.
+            dimension: Family dimension that emitted the flag.
+
+        Keyword Args:
+            span_ids: Known span identifiers on the page.
+            region_ids: Known region identifiers on the page.
+            note_ids: Known note identifiers on the page.
+            buckets: Mutable accumulator for grouped queue inputs.
+
+        """
+        if not flag.target_object_ids:
+            buckets.needs_adjudication = True
+            buckets.adjudication_dimensions.add(dimension)
+            return
+        for object_id in flag.target_object_ids:
+            if not object_id or not object_id.strip():
+                buckets.needs_adjudication = True
+                buckets.adjudication_dimensions.add(dimension)
+                continue
+            if dimension is ReviewDimension.NOTE_LINKAGE:
+                if object_id in note_ids:
+                    buckets.primary[dimension].add(object_id)
+                elif object_id in span_ids:
+                    buckets.note_related.add(object_id)
+                else:
+                    buckets.needs_adjudication = True
+                    buckets.unknown.add(object_id)
+                    buckets.adjudication_dimensions.add(dimension)
+                continue
+            known = (
+                span_ids
+                if dimension
+                in {ReviewDimension.TEXT, ReviewDimension.TYPOGRAPHY}
+                else region_ids
+            )
+            if object_id in known:
+                buckets.primary[dimension].add(object_id)
+            else:
+                buckets.needs_adjudication = True
+                buckets.unknown.add(object_id)
+                buckets.adjudication_dimensions.add(dimension)
 
     def _build_task(  # noqa: PLR0913
         self,

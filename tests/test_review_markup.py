@@ -8,11 +8,15 @@ import pytest
 from bochord.models import (
     BundlePage,
     CoordinateSpace,
+    EvaluationFamilySummary,
+    EvaluationFlag,
+    FlagSeverity,
     LineRecord,
     NoteKind,
     NoteRecord,
     ObjectProvenance,
     PageClass,
+    PageEvaluationSummary,
     PreparationDecision,
     PreparationMode,
     PreparedPage,
@@ -21,10 +25,28 @@ from bochord.models import (
     ReviewAction,
     ReviewDimension,
     ReviewScope,
+    ReviewTaskType,
     SourceTriageDecision,
     SpanRecord,
+    StyleEvaluationSummary,
 )
 from bochord.services.review_markup import HumanMarkupService
+
+
+def _flag(
+    flag_id: str,
+    target_object_ids: list[str],
+    *,
+    flag_type: str = "test-flag",
+) -> EvaluationFlag:
+    """Return a minimal evaluation flag for queue fixtures."""
+    return EvaluationFlag(
+        flag_id=flag_id,
+        flag_type=flag_type,
+        severity=FlagSeverity.WARNING,
+        message=f"flag {flag_id}",
+        target_object_ids=target_object_ids,
+    )
 
 _EXPECTED_EVIDENCE = [
     "prepared-page-image",
@@ -406,3 +428,108 @@ def test_preparation_packet_is_page_scoped_with_decision_controls(
         "full-page",
         "subdivide",
     }
+
+
+def test_build_review_tasks_preserves_dimension_specific_coverage(
+    page: BundlePage,
+) -> None:
+    flagged_page = page.model_copy(
+        update={
+            "evaluation_summary": PageEvaluationSummary(
+                text=EvaluationFamilySummary(
+                    flags=[
+                        _flag("text-1", ["span-1"]),
+                        _flag("text-empty", []),
+                        _flag("text-unknown", ["missing-span"]),
+                    ]
+                ),
+                structure=EvaluationFamilySummary(
+                    flags=[_flag("structure-1", ["region-2", "region-1"])]
+                ),
+                style=StyleEvaluationSummary(
+                    typography=EvaluationFamilySummary(
+                        flags=[_flag("typo-1", ["span-2"])]
+                    ),
+                    note_linkage=EvaluationFamilySummary(
+                        flags=[_flag("note-1", ["span-1", "note-1"])]
+                    ),
+                ),
+            )
+        }
+    )
+    service = HumanMarkupService("review-v1", "1.0.0", ["cal-1"])
+    tasks = service.build_review_tasks(
+        flagged_page, run_id="run-1", graph_revision="graph-1"
+    )
+
+    flagged_ids = {
+        "span-1",
+        "span-2",
+        "region-1",
+        "region-2",
+        "note-1",
+        "missing-span",
+    }
+    covered_ids: set[str] = set()
+    for task in tasks:
+        covered_ids.update(task.target_object_ids)
+        covered_ids.update(task.related_object_ids)
+    assert flagged_ids <= covered_ids
+
+    by_type = {task.task_type: task for task in tasks}
+    assert set(by_type) == {
+        ReviewTaskType.TEXT,
+        ReviewTaskType.LAYOUT,
+        ReviewTaskType.TYPOGRAPHY,
+        ReviewTaskType.NOTE_LINKAGE,
+        ReviewTaskType.ADJUDICATION,
+    }
+
+    assert by_type[ReviewTaskType.TEXT].target_scope is ReviewScope.SPAN
+    assert by_type[ReviewTaskType.TEXT].target_object_ids == ["span-1"]
+    assert by_type[ReviewTaskType.TEXT].dimensions == [ReviewDimension.TEXT]
+
+    assert by_type[ReviewTaskType.LAYOUT].target_scope is ReviewScope.REGION
+    assert by_type[ReviewTaskType.LAYOUT].target_object_ids == [
+        "region-1",
+        "region-2",
+    ]
+    assert by_type[ReviewTaskType.LAYOUT].dimensions == [ReviewDimension.STRUCTURE]
+
+    assert by_type[ReviewTaskType.TYPOGRAPHY].target_scope is ReviewScope.SPAN
+    assert by_type[ReviewTaskType.TYPOGRAPHY].target_object_ids == ["span-2"]
+    assert by_type[ReviewTaskType.TYPOGRAPHY].dimensions == [
+        ReviewDimension.TYPOGRAPHY
+    ]
+
+    note_task = by_type[ReviewTaskType.NOTE_LINKAGE]
+    assert note_task.target_scope is ReviewScope.NOTE
+    assert note_task.target_object_ids == ["note-1"]
+    assert note_task.related_object_ids == ["span-1"]
+    assert note_task.dimensions == [ReviewDimension.NOTE_LINKAGE]
+
+    adjudication = by_type[ReviewTaskType.ADJUDICATION]
+    assert adjudication.target_scope is ReviewScope.PAGE
+    assert adjudication.target_object_ids == ["page-1"]
+    assert adjudication.related_object_ids == ["missing-span"]
+    assert adjudication.allowed_actions == [
+        ReviewAction.ACCEPT,
+        ReviewAction.FLAG,
+    ]
+    assert adjudication.prepared_image_checksum == "sha256:image"
+    assert ReviewDimension.TEXT in adjudication.dimensions
+
+    sort_keys = [
+        (
+            [dimension.value for dimension in task.dimensions],
+            task.target_scope.value,
+            list(task.target_object_ids),
+        )
+        for task in tasks
+    ]
+    assert sort_keys == sorted(sort_keys)
+
+    for task in tasks:
+        assert task.certified_coverage_ids == []
+        if task.task_type is not ReviewTaskType.ADJUDICATION:
+            assert task.target_scope is not ReviewScope.PAGE
