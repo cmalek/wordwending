@@ -42,11 +42,33 @@ from bochord.services.document_export import DocumentExportService
 FIXTURES = Path(__file__).parent / "fixtures" / "exports"
 MINIMAL_BUNDLE = FIXTURES / "minimal-bundle.json"
 
+#: Relative paths written by ``BundleLayoutService.write_document_exports``.
+STANDARD_DOCUMENT_EXPORT_SUMMARY = ExportSummary(
+    bundle_json_path="exports/bundle.json",
+    rag_jsonl_path="exports/rag.jsonl",
+    stitched_chunks_jsonl_path="exports/stitched_chunks.jsonl",
+    document_markdown_path="exports/document.md",
+)
+
 
 def _load_minimal_bundle() -> DocumentBundle:
     """Load and validate the compact export fixture bundle."""
     raw = json.loads(MINIMAL_BUNDLE.read_text(encoding="utf-8"))
     return DocumentBundle.model_validate(raw)
+
+
+def test_standard_document_export_summary_paths() -> None:
+    """Document export filenames stay fixed under exports/."""
+    assert STANDARD_DOCUMENT_EXPORT_SUMMARY.bundle_json_path == "exports/bundle.json"
+    assert STANDARD_DOCUMENT_EXPORT_SUMMARY.rag_jsonl_path == "exports/rag.jsonl"
+    assert (
+        STANDARD_DOCUMENT_EXPORT_SUMMARY.stitched_chunks_jsonl_path
+        == "exports/stitched_chunks.jsonl"
+    )
+    assert (
+        STANDARD_DOCUMENT_EXPORT_SUMMARY.document_markdown_path
+        == "exports/document.md"
+    )
 
 
 def test_build_rag_document_emits_region_and_footnote_chunks() -> None:

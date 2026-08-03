@@ -34,9 +34,13 @@ from bochord.services.bundle_layout import (
     BundleLayoutService,
     _resolve_source_image_path,
 )
+from bochord.services.document_export import DocumentExportService
 
 FIXTURE_PATH = (
     Path(__file__).parent / "fixtures" / "bundle_layout" / "minimal_document.json"
+)
+EXPORT_FIXTURE_PATH = (
+    Path(__file__).parent / "fixtures" / "exports" / "minimal-bundle.json"
 )
 OVERLAY_V1_FIXTURE = (
     Path(__file__).parent / "fixtures" / "review_overlay" / "page-overlay-v1.json"
@@ -46,6 +50,13 @@ OVERLAY_V1_FIXTURE = (
 def load_minimal_bundle() -> DocumentBundle:
     """Load the minimal DocumentBundle fixture."""
     return DocumentBundle.model_validate_json(FIXTURE_PATH.read_text(encoding="utf-8"))
+
+
+def load_export_minimal_bundle() -> DocumentBundle:
+    """Load the compact export-fixture DocumentBundle."""
+    return DocumentBundle.model_validate_json(
+        EXPORT_FIXTURE_PATH.read_text(encoding="utf-8")
+    )
 
 
 def _accept_review_event(event_id: str) -> AcceptReviewEvent:
@@ -1091,3 +1102,88 @@ def test_read_review_events_reports_corrupt_line(tmp_path) -> None:
 
     with pytest.raises(ValueError, match=r"review_events\.jsonl.*line 2"):
         service.read_review_events(root, 1)
+
+
+def test_write_document_exports_writes_derived_views(tmp_path) -> None:
+    """Persisted document exports match renderer output and preserve overlays."""
+    bundle = load_export_minimal_bundle()
+    original_exports = bundle.exports.model_copy(deep=True)
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
+    )
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=witness_files,
+    )
+
+    review_path = root / "pages" / "page-0001" / "overlays" / "review_events.jsonl"
+    seeded_events = b'{"event_id":"evt-export-seed"}\n'
+    review_path.write_bytes(seeded_events)
+
+    exporter = DocumentExportService()
+    expected_rag = exporter.build_rag_document(bundle)
+    expected_markdown = exporter.render_markdown(bundle)
+
+    written = service.write_document_exports(bundle, root)
+
+    assert bundle.exports == original_exports
+    assert written.exports.bundle_json_path == "exports/bundle.json"
+    assert written.exports.rag_jsonl_path == "exports/rag.jsonl"
+    assert written.exports.stitched_chunks_jsonl_path == "exports/stitched_chunks.jsonl"
+    assert written.exports.document_markdown_path == "exports/document.md"
+
+    bundle_json_path = root / written.exports.bundle_json_path
+    rag_jsonl_path = root / written.exports.rag_jsonl_path
+    stitched_jsonl_path = root / written.exports.stitched_chunks_jsonl_path
+    markdown_path = root / written.exports.document_markdown_path
+
+    restored = DocumentBundle.model_validate_json(
+        bundle_json_path.read_text(encoding="utf-8")
+    )
+    assert restored == written
+    assert restored.exports == written.exports
+
+    rag_lines = [
+        line
+        for line in rag_jsonl_path.read_text(encoding="utf-8").splitlines()
+        if line
+    ]
+    assert len(rag_lines) == len(expected_rag.chunks)
+    for line, chunk in zip(rag_lines, expected_rag.chunks, strict=True):
+        assert json.loads(line) == chunk.model_dump(mode="json")
+    if expected_rag.chunks:
+        assert rag_jsonl_path.read_text(encoding="utf-8").endswith("\n")
+
+    stitched_lines = [
+        line
+        for line in stitched_jsonl_path.read_text(encoding="utf-8").splitlines()
+        if line
+    ]
+    assert len(stitched_lines) == len(expected_rag.stitched_chunks)
+    for line, chunk in zip(
+        stitched_lines,
+        expected_rag.stitched_chunks,
+        strict=True,
+    ):
+        assert json.loads(line) == chunk.model_dump(mode="json")
+    if expected_rag.stitched_chunks:
+        assert stitched_jsonl_path.read_text(encoding="utf-8").endswith("\n")
+
+    assert markdown_path.read_text(encoding="utf-8") == expected_markdown
+
+    stale_marker = "stale-export-marker"
+    rag_jsonl_path.write_text(f"{stale_marker}\n", encoding="utf-8")
+    markdown_path.write_text(stale_marker, encoding="utf-8")
+
+    rewritten = service.write_document_exports(bundle, root)
+
+    assert rewritten.exports == written.exports
+    assert stale_marker not in rag_jsonl_path.read_text(encoding="utf-8")
+    assert markdown_path.read_text(encoding="utf-8") == expected_markdown
+    assert review_path.read_bytes() == seeded_events

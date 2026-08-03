@@ -16,6 +16,7 @@ from bochord.models import (
     BundlePaths,
     DocumentBundle,
     DocumentBundleManifest,
+    ExportSummary,
     OverlayState,
     PageBundleManifest,
     PageEvaluationSummary,
@@ -24,6 +25,7 @@ from bochord.models import (
     WitnessReference,
     page_dir_name,
 )
+from bochord.services.document_export import DocumentExportService
 
 #: Witness families that receive empty on-disk directories per page.
 _WITNESS_FAMILIES = ("text", "layout", "style", "table")
@@ -368,6 +370,89 @@ class BundleLayoutService:
 
         self._write_document_tail(bundle, paths)
         return self._build_document_manifest(bundle, paths)
+
+    def write_document_exports(
+        self,
+        bundle: DocumentBundle,
+        root: Path,
+    ) -> DocumentBundle:
+        """
+        Write derived document export artifacts under ``exports/``.
+
+        Side Effects:
+            Atomically creates or replaces ``exports/bundle.json``,
+            ``exports/rag.jsonl``, ``exports/stitched_chunks.jsonl``, and
+            ``exports/document.md``. Does not modify overlay state or
+            ``overlays/review_events.jsonl``.
+
+        Args:
+            bundle: Canonical accepted document export used as derivation input.
+            root: Filesystem root for the document bundle tree.
+
+        Returns:
+            A copied ``DocumentBundle`` whose ``exports`` summary points at the
+            four written artifact paths. The input ``bundle`` is not mutated.
+
+        """
+        paths = BundlePaths(root)
+        paths.document_exports_dir().mkdir(parents=True, exist_ok=True)
+
+        bundle_json_path = "exports/bundle.json"
+        rag_jsonl_path = "exports/rag.jsonl"
+        stitched_chunks_jsonl_path = "exports/stitched_chunks.jsonl"
+        document_markdown_path = "exports/document.md"
+        summary = ExportSummary(
+            bundle_json_path=bundle_json_path,
+            rag_jsonl_path=rag_jsonl_path,
+            stitched_chunks_jsonl_path=stitched_chunks_jsonl_path,
+            document_markdown_path=document_markdown_path,
+        )
+        exported = bundle.model_copy(update={"exports": summary})
+        exporter = DocumentExportService()
+        rag = exporter.build_rag_document(exported)
+        markdown = exporter.render_markdown(exported)
+
+        _atomic_write_json(
+            root / bundle_json_path,
+            exported.model_dump(mode="json"),
+        )
+        _atomic_write_text(
+            root / rag_jsonl_path,
+            self._jsonl_payload(
+                [chunk.model_dump(mode="json") for chunk in rag.chunks]
+            ),
+        )
+        _atomic_write_text(
+            root / stitched_chunks_jsonl_path,
+            self._jsonl_payload(
+                [
+                    chunk.model_dump(mode="json")
+                    for chunk in rag.stitched_chunks
+                ]
+            ),
+        )
+        _atomic_write_text(
+            root / document_markdown_path,
+            markdown,
+        )
+        return exported
+
+    @staticmethod
+    def _jsonl_payload(records: list[dict[str, object]]) -> str:
+        """
+        Serialize JSON objects as JSONL with a trailing newline when nonempty.
+
+        Args:
+            records: JSON-serializable objects to emit one-per-line.
+
+        Returns:
+            Empty string when ``records`` is empty; otherwise newline-joined
+            JSON lines ending with a trailing newline.
+
+        """
+        if not records:
+            return ""
+        return "".join(f"{json.dumps(record)}\n" for record in records)
 
     def _write_document_tail(
         self,
