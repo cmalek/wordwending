@@ -9,6 +9,7 @@ from pathlib import Path
 
 from bochord.models import (
     AcquisitionProvenance,
+    BaselineShift,
     BibliographicProvenance,
     BundlePage,
     ChunkType,
@@ -31,7 +32,9 @@ from bochord.models import (
     SourceDescriptor,
     SourceType,
     SpanRecord,
+    TextRole,
     TrustState,
+    Typography,
     WitnessReference,
 )
 from bochord.services.document_export import DocumentExportService
@@ -606,3 +609,249 @@ def test_stitching_is_body_main_text_only() -> None:
         chunk.retrieval_metadata.region_kind == RegionKind.BODY
         for chunk in stitched_components
     )
+
+
+def _markdown_style_page() -> BundlePage:
+    """Build one page exercising markdown style, regions, and footnote linkage."""
+    page_id = "page-md-0001"
+    provenance = _page_provenance(page_id)
+    witness_only_phrase = "WITNESS-ONLY-ARTIFACT-TEXT"
+    body_region_id = "region-body-md"
+    table_region_id = "region-table-md"
+    marginal_region_id = "region-marginal-md"
+    unknown_region_id = "region-unknown-md"
+    line_id = "line-body-md"
+    return BundlePage(
+        page_id=page_id,
+        page_number=1,
+        prepared_page=_prepared_page(page_id, 1),
+        witnesses=[
+            WitnessReference(
+                witness_id="wit-witness-only",
+                witness_kind="text",
+                artifact_path=f"pages/{page_id}/witnesses/text/{witness_only_phrase}.json",
+                runner_id="olmocr",
+                page_id=page_id,
+            )
+        ],
+        regions=[
+            RegionRecord(
+                region_id=body_region_id,
+                region_kind=RegionKind.BODY,
+                reading_order_index=1,
+                line_ids=[line_id],
+                trust_state=TrustState.MACHINE,
+                provenance=provenance,
+            ),
+            RegionRecord(
+                region_id=table_region_id,
+                region_kind=RegionKind.TABLE,
+                reading_order_index=2,
+                line_ids=["line-table-md"],
+                trust_state=TrustState.MACHINE,
+                provenance=provenance,
+            ),
+            RegionRecord(
+                region_id=marginal_region_id,
+                region_kind=RegionKind.MARGINALIA,
+                reading_order_index=3,
+                line_ids=["line-marginal-md"],
+                trust_state=TrustState.MACHINE,
+                provenance=provenance,
+            ),
+            RegionRecord(
+                region_id=unknown_region_id,
+                region_kind=RegionKind.UNKNOWN,
+                reading_order_index=4,
+                line_ids=["line-unknown-md"],
+                trust_state=TrustState.MACHINE,
+                provenance=provenance,
+            ),
+        ],
+        lines=[
+            LineRecord(
+                line_id=line_id,
+                region_id=body_region_id,
+                line_order=1,
+                span_ids=[
+                    "span-bold",
+                    "span-italic",
+                    "span-super",
+                    "span-marker",
+                    "span-escape",
+                ],
+                trust_state=TrustState.MACHINE,
+                provenance=provenance,
+            ),
+            LineRecord(
+                line_id="line-table-md",
+                region_id=table_region_id,
+                line_order=1,
+                span_ids=["span-table-md"],
+                trust_state=TrustState.MACHINE,
+                provenance=provenance,
+            ),
+            LineRecord(
+                line_id="line-marginal-md",
+                region_id=marginal_region_id,
+                line_order=1,
+                span_ids=["span-marginal-md"],
+                trust_state=TrustState.MACHINE,
+                provenance=provenance,
+            ),
+            LineRecord(
+                line_id="line-unknown-md",
+                region_id=unknown_region_id,
+                line_order=1,
+                span_ids=["span-unknown-md"],
+                trust_state=TrustState.MACHINE,
+                provenance=provenance,
+            ),
+        ],
+        spans=[
+            SpanRecord(
+                span_id="span-bold",
+                line_id=line_id,
+                text_diplomatic="bold",
+                text_normalized="bold",
+                typography=Typography(weight=FontWeight.BOLD, slant=FontSlant.UPRIGHT),
+                trust_state=TrustState.MACHINE,
+                provenance=provenance,
+            ),
+            SpanRecord(
+                span_id="span-italic",
+                line_id=line_id,
+                text_diplomatic="italic",
+                text_normalized="italic",
+                typography=Typography(
+                    weight=FontWeight.REGULAR,
+                    slant=FontSlant.ITALIC,
+                ),
+                trust_state=TrustState.MACHINE,
+                provenance=provenance,
+            ),
+            SpanRecord(
+                span_id="span-super",
+                line_id=line_id,
+                text_diplomatic="super",
+                text_normalized="super",
+                typography=Typography(
+                    weight=FontWeight.REGULAR,
+                    slant=FontSlant.UPRIGHT,
+                    baseline_shift=BaselineShift.SUPERSCRIPT,
+                ),
+                trust_state=TrustState.MACHINE,
+                provenance=provenance,
+            ),
+            SpanRecord(
+                span_id="span-marker",
+                line_id=line_id,
+                text_diplomatic="marker",
+                text_normalized="marker",
+                roles=[TextRole.FOOTNOTE_MARKER],
+                trust_state=TrustState.REVIEWED,
+                provenance=provenance,
+            ),
+            SpanRecord(
+                span_id="span-escape",
+                line_id=line_id,
+                text_diplomatic="*stars*",
+                text_normalized="*stars*",
+                trust_state=TrustState.MACHINE,
+                provenance=provenance,
+            ),
+            SpanRecord(
+                span_id="span-table-md",
+                line_id="line-table-md",
+                text_diplomatic="table witness prose",
+                text_normalized="table witness prose",
+                trust_state=TrustState.MACHINE,
+                provenance=provenance,
+            ),
+            SpanRecord(
+                span_id="span-marginal-md",
+                line_id="line-marginal-md",
+                text_diplomatic="margin witness prose",
+                text_normalized="margin witness prose",
+                trust_state=TrustState.MACHINE,
+                provenance=provenance,
+            ),
+            SpanRecord(
+                span_id="span-unknown-md",
+                line_id="line-unknown-md",
+                text_diplomatic="unknown witness prose",
+                text_normalized="unknown witness prose",
+                trust_state=TrustState.MACHINE,
+                provenance=provenance,
+            ),
+        ],
+        notes=[
+            NoteRecord(
+                note_id="note-md-1",
+                note_kind=NoteKind.FOOTNOTE_BLOCK,
+                region_id=body_region_id,
+                text_diplomatic="Accepted note body for marker.",
+                linked_marker_span_ids=["span-marker"],
+                trust_state=TrustState.REVIEWED,
+                provenance=provenance,
+            )
+        ],
+    )
+
+
+def test_markdown_preserves_style_regions_and_note_linkage() -> None:
+    """Markdown follows accepted graph order, styles, placeholders, and notes."""
+    minimal = _load_minimal_bundle()
+    style_page = _markdown_style_page()
+    bundle = minimal.model_copy(
+        update={"pages": [*minimal.pages, style_page]},
+    )
+    markdown = DocumentExportService().render_markdown(bundle)
+
+    witness_only_phrase = "WITNESS-ONLY-ARTIFACT-TEXT"
+    assert witness_only_phrase not in markdown
+    assert "table witness prose" not in markdown
+    assert "margin witness prose" not in markdown
+    assert "unknown witness prose" not in markdown
+
+    page_one_idx = markdown.index("<!-- page page-0001 -->")
+    page_two_idx = markdown.index("<!-- page page-md-0001 -->")
+    assert page_one_idx < page_two_idx
+
+    body_region_idx = markdown.index("<!-- region region-body kind=body -->")
+    corrected_region_idx = markdown.index(
+        "<!-- region region-corrected kind=body -->"
+    )
+    table_region_idx = markdown.index("<!-- region region-table-md kind=table -->")
+    marginal_region_idx = markdown.index(
+        "<!-- region region-marginal-md kind=marginalia -->"
+    )
+    unknown_region_idx = markdown.index(
+        "<!-- region region-unknown-md kind=unknown -->"
+    )
+    assert body_region_idx < corrected_region_idx < page_two_idx
+    assert (
+        table_region_idx
+        < marginal_region_idx
+        < unknown_region_idx
+    )
+
+    assert "and*git*[^note-1]" in markdown
+    assert "more" in markdown
+    assert "**corrected**" in markdown
+
+    assert "**bold**" in markdown
+    assert "*italic*" in markdown
+    assert "<sup>super</sup>" in markdown
+    assert "*marker*[^note-md-1]" not in markdown
+    assert "marker[^note-md-1]" in markdown
+    assert r"\*stars\*" in markdown
+
+    assert "[table region: region-table-md]" in markdown
+    assert "[marginalia region: region-marginal-md]" in markdown
+    assert "[unknown region: region-unknown-md]" in markdown
+
+    notes_idx = markdown.index("## Notes")
+    assert notes_idx > unknown_region_idx
+    assert "[^note-1]: See also the entry under git." in markdown
+    assert "[^note-md-1]: Accepted note body for marker." in markdown

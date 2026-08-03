@@ -39,6 +39,9 @@ PAGE_REGIONS_CHUNKING_RECIPE_ID = "page-regions-v1"
 #: Minimum distinct pages required before emitting a stitched chunk.
 MIN_STITCHED_PAGE_COUNT = 2
 
+#: Markdown control characters escaped before style wrappers are applied.
+_MARKDOWN_ESCAPE_CHARS = frozenset("\\*_{[]()#`")
+
 
 @dataclass(frozen=True)
 class PageGraphIndex:
@@ -105,6 +108,161 @@ class DocumentExportService:
             chunks=chunks,
             stitched_chunks=stitched_chunks,
         )
+
+    def render_markdown(self, bundle: DocumentBundle) -> str:
+        """
+        Render an evidence-preserving Markdown reading view from accepted graphs.
+
+        Args:
+            bundle: Canonical document bundle whose accepted page graphs supply
+                diplomatic text, region order, and note linkage.
+
+        Returns:
+            Markdown with visible page and region boundaries, styled body prose,
+            explicit placeholders for special regions, and linked note bodies.
+
+        """
+        sections: list[str] = []
+        notes: list[NoteRecord] = []
+        for page in bundle.pages:
+            sections.append(f"<!-- page {page.page_id} -->")
+            page_index = self._build_page_indexes(page)
+            marker_index = self._build_marker_span_index(page)
+            for region in sorted(
+                page.regions,
+                key=lambda record: record.reading_order_index,
+            ):
+                sections.append(
+                    "<!-- region "
+                    f"{region.region_id} kind={region.region_kind.value} -->"
+                )
+                if region.region_kind == RegionKind.BODY:
+                    sections.append(
+                        self._render_body_region(
+                            region,
+                            page_index,
+                            marker_index,
+                        )
+                    )
+                else:
+                    sections.append(
+                        self._render_special_region_placeholder(region)
+                    )
+            notes.extend(page.notes)
+        if notes:
+            sections.append("## Notes")
+            for note in sorted(notes, key=lambda record: record.note_id):
+                body = self._escape_markdown(note.text_diplomatic)
+                sections.append(f"[^{note.note_id}]: {body}")
+        return "\n\n".join(sections) + "\n"
+
+    def _build_marker_span_index(self, page: BundlePage) -> dict[str, str]:
+        """
+        Map linked marker span ids to owning note ids for one page.
+
+        Args:
+            page: Accepted page graph whose notes declare marker span linkage.
+
+        Returns:
+            First-seen note id for each linked marker span id.
+
+        """
+        index: dict[str, str] = {}
+        for note in page.notes:
+            for span_id in note.linked_marker_span_ids:
+                index.setdefault(span_id, note.note_id)
+        return index
+
+    def _escape_markdown(self, text: str) -> str:
+        """
+        Escape Markdown control characters in diplomatic text.
+
+        Args:
+            text: Raw diplomatic span or note text.
+
+        Returns:
+            Text safe to wrap with Markdown emphasis or note-reference syntax.
+
+        """
+        escaped: list[str] = []
+        for char in text:
+            if char in _MARKDOWN_ESCAPE_CHARS:
+                escaped.append("\\")
+            escaped.append(char)
+        return "".join(escaped)
+
+    def _render_styled_span(
+        self,
+        span: SpanRecord,
+        note_id: str | None,
+    ) -> str:
+        """
+        Render one span with recoverable typography and optional note marker.
+
+        Args:
+            span: Accepted span whose diplomatic text supplies reading content.
+            note_id: Owning note id when the span is a linked footnote marker.
+
+        Returns:
+            Escaped span text with style wrappers and an inline note reference.
+
+        """
+        text = self._escape_markdown(span.text_diplomatic)
+        typography = span.typography
+        if typography.baseline_shift == BaselineShift.SUPERSCRIPT:
+            text = f"<sup>{text}</sup>"
+        if typography.slant == FontSlant.ITALIC:
+            text = f"*{text}*"
+        if typography.weight == FontWeight.BOLD:
+            text = f"**{text}**"
+        if note_id is not None:
+            text = f"{text}[^{note_id}]"
+        return text
+
+    def _render_body_region(
+        self,
+        region: RegionRecord,
+        page_index: PageGraphIndex,
+        marker_index: dict[str, str],
+    ) -> str:
+        """
+        Render one BODY region as plain paragraphs from ordered span text.
+
+        Args:
+            region: Accepted body region whose lines and spans define prose order.
+            page_index: Typed page graph lookups.
+            marker_index: Linked marker span ids mapped to note ids.
+
+        Returns:
+            Region prose with one paragraph line per accepted graph line.
+
+        """
+        lines = self._ordered_region_lines(region, page_index)
+        line_texts: list[str] = []
+        for line in lines:
+            span_texts = [
+                self._render_styled_span(
+                    page_index.spans[span_id],
+                    marker_index.get(span_id),
+                )
+                for span_id in line.span_ids
+                if span_id in page_index.spans
+            ]
+            line_texts.append("".join(span_texts))
+        return "\n".join(line_texts)
+
+    def _render_special_region_placeholder(self, region: RegionRecord) -> str:
+        """
+        Render one non-body region as an explicit labeled placeholder.
+
+        Args:
+            region: Accepted special region that must not be flattened as prose.
+
+        Returns:
+            Short labeled placeholder preserving region kind and stable id.
+
+        """
+        return f"[{region.region_kind.value} region: {region.region_id}]"
 
     def _build_stitched_chunks(
         self,
