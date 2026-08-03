@@ -855,3 +855,123 @@ def test_markdown_preserves_style_regions_and_note_linkage() -> None:
     assert notes_idx > unknown_region_idx
     assert "[^note-1]: See also the entry under git." in markdown
     assert "[^note-md-1]: Accepted note body for marker." in markdown
+
+
+def _single_span_body_page(
+    *,
+    page_id: str,
+    span_id: str,
+    text: str,
+    typography: Typography | None = None,
+) -> BundlePage:
+    """Build one body region page with a single styled span."""
+    provenance = _page_provenance(page_id)
+    region_id = f"region-{span_id}"
+    line_id = f"line-{span_id}"
+    span = SpanRecord(
+        span_id=span_id,
+        line_id=line_id,
+        text_diplomatic=text,
+        text_normalized=text,
+        typography=typography or Typography(),
+        trust_state=TrustState.MACHINE,
+        provenance=provenance,
+    )
+    return BundlePage(
+        page_id=page_id,
+        page_number=1,
+        prepared_page=_prepared_page(page_id, 1),
+        regions=[
+            RegionRecord(
+                region_id=region_id,
+                region_kind=RegionKind.BODY,
+                reading_order_index=1,
+                line_ids=[line_id],
+                trust_state=TrustState.MACHINE,
+                provenance=provenance,
+            )
+        ],
+        lines=[
+            LineRecord(
+                line_id=line_id,
+                region_id=region_id,
+                line_order=1,
+                span_ids=[span_id],
+                trust_state=TrustState.MACHINE,
+                provenance=provenance,
+            )
+        ],
+        spans=[span],
+    )
+
+
+def test_markdown_html_escapes_superscript_content() -> None:
+    """Superscript diplomatic text must HTML-escape <, >, and & inside <sup>."""
+    page = _single_span_body_page(
+        page_id="page-html-esc",
+        span_id="span-html-super",
+        text="a<b&c>",
+        typography=Typography(
+            weight=FontWeight.REGULAR,
+            slant=FontSlant.UPRIGHT,
+            baseline_shift=BaselineShift.SUPERSCRIPT,
+        ),
+    )
+    markdown = DocumentExportService().render_markdown(
+        _document_bundle([page], document_id="html-esc-doc")
+    )
+
+    assert "<sup>a&lt;b&amp;c&gt;</sup>" in markdown
+    assert "<sup>a<b&c></sup>" not in markdown
+
+
+def test_markdown_renders_combined_bold_italic() -> None:
+    """Bold+italic spans use ***text*** with bold outside italic."""
+    page = _single_span_body_page(
+        page_id="page-bold-italic",
+        span_id="span-bold-italic",
+        text="both",
+        typography=Typography(
+            weight=FontWeight.BOLD,
+            slant=FontSlant.ITALIC,
+        ),
+    )
+    markdown = DocumentExportService().render_markdown(
+        _document_bundle([page], document_id="bold-italic-doc")
+    )
+
+    assert "***both***" in markdown
+    assert "**\\*both\\***" not in markdown
+    assert "*\\**both*\\***" not in markdown
+
+
+def test_markdown_includes_orphan_note_without_region() -> None:
+    """Notes without a parent region still appear in the Notes section."""
+    page = _body_region_page(
+        page_id="page-orphan-note",
+        page_number=1,
+        region_id="region-orphan-body",
+        text="main text",
+        reading_order_index=1,
+    )
+    page = page.model_copy(
+        update={
+            "notes": [
+                NoteRecord(
+                    note_id="note-orphan",
+                    note_kind=NoteKind.FOOTNOTE_BLOCK,
+                    region_id=None,
+                    text_diplomatic="Orphan note without region scope.",
+                    linked_marker_span_ids=[],
+                    trust_state=TrustState.REVIEWED,
+                    provenance=_page_provenance("page-orphan-note"),
+                )
+            ]
+        }
+    )
+    markdown = DocumentExportService().render_markdown(
+        _document_bundle([page], document_id="orphan-note-doc")
+    )
+
+    assert "## Notes" in markdown
+    assert "[^note-orphan]: Orphan note without region scope." in markdown

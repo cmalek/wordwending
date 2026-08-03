@@ -56,7 +56,7 @@ class PageGraphIndex:
 
 
 class DocumentExportService:
-    """Pure renderer that derives retrieval exports from accepted page graphs."""
+    """Pure renderer for retrieval exports and evidence-preserving Markdown."""
 
     def build_rag_document(self, bundle: DocumentBundle) -> RagDocument:
         """
@@ -191,6 +191,23 @@ class DocumentExportService:
             escaped.append(char)
         return "".join(escaped)
 
+    def _escape_html(self, text: str) -> str:
+        """
+        Escape HTML-special characters in diplomatic text.
+
+        Args:
+            text: Markdown-escaped diplomatic text that may appear inside HTML.
+
+        Returns:
+            Text safe to embed in inline HTML such as ``<sup>`` wrappers.
+
+        """
+        return (
+            text.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        )
+
     def _render_styled_span(
         self,
         span: SpanRecord,
@@ -209,11 +226,17 @@ class DocumentExportService:
         """
         text = self._escape_markdown(span.text_diplomatic)
         typography = span.typography
-        if typography.baseline_shift == BaselineShift.SUPERSCRIPT:
-            text = f"<sup>{text}</sup>"
-        if typography.slant == FontSlant.ITALIC:
+        is_superscript = typography.baseline_shift == BaselineShift.SUPERSCRIPT
+        is_italic = typography.slant == FontSlant.ITALIC
+        is_bold = typography.weight == FontWeight.BOLD
+        if is_superscript:
+            text = f"<sup>{self._escape_html(text)}</sup>"
+        # Combined bold+italic uses ``***...***`` with bold outside italic.
+        if is_bold and is_italic:
+            text = f"***{text}***"
+        elif is_italic:
             text = f"*{text}*"
-        if typography.weight == FontWeight.BOLD:
+        elif is_bold:
             text = f"**{text}**"
         if note_id is not None:
             text = f"{text}[^{note_id}]"
