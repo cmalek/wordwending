@@ -1,14 +1,18 @@
 # Copyright (C) 2026 Chris Malek.
-"""Derive retrieval chunks and Markdown from accepted document bundles."""
+"""Derive retrieval chunks from accepted document bundles."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from bochord.models import (
+    BaselineShift,
     BundlePage,
     ChunkType,
     DocumentBundle,
+    FontSlant,
+    FontWeight,
     LineRecord,
     NoteRecord,
     RagChunk,
@@ -29,6 +33,18 @@ RAG_SCHEMA_VERSION = "1.0.0"
 
 #: Reproducible recipe identifier for page-local region and footnote chunking.
 PAGE_REGIONS_CHUNKING_RECIPE_ID = "page-regions-v1"
+
+
+@dataclass(frozen=True)
+class PageGraphIndex:
+    """Typed page-graph lookups keyed by object kind."""
+
+    #: Accepted regions indexed by ``region_id``.
+    regions: dict[str, RegionRecord]
+    #: Accepted lines indexed by ``line_id``.
+    lines: dict[str, LineRecord]
+    #: Accepted spans indexed by ``span_id``.
+    spans: dict[str, SpanRecord]
 
 
 class DocumentExportService:
@@ -77,35 +93,29 @@ class DocumentExportService:
             stitched_chunks=[],
         )
 
-    def _build_page_indexes(
-        self,
-        page: BundlePage,
-    ) -> dict[str, LineRecord | SpanRecord | RegionRecord]:
+    def _build_page_indexes(self, page: BundlePage) -> PageGraphIndex:
         """
-        Index page graph objects by stable identifier.
+        Index page graph objects in separate typed lookup tables.
 
         Args:
             page: Accepted page graph whose objects will be resolved by id.
 
         Returns:
-            Lookup table mapping graph ids to their accepted records.
+            Typed lookup tables for regions, lines, and spans.
 
         """
-        index: dict[str, LineRecord | SpanRecord | RegionRecord] = {}
-        for region in page.regions:
-            index[region.region_id] = region
-        for line in page.lines:
-            index[line.line_id] = line
-        for span in page.spans:
-            index[span.span_id] = span
-        return index
+        return PageGraphIndex(
+            regions={region.region_id: region for region in page.regions},
+            lines={line.line_id: line for line in page.lines},
+            spans={span.span_id: span for span in page.spans},
+        )
 
     def _build_region_chunk(
         self,
         document_id: str,
         page: BundlePage,
         region: RegionRecord,
-        page_index: dict[str, LineRecord | SpanRecord | RegionRecord],
+        page_index: PageGraphIndex,
     ) -> RagChunk:
         """
         Build one region retrieval chunk from accepted graph order.
@@ -114,7 +124,7 @@ class DocumentExportService:
             document_id: Owning document identifier.
             page: Page containing the region graph.
             region: Accepted region whose lines and spans supply chunk text.
-            page_index: Page graph lookup keyed by object id.
+            page_index: Typed page graph lookups.
 
         Returns:
             Page-local region chunk with aggregated provenance and trust.
@@ -127,6 +137,7 @@ class DocumentExportService:
             *lines,
             *spans,
         ]
+        typography_summary = self._typography_summary(spans)
         return RagChunk(
             chunk_id=f"region-{region.region_id}",
             chunk_type=ChunkType.REGION,
@@ -136,14 +147,14 @@ class DocumentExportService:
             trust_state=self._aggregate_trust(included),
             source_object_ids=self._source_object_ids(included),
             provenance=self._aggregate_provenance(included),
-            typography_summary=self._typography_summary(spans),
+            typography_summary=typography_summary,
             retrieval_metadata=RetrievalMetadata(
                 reading_order_index=region.reading_order_index,
                 page_number=page.page_number,
                 region_kind=region.region_kind,
                 contains_reviewed_content=self._contains_reviewed(included),
                 contains_corrected_content=self._contains_corrected(included),
-                typography_signals=self._typography_summary(spans),
+                typography_signals=typography_summary,
             ),
         )
 
@@ -152,7 +163,7 @@ class DocumentExportService:
         document_id: str,
         page: BundlePage,
         note: NoteRecord,
-        page_index: dict[str, LineRecord | SpanRecord | RegionRecord],
+        page_index: PageGraphIndex,
     ) -> RagChunk:
         """
         Build one footnote retrieval chunk from an accepted note object.
@@ -161,28 +172,27 @@ class DocumentExportService:
             document_id: Owning document identifier.
             page: Page containing the note graph.
             note: Accepted note whose diplomatic text becomes chunk text.
-            page_index: Page graph lookup keyed by object id.
+            page_index: Typed page graph lookups.
 
         Returns:
             Page-local footnote chunk with marker and region linkage retained.
 
         """
         marker_span_records = [
-            span
+            page_index.spans[span_id]
             for span_id in note.linked_marker_span_ids
-            if (span := page_index.get(span_id)) is not None
-            and isinstance(span, SpanRecord)
+            if span_id in page_index.spans
         ]
         trust_objects: list[NoteRecord | SpanRecord] = [note, *marker_span_records]
         provenance_objects: list[
             NoteRecord | SpanRecord | RegionRecord
         ] = list(trust_objects)
         region: RegionRecord | None = None
-        if note.region_id is not None and note.region_id in page_index:
-            candidate = page_index[note.region_id]
-            if isinstance(candidate, RegionRecord):
-                region = candidate
+        if note.region_id is not None:
+            region = page_index.regions.get(note.region_id)
+            if region is not None:
                 provenance_objects.append(region)
+        typography_summary = self._typography_summary(marker_span_records)
         return RagChunk(
             chunk_id=f"footnote-{note.note_id}",
             chunk_type=ChunkType.FOOTNOTE,
@@ -192,49 +202,50 @@ class DocumentExportService:
             trust_state=self._aggregate_trust(trust_objects),
             source_object_ids=self._footnote_source_object_ids(note, region),
             provenance=self._aggregate_provenance(provenance_objects),
+            typography_summary=typography_summary,
             note_summary=self._footnote_note_summary(note),
             retrieval_metadata=RetrievalMetadata(
                 page_number=page.page_number,
                 contains_reviewed_content=self._contains_reviewed(trust_objects),
                 contains_corrected_content=self._contains_corrected(trust_objects),
-                typography_signals=self._typography_summary(marker_span_records),
+                typography_signals=typography_summary,
             ),
         )
 
     def _ordered_region_lines(
         self,
         region: RegionRecord,
-        page_index: dict[str, LineRecord | SpanRecord | RegionRecord],
+        page_index: PageGraphIndex,
     ) -> list[LineRecord]:
         """
         Resolve region line ids in accepted line_order sequence.
 
         Args:
             region: Region whose ``line_ids`` identify member lines.
-            page_index: Page graph lookup keyed by object id.
+            page_index: Typed page graph lookups.
 
         Returns:
             Lines belonging to the region sorted by ``line_order``.
 
         """
-        lines: list[LineRecord] = []
-        for line_id in region.line_ids:
-            record = page_index.get(line_id)
-            if isinstance(record, LineRecord):
-                lines.append(record)
+        lines = [
+            page_index.lines[line_id]
+            for line_id in region.line_ids
+            if line_id in page_index.lines
+        ]
         return sorted(lines, key=lambda line: line.line_order)
 
     def _ordered_region_spans(
         self,
         lines: list[LineRecord],
-        page_index: dict[str, LineRecord | SpanRecord | RegionRecord],
+        page_index: PageGraphIndex,
     ) -> list[SpanRecord]:
         """
         Resolve span ids for region lines in graph order.
 
         Args:
             lines: Region lines ordered by ``line_order``.
-            page_index: Page graph lookup keyed by object id.
+            page_index: Typed page graph lookups.
 
         Returns:
             Spans referenced by the lines in line and span order.
@@ -242,23 +253,24 @@ class DocumentExportService:
         """
         spans: list[SpanRecord] = []
         for line in lines:
-            for span_id in line.span_ids:
-                record = page_index.get(span_id)
-                if isinstance(record, SpanRecord):
-                    spans.append(record)
+            spans.extend(
+                page_index.spans[span_id]
+                for span_id in line.span_ids
+                if span_id in page_index.spans
+            )
         return spans
 
     def _join_region_text(
         self,
         lines: list[LineRecord],
-        page_index: dict[str, LineRecord | SpanRecord | RegionRecord],
+        page_index: PageGraphIndex,
     ) -> str:
         """
         Join diplomatic span text for one region in graph order.
 
         Args:
             lines: Region lines ordered by ``line_order``.
-            page_index: Page graph lookup keyed by object id.
+            page_index: Typed page graph lookups.
 
         Returns:
             Region text with one line per newline-separated segment.
@@ -266,11 +278,11 @@ class DocumentExportService:
         """
         line_texts: list[str] = []
         for line in lines:
-            span_texts: list[str] = []
-            for span_id in line.span_ids:
-                record = page_index.get(span_id)
-                if isinstance(record, SpanRecord):
-                    span_texts.append(record.text_diplomatic)
+            span_texts = [
+                page_index.spans[span_id].text_diplomatic
+                for span_id in line.span_ids
+                if span_id in page_index.spans
+            ]
             line_texts.append("".join(span_texts))
         return "\n".join(line_texts)
 
@@ -295,8 +307,7 @@ class DocumentExportService:
         if any(state == TrustState.CORRECTED for state in trust_states):
             return TrustState.CORRECTED
         if trust_states and all(
-            state in {TrustState.REVIEWED, TrustState.CORRECTED}
-            for state in trust_states
+            state == TrustState.REVIEWED for state in trust_states
         ):
             return TrustState.REVIEWED
         return TrustState.MACHINE
@@ -475,23 +486,53 @@ class DocumentExportService:
 
     def _typography_summary(self, spans: list[SpanRecord]) -> list[Typography]:
         """
-        Collect distinct typography signals from included spans.
+        Collect distinct known typography signals from included spans.
 
         Args:
             spans: Spans whose typography may contribute retrieval facets.
 
         Returns:
-            Unique typography records in first-seen order.
+            Unique non-default typography records in first-seen order.
 
         """
         summary: list[Typography] = []
         seen: set[str] = set()
         for span in spans:
+            if not self._has_known_typography(span.typography):
+                continue
             key = span.typography.model_dump_json()
             if key not in seen:
                 seen.add(key)
                 summary.append(span.typography)
         return summary
+
+    def _has_known_typography(self, typography: Typography) -> bool:
+        """
+        Report whether typography carries at least one known facet.
+
+        Args:
+            typography: Span typography candidate for retrieval export.
+
+        Returns:
+            ``True`` when any facet is materially known rather than default.
+
+        """
+        if typography.font_families:
+            return True
+        if typography.font_size_points is not None:
+            return True
+        if typography.small_caps is not None:
+            return True
+        if typography.letter_spaced is not None:
+            return True
+        return any(
+            facet != unknown
+            for facet, unknown in (
+                (typography.weight, FontWeight.UNKNOWN),
+                (typography.slant, FontSlant.UNKNOWN),
+                (typography.baseline_shift, BaselineShift.UNKNOWN),
+            )
+        )
 
     def _object_id(
         self,

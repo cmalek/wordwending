@@ -4,13 +4,31 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 from bochord.models import (
+    AcquisitionProvenance,
+    BibliographicProvenance,
+    BundlePage,
     ChunkType,
+    CoordinateSpace,
     DocumentBundle,
+    DocumentEvaluationSummary,
+    ExportSummary,
     FontSlant,
     FontWeight,
+    LineRecord,
+    ObjectProvenance,
+    PageClass,
+    PreparationMode,
+    PreparedPage,
+    RegionKind,
+    RegionRecord,
+    RunMetadata,
+    SourceDescriptor,
+    SourceType,
+    SpanRecord,
     TrustState,
 )
 from bochord.services.document_export import DocumentExportService
@@ -77,6 +95,16 @@ def test_build_rag_document_emits_region_and_footnote_chunks() -> None:
         signal.slant == FontSlant.ITALIC
         for signal in footnote_chunk.retrieval_metadata.typography_signals
     )
+    assert any(
+        signal.slant == FontSlant.ITALIC
+        for signal in footnote_chunk.typography_summary
+    )
+
+    assert len(body_chunk.typography_summary) == 1
+    assert body_chunk.typography_summary[0].slant == FontSlant.ITALIC
+    assert body_chunk.typography_summary == body_chunk.retrieval_metadata.typography_signals
+    assert len(corrected_chunk.typography_summary) == 1
+    assert corrected_chunk.typography_summary[0].weight == FontWeight.BOLD
 
     for chunk in rag.chunks:
         assert chunk.provenance.source_page_ids == ["page-0001"]
@@ -103,3 +131,107 @@ def test_build_rag_document_emits_region_and_footnote_chunks() -> None:
 
     assert body_chunk.trust_state == TrustState.MACHINE
     assert footnote_chunk.trust_state == TrustState.REVIEWED
+
+
+def _object_provenance() -> ObjectProvenance:
+    """Return valid single-page provenance for programmatic graph tests."""
+    return ObjectProvenance(
+        source_page_id="page-0001",
+        witness_ids=["wit-1"],
+        runner_ids=["olmocr"],
+    )
+
+
+def _minimal_document_bundle(page: BundlePage) -> DocumentBundle:
+    """Wrap one accepted page in a valid document bundle."""
+    timestamp = datetime(2026, 8, 3, tzinfo=UTC)
+    return DocumentBundle(
+        document_id="collision-doc",
+        bundle_schema_version="1.0.0",
+        source=SourceDescriptor(
+            source_id="src-collision",
+            source_type=SourceType.PDF,
+            source_label="collision.pdf",
+            original_path="sources/collision.pdf",
+            page_count=1,
+        ),
+        bibliographic_provenance=BibliographicProvenance(
+            title="Collision Test",
+            authors=["Fixture Author"],
+        ),
+        acquisition_provenance=AcquisitionProvenance(
+            acquisition_kind="local-scan",
+            acquired_from="local",
+        ),
+        run=RunMetadata(
+            run_id="run-collision",
+            run_timestamp_utc=timestamp,
+            preparation_recipe_id="prep-v1",
+            config_digest="sha256:config",
+            runner_set=[],
+            bundle_schema_version="1.0.0",
+        ),
+        pages=[page],
+        evaluation_summary=DocumentEvaluationSummary(),
+        exports=ExportSummary(bundle_json_path="exports/bundle.json"),
+    )
+
+
+def test_typed_page_indexes_resolve_colliding_ids_by_object_kind() -> None:
+    """Separate region/line/span maps must not overwrite unlike graph records."""
+    provenance = _object_provenance()
+    shared_id = "shared-object-id"
+    page = BundlePage(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=PreparedPage(
+            prepared_page_id="prepared-page-1",
+            preparation_mode=PreparationMode.FULL_PAGE,
+            page_class=PageClass.ORDINARY_PROSE,
+            image_path="pages/page-0001/image/page.png",
+            source_artifact_id="source-page-1",
+            image_checksum="sha256:prepared",
+            preparation_recipe_id="prep-v1",
+            preparation_recipe_digest="digest-prep-v1",
+            coordinate_space=CoordinateSpace(
+                space_id="prepared-page-1",
+                width_px=100,
+                height_px=100,
+            ),
+        ),
+        regions=[
+            RegionRecord(
+                region_id=shared_id,
+                region_kind=RegionKind.BODY,
+                reading_order_index=1,
+                line_ids=["line-1"],
+                provenance=provenance,
+            )
+        ],
+        lines=[
+            LineRecord(
+                line_id="line-1",
+                region_id=shared_id,
+                line_order=1,
+                span_ids=[shared_id],
+                provenance=provenance,
+            )
+        ],
+        spans=[
+            SpanRecord(
+                span_id=shared_id,
+                line_id="line-1",
+                text_diplomatic="span-wins",
+                text_normalized="span-wins",
+                provenance=provenance,
+            )
+        ],
+    )
+    bundle = _minimal_document_bundle(page)
+
+    rag = DocumentExportService().build_rag_document(bundle)
+    region_chunk = next(
+        chunk for chunk in rag.chunks if chunk.chunk_type == ChunkType.REGION
+    )
+
+    assert region_chunk.text == "span-wins"
