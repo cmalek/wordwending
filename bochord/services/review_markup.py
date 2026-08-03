@@ -434,7 +434,7 @@ class HumanMarkupService:
 
         """
         if not object_ids:
-            msg = "target_object_ids must not be empty"
+            msg = f"{message_prefix}; must not be empty"
             raise ValueError(msg)
         unknown = [
             object_id for object_id in object_ids if object_id not in known_ids

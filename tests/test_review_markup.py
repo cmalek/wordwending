@@ -278,7 +278,7 @@ def test_rejects_blank_guideline_version(guideline_version: str) -> None:
 
 def test_create_text_task_rejects_empty_target_object_ids(page: BundlePage) -> None:
     service = HumanMarkupService("review-v1", "1.0.0")
-    with pytest.raises(ValueError, match="target_object_ids"):
+    with pytest.raises(ValueError, match="must not be empty"):
         service.create_text_task(
             page, [], run_id="run-1", graph_revision="graph-1"
         )
@@ -290,6 +290,60 @@ def test_create_text_task_rejects_unknown_non_span_targets(page: BundlePage) -> 
         service.create_text_task(
             page,
             ["region-1"],
+            run_id="run-1",
+            graph_revision="graph-1",
+        )
+
+
+@pytest.mark.parametrize(
+    ("factory_name", "match"),
+    [
+        ("create_layout_task", "region"),
+        ("create_typography_task", "span"),
+        ("create_note_linkage_task", "note"),
+    ],
+)
+def test_dimension_factories_reject_empty_targets(
+    page: BundlePage,
+    factory_name: str,
+    match: str,
+) -> None:
+    service = HumanMarkupService("review-v1", "1.0.0")
+    factory = getattr(service, factory_name)
+    with pytest.raises(ValueError, match=match) as exc_info:
+        factory(page, [], run_id="run-1", graph_revision="graph-1")
+    assert "must not be empty" in str(exc_info.value)
+
+
+@pytest.mark.parametrize(
+    ("factory_name", "bad_ids", "match"),
+    [
+        ("create_layout_task", ["span-1"], "region"),
+        ("create_typography_task", ["region-1"], "span"),
+        ("create_note_linkage_task", ["span-1"], "note"),
+    ],
+)
+def test_dimension_factories_reject_unknown_wrong_kind_targets(
+    page: BundlePage,
+    factory_name: str,
+    bad_ids: list[str],
+    match: str,
+) -> None:
+    service = HumanMarkupService("review-v1", "1.0.0")
+    factory = getattr(service, factory_name)
+    with pytest.raises(ValueError, match=match):
+        factory(page, bad_ids, run_id="run-1", graph_revision="graph-1")
+
+
+def test_create_note_linkage_task_rejects_unknown_related_span_ids(
+    page: BundlePage,
+) -> None:
+    service = HumanMarkupService("review-v1", "1.0.0")
+    with pytest.raises(ValueError, match="span ids"):
+        service.create_note_linkage_task(
+            page,
+            ["note-1"],
+            related_object_ids=["region-1"],
             run_id="run-1",
             graph_revision="graph-1",
         )
