@@ -533,3 +533,89 @@ def test_build_review_tasks_preserves_dimension_specific_coverage(
         assert task.certified_coverage_ids == []
         if task.task_type is not ReviewTaskType.ADJUDICATION:
             assert task.target_scope is not ReviewScope.PAGE
+
+
+def test_note_linkage_marker_only_flags_collapse_to_adjudication(
+    page: BundlePage,
+) -> None:
+    flagged_page = page.model_copy(
+        update={
+            "evaluation_summary": PageEvaluationSummary(
+                style=StyleEvaluationSummary(
+                    note_linkage=EvaluationFamilySummary(
+                        flags=[_flag("marker-only", ["span-2"])]
+                    )
+                )
+            )
+        }
+    )
+    service = HumanMarkupService("review-v1", "1.0.0")
+    tasks = service.build_review_tasks(
+        flagged_page, run_id="run-1", graph_revision="graph-1"
+    )
+    assert len(tasks) == 1
+    task = tasks[0]
+    assert task.task_type is ReviewTaskType.ADJUDICATION
+    assert task.target_object_ids == ["page-1"]
+    assert task.related_object_ids == ["span-2"]
+    assert task.dimensions == [ReviewDimension.NOTE_LINKAGE]
+
+
+def test_blank_target_object_id_routes_to_adjudication(page: BundlePage) -> None:
+    flagged_page = page.model_copy(
+        update={
+            "evaluation_summary": PageEvaluationSummary(
+                text=EvaluationFamilySummary(
+                    flags=[_flag("blank-target", ["span-1", "   "])]
+                )
+            )
+        }
+    )
+    service = HumanMarkupService("review-v1", "1.0.0")
+    tasks = service.build_review_tasks(
+        flagged_page, run_id="run-1", graph_revision="graph-1"
+    )
+    by_type = {task.task_type: task for task in tasks}
+    assert set(by_type) == {ReviewTaskType.TEXT, ReviewTaskType.ADJUDICATION}
+    assert by_type[ReviewTaskType.TEXT].target_object_ids == ["span-1"]
+    adjudication = by_type[ReviewTaskType.ADJUDICATION]
+    assert adjudication.target_object_ids == ["page-1"]
+    assert adjudication.related_object_ids == []
+    assert adjudication.dimensions == [ReviewDimension.TEXT]
+
+
+def test_create_adjudication_flag_task_rejects_empty_dimensions(
+    page: BundlePage,
+) -> None:
+    service = HumanMarkupService("review-v1", "1.0.0")
+    with pytest.raises(ValueError, match="at least one dimension"):
+        service.create_adjudication_flag_task(
+            page,
+            dimensions=[],
+            run_id="run-1",
+            graph_revision="graph-1",
+        )
+
+
+def test_adjudication_excludes_page_id_from_related_object_ids(
+    page: BundlePage,
+) -> None:
+    flagged_page = page.model_copy(
+        update={
+            "evaluation_summary": PageEvaluationSummary(
+                text=EvaluationFamilySummary(
+                    flags=[_flag("page-as-target", ["page-1", "missing-span"])]
+                )
+            )
+        }
+    )
+    service = HumanMarkupService("review-v1", "1.0.0")
+    tasks = service.build_review_tasks(
+        flagged_page, run_id="run-1", graph_revision="graph-1"
+    )
+    assert len(tasks) == 1
+    task = tasks[0]
+    assert task.task_type is ReviewTaskType.ADJUDICATION
+    assert task.target_object_ids == ["page-1"]
+    assert task.related_object_ids == ["missing-span"]
+    assert "page-1" not in task.related_object_ids

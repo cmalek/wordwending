@@ -540,13 +540,22 @@ class HumanMarkupService:
         if not dimensions:
             msg = "adjudication flag tasks require at least one dimension"
             raise ValueError(msg)
+        # Page id is already the primary target; overlapping related ids
+        # would fail ReviewTask related/target validation.
+        safe_related = sorted(
+            {
+                object_id
+                for object_id in related_object_ids
+                if object_id and object_id != page.page_id
+            }
+        )
         return self._build_task(
             page,
             task_type=ReviewTaskType.ADJUDICATION,
             dimensions=sorted(dimensions, key=lambda item: item.value),
             target_scope=ReviewScope.PAGE,
             target_object_ids=[page.page_id],
-            related_object_ids=sorted(related_object_ids),
+            related_object_ids=safe_related,
             question=_ADJUDICATION_QUESTION,
             allowed_actions=_ADJUDICATION_ALLOWED_ACTIONS,
             completion_criteria=_ADJUDICATION_COMPLETION_CRITERIA,
