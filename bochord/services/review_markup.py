@@ -104,6 +104,9 @@ class HumanMarkupService:
         """
         Build a span-scoped diplomatic-text review task packet.
 
+        Task identity is scoped to ``(page, task_type, targets)`` only and is
+        independent of ``run_id`` / ``graph_revision``.
+
         Args:
             page: Accepted page graph supplying span ids and image binding.
             target_object_ids: Span ids the operator must inspect.
@@ -116,7 +119,7 @@ class HumanMarkupService:
             A self-contained text review task bound to the prepared image.
 
         Raises:
-            ValueError: If any target id is missing or is not a page span.
+            ValueError: If targets are empty or any target id is not a page span.
 
         """
         if not target_object_ids:
@@ -159,6 +162,9 @@ class HumanMarkupService:
     ) -> str:
         """
         Build a deterministic task id from page, type, and target ids.
+
+        Identity is scoped to ``(page, task_type, targets)`` only; run and
+        graph revision do not participate.
 
         Args:
             page_id: Owning page identifier.

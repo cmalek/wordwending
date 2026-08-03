@@ -121,3 +121,34 @@ def test_text_packet_has_exact_scope_and_evidence_order(page: BundlePage) -> Non
         ReviewAction.MARK_ILLEGIBLE,
         ReviewAction.FLAG,
     ]
+
+
+@pytest.mark.parametrize("guideline_id", ["", "   "])
+def test_rejects_blank_guideline_id(guideline_id: str) -> None:
+    with pytest.raises(ValueError, match="guideline_id"):
+        HumanMarkupService(guideline_id, "1.0.0")
+
+
+@pytest.mark.parametrize("guideline_version", ["", "   "])
+def test_rejects_blank_guideline_version(guideline_version: str) -> None:
+    with pytest.raises(ValueError, match="guideline_version"):
+        HumanMarkupService("review-v1", guideline_version)
+
+
+def test_create_text_task_rejects_empty_target_object_ids(page: BundlePage) -> None:
+    service = HumanMarkupService("review-v1", "1.0.0")
+    with pytest.raises(ValueError, match="target_object_ids"):
+        service.create_text_task(
+            page, [], run_id="run-1", graph_revision="graph-1"
+        )
+
+
+def test_create_text_task_rejects_unknown_non_span_targets(page: BundlePage) -> None:
+    service = HumanMarkupService("review-v1", "1.0.0")
+    with pytest.raises(ValueError, match="span ids"):
+        service.create_text_task(
+            page,
+            ["region-1"],
+            run_id="run-1",
+            graph_revision="graph-1",
+        )
