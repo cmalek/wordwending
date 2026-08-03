@@ -513,9 +513,10 @@ def test_build_review_tasks_preserves_dimension_specific_coverage(
     assert adjudication.target_object_ids == ["page-1"]
     assert adjudication.related_object_ids == ["missing-span"]
     assert adjudication.allowed_actions == [
-        ReviewAction.ACCEPT,
         ReviewAction.FLAG,
     ]
+    assert ReviewAction.ACCEPT not in adjudication.allowed_actions
+    assert adjudication.supports_abstention is True
     assert adjudication.prepared_image_checksum == "sha256:image"
     assert ReviewDimension.TEXT in adjudication.dimensions
 

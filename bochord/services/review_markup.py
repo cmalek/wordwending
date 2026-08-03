@@ -79,8 +79,9 @@ _PREPARATION_ALLOWED_ACTIONS: list[ReviewAction] = [
 ]
 
 #: Actions permitted for page-scoped adjudication of unknown flag targets.
+#: ACCEPT is intentionally omitted: unknown/empty targets cannot be accepted
+#: without inventing object ids or upgrading trust across dimensions/scopes.
 _ADJUDICATION_ALLOWED_ACTIONS: list[ReviewAction] = [
-    ReviewAction.ACCEPT,
     ReviewAction.FLAG,
 ]
 
@@ -125,8 +126,8 @@ _PREPARATION_QUESTION = (
 #: Concrete question for adjudication of empty or unknown flag targets.
 _ADJUDICATION_QUESTION = (
     "After re-inspecting the prepared page image with checksum evidence "
-    "visible, should each empty or unknown flagged target be accepted or "
-    "flagged without inventing missing object ids?"
+    "visible, should each empty or unknown flagged target be flagged or "
+    "abstained without inventing missing object ids?"
 )
 
 #: Observable completion check for diplomatic-text review.
@@ -177,7 +178,7 @@ _PREPARATION_COMPLETION_CRITERIA: list[str] = [
 #: Observable completion check for unknown-target adjudication.
 _ADJUDICATION_COMPLETION_CRITERIA: list[str] = [
     (
-        "every empty or unknown flagged target was accepted or flagged with "
+        "every empty or unknown flagged target was flagged or abstained with "
         "prepared-image checksum evidence visible"
     ),
 ]
@@ -531,7 +532,7 @@ class HumanMarkupService:
             graph_revision: Accepted graph revision for the task.
 
         Returns:
-            A page-scoped adjudication packet allowing only accept and flag.
+            A page-scoped adjudication packet allowing only flag (plus abstention).
 
         Raises:
             ValueError: If ``dimensions`` is empty.
