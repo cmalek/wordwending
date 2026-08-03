@@ -27,6 +27,10 @@
 - Follow Napoleon docstrings and `#:` attribute comments on all non-test Python.
 - Before Python commands: `source .venv/bin/activate`.
 - After Python edits: touched-file `ruff`, touched-file `mypy`, `make napoleon-gate`, then focused pytest.
+- Caller/model strings used as path segments (`witness_kind`, `witness_id`,
+  `source_files` keys, export basenames) must be basename-safe; writes must not
+  escape the intended Spec 0002 directories.
+- JSONL trailing-newline heal must be codepoint-agnostic (inspect last byte).
 
 ## Subagent Model Policy
 
@@ -48,21 +52,22 @@ Do not start the next task or plan while either review has open findings.
 
 ## Existing Baseline
 
-- In-memory `DocumentBundle` / `BundlePage` / witnesses / evaluation / review events exist.
-- Runner execution already writes raw responses under ad-hoc `witnesses/` paths.
-- No Spec 0002 tree writer, document/page manifest models, or append-only overlay file API.
-- Spec 0009 produces accepted graphs in memory; this plan persists them.
+- Tasks 1–3 shipped on master (`BundlePaths`, manifests, `BundleLayoutService` write/read/append).
+- Follow-up hardening already on branch `verify/spec-0002-bundle-layout`: prepared-image rewrite in graph, duplicate `page_number` reject, `witness_kind` whitelist, `_safe_basename` for `source_files`/`page_exports`, ASCII trailing-newline heal, contextual JSONL read errors.
+- Residual blockers from final re-review (Tasks 4–5 below):
+  - `witness_id` interpolated into destination filename without basename validation → path escape.
+  - JSONL trailing-newline heal uses text-mode `seek(tell()-1)` → `UnicodeDecodeError` on multi-byte last char.
+- Parked (out of Spec 0002 / this plan’s manifest interface): adding `run_id` to `DocumentBundleManifest` (ADR 0008 overlay rebasing later).
+- No CLI for bundle layout (Spec 0004 lists `inspect-bundle` later).
 
 ---
 
 ## File Map
 
-- Create: `bochord/models/bundle_layout.py` — document/page manifest models + path constants.
-- Modify: `bochord/models/__init__.py` — exports.
-- Create: `bochord/services/bundle_layout.py` — `BundleLayoutService`.
-- Create: `tests/test_bundle_layout.py`
-- Create: `tests/fixtures/bundle_layout/minimal_document.json` — in-memory bundle seed.
-- Modify: `bochord/cli/cli.py` — thin `inspect-bundle` only if needed for one executable check; prefer service-level API without CLI unless a 10-line command helps. **Default: no CLI** (Spec 0004 lists `inspect-bundle` later; YAGNI unless tests need it).
+- Exists: `bochord/models/bundle_layout.py` — document/page manifest models + path constants.
+- Exists: `bochord/services/bundle_layout.py` — `BundleLayoutService` (+ `_safe_basename`, `_WITNESS_FAMILIES`).
+- Exists: `tests/test_bundle_layout.py`, `tests/fixtures/bundle_layout/minimal_document.json`.
+- Tasks 4–5 modify only the service + tests. **No CLI.**
 
 ### Task 1: Manifest Models and Path Helpers
 
@@ -337,6 +342,249 @@ EOF
 )"
 ```
 
+### Task 4: Sanitize `witness_id` in Witness Destination Filenames
+
+**Why:** Residual from final re-review (extends I-4). `_copy_witnesses` builds
+`filename = f"{witness.witness_id}_{basename}"` without validating `witness_id`.
+A value like `"../../../../"` writes outside `pages/page-NNNN/witnesses/<family>/`.
+
+**Files:**
+
+- Modify: `bochord/services/bundle_layout.py` (`_copy_witnesses`)
+- Modify: `tests/test_bundle_layout.py`
+
+**Interfaces:**
+
+- Consumes: existing `_safe_basename(value: str, *, label: str) -> str`
+- Produces: destination filename uses only validated basename segments; unsafe
+  `witness_id` raises `ValueError` before any copy
+
+**Rules:**
+
+1. Before interpolating `witness.witness_id` into the destination filename, run
+   `safe_id = _safe_basename(witness.witness_id, label="witness_id")`.
+2. Keep collision-avoidance prefix: `filename = f"{safe_id}_{basename}"` where
+   `basename` is still `source_path.name` (already a filesystem basename).
+3. Do **not** change `WitnessReference.witness_id` on the rewritten model — only
+   the on-disk filename segment is sanitized. Manifest/graph keep the original id.
+4. Reject must happen even when `witness_files` is omitted (path is still written
+   into the rewritten `artifact_path`).
+
+- [x] **Step 1: Write failing test**
+
+```python
+def test_write_document_bundle_rejects_unsafe_witness_id(tmp_path) -> None:
+    """Path-traversal witness_id must not become a destination filename segment."""
+    bundle = load_minimal_bundle()
+    page = bundle.pages[0]
+    unsafe_id = "../../../../"
+    bad_witness = page.witnesses[0].model_copy(update={"witness_id": unsafe_id})
+    bundle = bundle.model_copy(
+        update={"pages": [page.model_copy(update={"witnesses": [bad_witness]})]}
+    )
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, _ = _write_minimal_inputs(tmp_path)
+    witness_src = tmp_path / "inputs" / "olmocr-response.json"
+
+    with pytest.raises(ValueError, match="witness_id"):
+        service.write_document_bundle(
+            bundle,
+            root,
+            source_files=source_files,
+            source_page_images=source_page_images,
+            page_images=page_images,
+            witness_files={unsafe_id: witness_src},
+        )
+    assert not (root / "_olmocr-response.json").exists()
+    assert not (tmp_path / "_olmocr-response.json").exists()
+```
+
+Existing `test_write_document_bundle_keeps_same_basename_witnesses` remains the
+regression guard for safe ids (`wit-a` / `wit-b`).
+
+- [x] **Step 2: Run test to verify it fails**
+
+```bash
+source .venv/bin/activate
+pytest tests/test_bundle_layout.py::test_write_document_bundle_rejects_unsafe_witness_id -q
+```
+
+Expected: FAIL (unsafe id currently accepted / file escapes to bundle root).
+
+- [x] **Step 3: Minimal implementation**
+
+In `_copy_witnesses`, validate before building `filename`:
+
+```python
+safe_id = _safe_basename(witness.witness_id, label="witness_id")
+if witness_files and witness.witness_id in witness_files:
+    source_path = witness_files[witness.witness_id]
+    basename = source_path.name
+else:
+    basename = Path(witness.artifact_path).name
+filename = f"{safe_id}_{basename}"
+```
+
+Keep `witness.witness_id` unchanged on the rewritten `WitnessReference`.
+Raise via `_safe_basename` before `destination_dir.mkdir` / `shutil.copy2`.
+Update the method `Raises:` docstring to mention unsafe `witness_id`.
+
+- [x] **Step 4: Run focused suite**
+
+```bash
+pytest tests/test_bundle_layout.py -q
+```
+
+Expected: all prior tests still pass; new reject test passes.
+
+- [x] **Step 5: Quality gate + commit**
+
+```bash
+source .venv/bin/activate
+ruff check bochord/services/bundle_layout.py tests/test_bundle_layout.py
+mypy bochord/services/bundle_layout.py
+make napoleon-gate
+pytest tests/test_bundle_layout.py -q
+graphify update .
+git commit -m "$(cat <<'EOF'
+fix: sanitize witness_id in bundle witness filenames
+
+EOF
+)"
+```
+
+### Task 5: Binary-Safe JSONL Trailing-Newline Heal
+
+**Why:** Residual from final re-review (extends I-5). `append_review_events`
+opens UTF-8 text mode and does `handle.seek(handle.tell() - 1)` to inspect the
+last character. When the file ends on a multi-byte UTF-8 codepoint (e.g. `é`)
+without a trailing newline, seek lands mid-codepoint → `UnicodeDecodeError`
+instead of healing.
+
+**Files:**
+
+- Modify: `bochord/services/bundle_layout.py` (`append_review_events`)
+- Modify: `tests/test_bundle_layout.py`
+
+**Interfaces:**
+
+- Consumes: existing `append_review_events` / `read_review_events` contracts
+- Produces: heal check that inspects the last **byte** (`b"\n"`) without
+  text-mode character arithmetic; append behavior otherwise unchanged
+
+**Rules:**
+
+1. Peek last byte with a short binary open (`"rb"`) or `handle.buffer` — do not
+   subtract 1 from a text-mode position and re-read as UTF-8.
+2. If file non-empty and last byte ≠ `0x0A`, write `"\n"` then append events.
+3. Never truncate or rewrite prior JSONL lines (ADR 0008).
+4. Keep contextual `ValueError` on corrupt lines in `read_review_events` (already shipped).
+
+- [x] **Step 1: Write failing test**
+
+```python
+def test_append_review_events_heals_missing_newline_after_multibyte_utf8(
+    tmp_path,
+) -> None:
+    """Heal must not UnicodeDecodeError when prior JSONL ends on multi-byte UTF-8."""
+    bundle = load_minimal_bundle()
+    service = BundleLayoutService()
+    root = tmp_path / "bundle"
+    source_files, source_page_images, page_images, witness_files = (
+        _write_minimal_inputs(tmp_path)
+    )
+    service.write_document_bundle(
+        bundle,
+        root,
+        source_files=source_files,
+        source_page_images=source_page_images,
+        page_images=page_images,
+        witness_files=witness_files,
+    )
+
+    review_path = root / "pages" / "page-0001" / "overlays" / "review_events.jsonl"
+    # Ends on multi-byte UTF-8 'é' (U+00E9 → c3 a9), no trailing newline
+    review_path.write_bytes(b'{"event_id":"partial","note":"caf\xc3\xa9')
+
+    service.append_review_events(root, 1, [_accept_review_event("evt-1")])
+
+    raw = review_path.read_bytes()
+    assert raw.endswith(b"\n")
+    assert b'"event_id":"evt-1"' in raw or b'"event_id": "evt-1"' in raw
+    # Damaged first line may still be unreadable; append itself must succeed.
+```
+
+- [x] **Step 2: Run test to verify it fails**
+
+```bash
+source .venv/bin/activate
+pytest tests/test_bundle_layout.py::test_append_review_events_heals_missing_newline_after_multibyte_utf8 -q
+```
+
+Expected: FAIL with `UnicodeDecodeError` (current text-mode seek).
+
+- [x] **Step 3: Minimal implementation**
+
+Replace text-mode last-char peek with a module helper that peeks the last byte:
+
+```python
+def _needs_trailing_newline(path: Path) -> bool:
+    """
+    Return True when ``path`` exists, is non-empty, and does not end with ``\\n``.
+
+    Args:
+        path: JSONL file path.
+
+    Returns:
+        Whether a separator newline should be written before appending.
+
+    """
+    if not path.exists() or path.stat().st_size == 0:
+        return False
+    with path.open("rb") as handle:
+        handle.seek(-1, 2)
+        return handle.read(1) != b"\n"
+```
+
+In `append_review_events`:
+
+```python
+review_events_path.parent.mkdir(parents=True, exist_ok=True)
+needs_newline = _needs_trailing_newline(review_events_path)
+with review_events_path.open("a", encoding="utf-8") as handle:
+    if needs_newline:
+        handle.write("\n")
+    handle.write("\n".join(lines) + "\n")
+```
+
+Prefer `"a"` once binary peek is separate — do not `seek` on the text handle.
+
+- [x] **Step 4: Run focused suite**
+
+```bash
+pytest tests/test_bundle_layout.py -q
+```
+
+Expected: new test passes; existing
+`test_append_review_events_heals_missing_trailing_newline` still passes.
+
+- [x] **Step 5: Quality gate + commit**
+
+```bash
+source .venv/bin/activate
+ruff check bochord/services/bundle_layout.py tests/test_bundle_layout.py
+mypy bochord/services/bundle_layout.py
+make napoleon-gate
+pytest tests/test_bundle_layout.py -q
+graphify update .
+git commit -m "$(cat <<'EOF'
+fix: heal JSONL trailing newline with binary peek
+
+EOF
+)"
+```
+
 ## Final Review Focus
 
 - Disk tree matches Spec 0002 (names + layer split).
@@ -346,7 +594,13 @@ EOF
 - Review JSONL append-only; overlays separate from witnesses/graph.
 - ADR 0002/0004/0008 respected.
 - No merge/normalization logic reimplemented inside writer.
+- All path segments derived from caller/model strings (`witness_kind`,
+  `witness_id`, `source_files` keys, export names) are basename-safe; writes
+  cannot escape `pages/page-NNNN/witnesses/<family>/` or the bundle root.
+- JSONL trailing-newline heal is codepoint-agnostic (byte peek, not text seek).
 
 ## Cost Stop
 
-Stop after layout service write/read/append. No full orchestrator wiring, no RAG export generation, no TEI, no CLI unless a test truly cannot call the service, no resumability/caching (Phase 10).
+Stop after Tasks 4–5 harden the shipped layout service. No `run_id` on
+`DocumentBundleManifest` (parked), no full orchestrator wiring, no RAG/TEI
+export generation, no CLI, no resumability/caching (Phase 10).
