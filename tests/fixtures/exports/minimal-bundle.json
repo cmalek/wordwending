@@ -1,0 +1,207 @@
+{
+  "document_id": "export-minimal",
+  "bundle_schema_version": "1.0.0",
+  "source": {
+    "source_id": "src-export-minimal",
+    "source_type": "pdf",
+    "source_label": "export-minimal.pdf",
+    "original_path": "sources/export-minimal.pdf",
+    "page_count": 1
+  },
+  "bibliographic_provenance": {
+    "title": "Export Minimal Fixture",
+    "authors": ["Fixture Author"]
+  },
+  "acquisition_provenance": {
+    "acquisition_kind": "local-scan",
+    "acquired_from": "local"
+  },
+  "run": {
+    "run_id": "run-export-minimal",
+    "run_timestamp_utc": "2026-08-03T12:00:00+00:00",
+    "preparation_recipe_id": "prep-v1",
+    "config_digest": "sha256:config",
+    "runner_set": [
+      {
+        "runner_id": "olmocr",
+        "runner_version": "0.4.27"
+      }
+    ],
+    "bundle_schema_version": "1.0.0"
+  },
+  "pages": [
+    {
+      "page_id": "page-0001",
+      "page_number": 1,
+      "prepared_page": {
+        "prepared_page_id": "prepared-page-1",
+        "preparation_mode": "full-page",
+        "page_class": "ordinary-prose",
+        "image_path": "pages/page-0001/image/page.png",
+        "source_artifact_id": "source-page-1",
+        "image_checksum": "sha256:prepared",
+        "preparation_recipe_id": "prep-v1",
+        "preparation_recipe_digest": "digest-prep-v1",
+        "coordinate_space": {
+          "space_id": "prepared-page-1",
+          "width_px": 2400,
+          "height_px": 3600
+        }
+      },
+      "witnesses": [
+        {
+          "witness_id": "wit-1",
+          "witness_kind": "text",
+          "artifact_path": "pages/page-0001/witnesses/text/olmocr.json",
+          "runner_id": "olmocr",
+          "page_id": "page-0001"
+        }
+      ],
+      "regions": [
+        {
+          "region_id": "region-body",
+          "region_kind": "body",
+          "reading_order_index": 1,
+          "line_ids": ["line-1", "line-2"],
+          "note_ids": ["note-1"],
+          "trust_state": "machine",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-1"],
+            "runner_ids": ["olmocr"]
+          }
+        },
+        {
+          "region_id": "region-corrected",
+          "region_kind": "body",
+          "reading_order_index": 2,
+          "line_ids": ["line-3"],
+          "trust_state": "reviewed",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-1"],
+            "runner_ids": ["olmocr"]
+          }
+        }
+      ],
+      "lines": [
+        {
+          "line_id": "line-1",
+          "region_id": "region-body",
+          "line_order": 1,
+          "span_ids": ["span-and", "span-git"],
+          "trust_state": "machine",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-1"],
+            "runner_ids": ["olmocr"]
+          }
+        },
+        {
+          "line_id": "line-2",
+          "region_id": "region-body",
+          "line_order": 2,
+          "span_ids": ["span-more"],
+          "trust_state": "machine",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-1"],
+            "runner_ids": ["olmocr"]
+          }
+        },
+        {
+          "line_id": "line-3",
+          "region_id": "region-corrected",
+          "line_order": 1,
+          "span_ids": ["span-fixed"],
+          "trust_state": "corrected",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-1"],
+            "runner_ids": ["olmocr"]
+          }
+        }
+      ],
+      "spans": [
+        {
+          "span_id": "span-and",
+          "line_id": "line-1",
+          "text_diplomatic": "and",
+          "text_normalized": "and",
+          "trust_state": "machine",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-1"],
+            "runner_ids": ["olmocr"]
+          }
+        },
+        {
+          "span_id": "span-git",
+          "line_id": "line-1",
+          "text_diplomatic": "git",
+          "text_normalized": "git",
+          "typography": {
+            "weight": "regular",
+            "slant": "italic",
+            "baseline_shift": "baseline"
+          },
+          "trust_state": "reviewed",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-1"],
+            "runner_ids": ["olmocr"]
+          }
+        },
+        {
+          "span_id": "span-more",
+          "line_id": "line-2",
+          "text_diplomatic": "more",
+          "text_normalized": "more",
+          "trust_state": "machine",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-1"],
+            "runner_ids": ["olmocr"]
+          }
+        },
+        {
+          "span_id": "span-fixed",
+          "line_id": "line-3",
+          "text_diplomatic": "corrected",
+          "text_normalized": "corrected",
+          "typography": {
+            "weight": "bold",
+            "slant": "upright",
+            "baseline_shift": "baseline"
+          },
+          "trust_state": "corrected",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-1"],
+            "runner_ids": ["olmocr"]
+          }
+        }
+      ],
+      "notes": [
+        {
+          "note_id": "note-1",
+          "note_kind": "footnote-block",
+          "region_id": "region-body",
+          "text_diplomatic": "See also the entry under git.",
+          "linked_marker_span_ids": ["span-git"],
+          "trust_state": "reviewed",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": ["wit-1"],
+            "runner_ids": ["olmocr"]
+          }
+        }
+      ],
+      "evaluation_summary": {}
+    }
+  ],
+  "evaluation_summary": {},
+  "exports": {
+    "bundle_json_path": "exports/bundle.json"
+  }
+}
