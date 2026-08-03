@@ -270,9 +270,33 @@ class TestOcrModels:
         assert parsed.decision is PreparationDecision.SUBDIVIDE
         assert parsed.reason is None
 
-    def test_page_overlay_rejects_source_triage_with_wrong_dimension(self):
-        """Source-triage tasks must certify only source-quality."""
-        with pytest.raises(ValidationError, match="source-quality"):
+    @pytest.mark.parametrize(
+        ("task_type", "wrong_dimension", "match"),
+        [
+            (ReviewTaskType.SOURCE_TRIAGE, ReviewDimension.TEXT, "source-quality"),
+            (ReviewTaskType.PREPARATION, ReviewDimension.STRUCTURE, "preparation"),
+            (ReviewTaskType.TEXT, ReviewDimension.TYPOGRAPHY, "text"),
+            (ReviewTaskType.LAYOUT, ReviewDimension.TEXT, "structure"),
+            (ReviewTaskType.TYPOGRAPHY, ReviewDimension.TEXT, "typography"),
+            (ReviewTaskType.NOTE_LINKAGE, ReviewDimension.STRUCTURE, "note-linkage"),
+        ],
+        ids=[
+            "source_triage",
+            "preparation",
+            "text",
+            "layout",
+            "typography",
+            "note_linkage",
+        ],
+    )
+    def test_page_overlay_rejects_task_with_wrong_exclusive_dimension(
+        self,
+        task_type: ReviewTaskType,
+        wrong_dimension: ReviewDimension,
+        match: str,
+    ) -> None:
+        """HumanMarkupService task types must certify only their exclusive dimension."""
+        with pytest.raises(ValidationError, match=match):
             PageOverlay(
                 schema_version="1.0.0",
                 overlay_id="overlay-1",
@@ -283,46 +307,15 @@ class TestOcrModels:
                 review_tasks=[
                     ReviewTask(
                         task_id="task-1",
-                        task_type=ReviewTaskType.SOURCE_TRIAGE,
-                        dimensions=[ReviewDimension.TEXT],
+                        task_type=task_type,
+                        dimensions=[wrong_dimension],
                         target_scope=ReviewScope.PAGE,
                         target_object_ids=["page-1"],
-                        question="Is the source usable?",
+                        question="Is the exclusive dimension correct?",
                         required_evidence=["prepared-page"],
-                        allowed_actions=["accept", "decide_source_triage", "flag"],
-                        completion_criteria=["whole-page inspected"],
-                        guideline_id="source-review",
-                        guideline_version="1.0.0",
-                        base_run_id="run-1",
-                        base_graph_revision="graph-1",
-                        prepared_image_checksum="sha256:prepared",
-                    )
-                ],
-                review_events=[],
-            )
-
-    def test_page_overlay_rejects_preparation_with_wrong_dimension(self):
-        """Preparation tasks must certify only preparation."""
-        with pytest.raises(ValidationError, match="preparation"):
-            PageOverlay(
-                schema_version="1.0.0",
-                overlay_id="overlay-1",
-                page_id="page-1",
-                source_run_id="run-1",
-                base_graph_revision="graph-1",
-                prepared_image_checksum="sha256:prepared",
-                review_tasks=[
-                    ReviewTask(
-                        task_id="task-1",
-                        task_type=ReviewTaskType.PREPARATION,
-                        dimensions=[ReviewDimension.STRUCTURE],
-                        target_scope=ReviewScope.PAGE,
-                        target_object_ids=["page-1"],
-                        question="Full-page or subdivide?",
-                        required_evidence=["prepared-page"],
-                        allowed_actions=["accept", "decide_preparation", "flag"],
-                        completion_criteria=["transform chain inspected"],
-                        guideline_id="prep-review",
+                        allowed_actions=["accept", "flag"],
+                        completion_criteria=["dimension inspected"],
+                        guideline_id="review",
                         guideline_version="1.0.0",
                         base_run_id="run-1",
                         base_graph_revision="graph-1",

@@ -1672,10 +1672,14 @@ ReviewEvent = Annotated[
     Field(discriminator="action"),
 ]
 
-#: Required exclusive dimensions for source and preparation task types.
-_SOURCE_PREP_TASK_DIMENSIONS: dict[ReviewTaskType, ReviewDimension] = {
+#: Required exclusive dimension for each HumanMarkupService task type.
+_EXCLUSIVE_TASK_DIMENSIONS: dict[ReviewTaskType, ReviewDimension] = {
     ReviewTaskType.SOURCE_TRIAGE: ReviewDimension.SOURCE_QUALITY,
     ReviewTaskType.PREPARATION: ReviewDimension.PREPARATION,
+    ReviewTaskType.LAYOUT: ReviewDimension.STRUCTURE,
+    ReviewTaskType.TEXT: ReviewDimension.TEXT,
+    ReviewTaskType.TYPOGRAPHY: ReviewDimension.TYPOGRAPHY,
+    ReviewTaskType.NOTE_LINKAGE: ReviewDimension.NOTE_LINKAGE,
 }
 
 
@@ -1728,7 +1732,7 @@ class PageOverlay(SchemaModel):
             ):
                 msg = "review tasks must match the overlay run and graph revision"
                 raise ValueError(msg)
-            expected_dimension = _SOURCE_PREP_TASK_DIMENSIONS.get(task.task_type)
+            expected_dimension = _EXCLUSIVE_TASK_DIMENSIONS.get(task.task_type)
             if expected_dimension is not None and task.dimensions != [
                 expected_dimension
             ]:
