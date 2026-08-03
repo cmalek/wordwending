@@ -113,7 +113,7 @@ class DocumentExportService:
         region_chunks: list[RagChunk],
     ) -> list[StitchedChunk]:
         """
-        Build cross-page stitched chunks from contiguous region-kind runs.
+        Build cross-page stitched chunks from contiguous BODY region runs.
 
         Args:
             document_id: Owning document identifier.
@@ -121,39 +121,31 @@ class DocumentExportService:
             region_chunks: Page-local region chunks keyed by region graph order.
 
         Returns:
-            Stitched chunks for same-kind runs spanning at least two pages.
+            Stitched main-text chunks spanning at least two pages.
 
         """
         chunks_by_region = {
             chunk.chunk_id.removeprefix("region-"): chunk
             for chunk in region_chunks
         }
-        ordered_region_chunks: list[RagChunk] = []
+
+        stitched_chunks: list[StitchedChunk] = []
+        current_run: list[RagChunk] = []
         for page in pages:
             for region in sorted(
                 page.regions,
                 key=lambda record: record.reading_order_index,
             ):
                 chunk = chunks_by_region.get(region.region_id)
-                if chunk is not None:
-                    ordered_region_chunks.append(chunk)
-
-        stitched_chunks: list[StitchedChunk] = []
-        current_run: list[RagChunk] = []
-        current_kind: RegionKind | None = None
-        for chunk in ordered_region_chunks:
-            region_kind = chunk.retrieval_metadata.region_kind
-            if (
-                current_run
-                and region_kind is not None
-                and region_kind != current_kind
-            ):
-                stitched = self._finalize_stitched_run(document_id, current_run)
-                if stitched is not None:
-                    stitched_chunks.append(stitched)
-                current_run = []
-            current_kind = region_kind
-            current_run.append(chunk)
+                if chunk is None:
+                    continue
+                if region.region_kind != RegionKind.BODY:
+                    stitched = self._finalize_stitched_run(document_id, current_run)
+                    if stitched is not None:
+                        stitched_chunks.append(stitched)
+                    current_run = []
+                    continue
+                current_run.append(chunk)
         stitched = self._finalize_stitched_run(document_id, current_run)
         if stitched is not None:
             stitched_chunks.append(stitched)
@@ -165,17 +157,22 @@ class DocumentExportService:
         run: list[RagChunk],
     ) -> StitchedChunk | None:
         """
-        Emit one stitched chunk when a region-kind run spans multiple pages.
+        Emit one stitched chunk when a BODY run spans multiple pages.
 
         Args:
             document_id: Owning document identifier.
-            run: Contiguous same-kind region chunks in accepted graph order.
+            run: Contiguous BODY region chunks in accepted graph order.
 
         Returns:
-            Stitched chunk when the run spans at least two distinct pages.
+            Stitched main-text chunk when the run spans at least two pages.
 
         """
         if not run:
+            return None
+        if any(
+            chunk.retrieval_metadata.region_kind != RegionKind.BODY
+            for chunk in run
+        ):
             return None
         page_ids: list[str] = []
         seen_pages: set[str] = set()

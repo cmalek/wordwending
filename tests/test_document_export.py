@@ -177,17 +177,18 @@ def _prepared_page(page_id: str, page_number: int) -> PreparedPage:
     )
 
 
-def _body_region_page(  # noqa: PLR0913
+def _region_page(  # noqa: PLR0913
     *,
     page_id: str,
     page_number: int,
     region_id: str,
     text: str,
     reading_order_index: int,
+    region_kind: RegionKind = RegionKind.BODY,
     trust_state: TrustState = TrustState.MACHINE,
     witness_id: str = "wit-1",
 ) -> BundlePage:
-    """Build one accepted page with a single body region and witness metadata."""
+    """Build one accepted page with a single region and witness metadata."""
     provenance = _page_provenance(page_id, witness_id=witness_id)
     line_id = f"line-{region_id}"
     span_id = f"span-{region_id}"
@@ -207,7 +208,7 @@ def _body_region_page(  # noqa: PLR0913
         regions=[
             RegionRecord(
                 region_id=region_id,
-                region_kind=RegionKind.BODY,
+                region_kind=region_kind,
                 reading_order_index=reading_order_index,
                 line_ids=[line_id],
                 trust_state=trust_state,
@@ -234,6 +235,40 @@ def _body_region_page(  # noqa: PLR0913
                 provenance=provenance,
             )
         ],
+    )
+
+
+def _body_region_page(  # noqa: PLR0913
+    *,
+    page_id: str,
+    page_number: int,
+    region_id: str,
+    text: str,
+    reading_order_index: int,
+    trust_state: TrustState = TrustState.MACHINE,
+    witness_id: str = "wit-1",
+) -> BundlePage:
+    """Build one accepted page with a single body region and witness metadata."""
+    return _region_page(
+        page_id=page_id,
+        page_number=page_number,
+        region_id=region_id,
+        text=text,
+        reading_order_index=reading_order_index,
+        region_kind=RegionKind.BODY,
+        trust_state=trust_state,
+        witness_id=witness_id,
+    )
+
+
+def _merge_page_regions(base: BundlePage, extra: BundlePage) -> BundlePage:
+    """Combine region graph objects from two pages sharing the same page id."""
+    return base.model_copy(
+        update={
+            "regions": [*base.regions, *extra.regions],
+            "lines": [*base.lines, *extra.lines],
+            "spans": [*base.spans, *extra.spans],
+        }
     )
 
 
@@ -464,3 +499,110 @@ def test_stitching_aggregates_corrected_trust_across_components() -> None:
 
     assert len(rag.stitched_chunks) == 1
     assert rag.stitched_chunks[0].trust_state == TrustState.CORRECTED
+
+
+def test_stitching_is_body_main_text_only() -> None:
+    """Only BODY main-text regions stitch; other region kinds stay page-local."""
+    footnote_one = _region_page(
+        page_id="page-0001",
+        page_number=1,
+        region_id="region-footnote-one",
+        text="footnote one",
+        reading_order_index=1,
+        region_kind=RegionKind.FOOTNOTE,
+    )
+    footnote_two = _region_page(
+        page_id="page-0002",
+        page_number=2,
+        region_id="region-footnote-two",
+        text="footnote two",
+        reading_order_index=1,
+        region_kind=RegionKind.FOOTNOTE,
+    )
+    header_one = _region_page(
+        page_id="page-0001",
+        page_number=1,
+        region_id="region-header-one",
+        text="header one",
+        reading_order_index=1,
+        region_kind=RegionKind.HEADER,
+    )
+    header_two = _region_page(
+        page_id="page-0002",
+        page_number=2,
+        region_id="region-header-two",
+        text="header two",
+        reading_order_index=1,
+        region_kind=RegionKind.HEADER,
+    )
+
+    assert (
+        DocumentExportService()
+        .build_rag_document(_document_bundle([footnote_one, footnote_two]))
+        .stitched_chunks
+        == []
+    )
+    assert (
+        DocumentExportService()
+        .build_rag_document(_document_bundle([header_one, header_two]))
+        .stitched_chunks
+        == []
+    )
+
+    body_one = _body_region_page(
+        page_id="page-0001",
+        page_number=1,
+        region_id="region-body-one",
+        text="body one",
+        reading_order_index=2,
+    )
+    body_two = _body_region_page(
+        page_id="page-0002",
+        page_number=2,
+        region_id="region-body-two",
+        text="body two",
+        reading_order_index=1,
+    )
+    mixed_page_one = _merge_page_regions(
+        body_one,
+        _region_page(
+            page_id="page-0001",
+            page_number=1,
+            region_id="region-header-mixed",
+            text="mixed header",
+            reading_order_index=1,
+            region_kind=RegionKind.HEADER,
+        ),
+    )
+    mixed_page_two = _merge_page_regions(
+        body_two,
+        _region_page(
+            page_id="page-0002",
+            page_number=2,
+            region_id="region-footnote-mixed",
+            text="mixed footnote",
+            reading_order_index=2,
+            region_kind=RegionKind.FOOTNOTE,
+        ),
+    )
+
+    rag = DocumentExportService().build_rag_document(
+        _document_bundle([mixed_page_one, mixed_page_two])
+    )
+
+    assert len(rag.stitched_chunks) == 1
+    stitched = rag.stitched_chunks[0]
+    assert stitched.component_chunk_ids == [
+        "region-region-body-one",
+        "region-region-body-two",
+    ]
+    assert stitched.text == "body one\nbody two"
+    stitched_components = [
+        chunk
+        for chunk in rag.chunks
+        if chunk.chunk_id in stitched.component_chunk_ids
+    ]
+    assert all(
+        chunk.retrieval_metadata.region_kind == RegionKind.BODY
+        for chunk in stitched_components
+    )
