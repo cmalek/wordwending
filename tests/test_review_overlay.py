@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pytest
+
 from bochord.models import (
     AcceptReviewEvent,
     BaselineShift,
@@ -22,6 +24,7 @@ from bochord.models import (
     Polygon,
     ReclassifyRegionReviewEvent,
     RegionKind,
+    RegionRevision,
     ResolveFlagReviewEvent,
     ReviewAction,
     ReviewDimension,
@@ -29,6 +32,7 @@ from bochord.models import (
     ReviewTask,
     ReviewTaskStatus,
     ReviewTaskType,
+    SplitRegionReviewEvent,
     TextRole,
     TrustState,
     Typography,
@@ -580,3 +584,194 @@ def test_successor_rebases_only_resolved_events_and_queues_conflicts() -> None:
     assert state.text_diplomatic_override == "emended"
     assert state.applied_event_ids == ["evt-text-v2"]
     assert state.trust_state == TrustState.CORRECTED
+
+
+def _region_revision(
+    *,
+    region_id: str,
+    line_ids: list[str],
+    reading_order_index: int,
+) -> RegionRevision:
+    """Return a resolvable region revision for structural rebase fixtures."""
+    return RegionRevision(
+        region_id=region_id,
+        region_kind=RegionKind.BODY,
+        reading_order_index=reading_order_index,
+        polygon=_polygon(),
+        line_ids=line_ids,
+    )
+
+
+def _split_source_overlay() -> PageOverlay:
+    """Build a predecessor containing one fully remappable split event."""
+    layout_task = _task(
+        task_id="task-split",
+        task_type=ReviewTaskType.LAYOUT,
+        dimensions=[ReviewDimension.STRUCTURE],
+        target_scope=ReviewScope.REGION,
+        target_object_ids=["region-src"],
+        allowed_actions=[ReviewAction.SPLIT_REGION],
+    )
+    event = SplitRegionReviewEvent(
+        **_event_base(
+            event_id="evt-split",
+            task_id="task-split",
+            target_object_id="region-src",
+            target_scope=ReviewScope.REGION,
+            review_dimensions=[ReviewDimension.STRUCTURE],
+            prior_trust_state=TrustState.MACHINE,
+            new_trust_state=TrustState.CORRECTED,
+        ),
+        source_region_id="region-src",
+        replacement_regions=[
+            _region_revision(
+                region_id="region-a",
+                line_ids=["line-1", "line-2"],
+                reading_order_index=1,
+            ),
+            _region_revision(
+                region_id="region-b",
+                line_ids=["line-3"],
+                reading_order_index=2,
+            ),
+        ],
+    )
+    return PageOverlay(
+        schema_version="1.0.0",
+        overlay_id="overlay-split-old",
+        page_id="page-1",
+        source_run_id="run-1",
+        base_graph_revision="graph-1",
+        prepared_image_checksum="sha256:prepared",
+        review_tasks=[layout_task],
+        review_events=[event],
+        current_state=[],
+    )
+
+
+def test_successor_rebases_split_region_nested_ids() -> None:
+    """Successor remaps nested region and line ids on a copied split event."""
+    source = _split_source_overlay()
+    binding = {
+        "base_run_id": "run-2",
+        "base_graph_revision": "graph-2",
+        "prepared_image_checksum": "sha256:prepared-v2",
+    }
+    successor_task = _task(
+        task_id="task-split-v2",
+        task_type=ReviewTaskType.LAYOUT,
+        dimensions=[ReviewDimension.STRUCTURE],
+        target_scope=ReviewScope.REGION,
+        target_object_ids=["region-src-v2"],
+        allowed_actions=[ReviewAction.SPLIT_REGION],
+        **binding,
+    )
+    service = ReviewOverlayService()
+
+    successor = service.create_successor(
+        source,
+        new_overlay_id="overlay-split-new",
+        successor_tasks=[successor_task],
+        task_id_map={"task-split": "task-split-v2"},
+        object_id_map={
+            "region-src": "region-src-v2",
+            "region-a": "region-a-v2",
+            "region-b": "region-b-v2",
+            "line-1": "line-1-v2",
+            "line-2": "line-2-v2",
+            "line-3": "line-3-v2",
+        },
+        resolvable_coordinate_space_ids={"prepared-page-1"},
+        event_id_map={"evt-split": "evt-split-v2"},
+        conflict_tasks=[],
+    )
+
+    assert [event.event_id for event in successor.review_events] == ["evt-split-v2"]
+    copied = successor.review_events[0]
+    assert isinstance(copied, SplitRegionReviewEvent)
+    assert copied.task_id == "task-split-v2"
+    assert copied.target_object_id == "region-src-v2"
+    assert copied.source_region_id == "region-src-v2"
+    assert [region.region_id for region in copied.replacement_regions] == [
+        "region-a-v2",
+        "region-b-v2",
+    ]
+    assert copied.replacement_regions[0].line_ids == ["line-1-v2", "line-2-v2"]
+    assert copied.replacement_regions[1].line_ids == ["line-3-v2"]
+    assert len(copied.replacement_regions) == 2
+
+
+def test_successor_rejects_missing_mapped_task_ids() -> None:
+    """Missing mapped successor task ids are hard ValueError failures."""
+    source = _successor_source_overlay()
+    service = ReviewOverlayService()
+
+    with pytest.raises(ValueError, match="successor_tasks missing mapped task ids"):
+        service.create_successor(
+            source,
+            new_overlay_id="overlay-bad",
+            successor_tasks={},
+            task_id_map={"task-text": "task-text-missing"},
+            object_id_map={"span-1": "span-2"},
+            resolvable_coordinate_space_ids={"prepared-page-2"},
+            event_id_map={"evt-text": "evt-text-v2"},
+            conflict_tasks=[],
+        )
+
+
+def test_successor_split_rebind_rejects_non_mapping_region(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Corrupt split dump shapes must raise ValueError, not shrink regions."""
+    source = _split_source_overlay()
+    binding = {
+        "base_run_id": "run-2",
+        "base_graph_revision": "graph-2",
+        "prepared_image_checksum": "sha256:prepared-v2",
+    }
+    successor_task = _task(
+        task_id="task-split-v2",
+        task_type=ReviewTaskType.LAYOUT,
+        dimensions=[ReviewDimension.STRUCTURE],
+        target_scope=ReviewScope.REGION,
+        target_object_ids=["region-src-v2"],
+        allowed_actions=[ReviewAction.SPLIT_REGION],
+        **binding,
+    )
+    original_dump = SplitRegionReviewEvent.model_dump
+
+    def corrupt_dump(
+        self: SplitRegionReviewEvent,
+        *args: object,
+        **kwargs: object,
+    ) -> dict[str, object]:
+        data = original_dump(self, *args, **kwargs)
+        regions = list(data["replacement_regions"])
+        regions[1] = "not-a-mapping"
+        data["replacement_regions"] = regions
+        return data
+
+    monkeypatch.setattr(SplitRegionReviewEvent, "model_dump", corrupt_dump)
+    service = ReviewOverlayService()
+
+    with pytest.raises(ValueError, match="replacement region must be a mapping") as err:
+        service.create_successor(
+            source,
+            new_overlay_id="overlay-split-bad",
+            successor_tasks=[successor_task],
+            task_id_map={"task-split": "task-split-v2"},
+            object_id_map={
+                "region-src": "region-src-v2",
+                "region-a": "region-a-v2",
+                "region-b": "region-b-v2",
+                "line-1": "line-1-v2",
+                "line-2": "line-2-v2",
+                "line-3": "line-3-v2",
+            },
+            resolvable_coordinate_space_ids={"prepared-page-1"},
+            event_id_map={"evt-split": "evt-split-v2"},
+            conflict_tasks=[],
+        )
+    # Pydantic ValidationError subclasses ValueError; require the explicit
+    # dump-shape guard rather than a later shrunk-list validation failure.
+    assert type(err.value) is ValueError

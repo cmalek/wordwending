@@ -48,7 +48,7 @@ _CORRECTIVE_ACTIONS: frozenset[ReviewAction] = frozenset(
 
 
 class ReviewOverlayService:
-    """Rebuild overlay state by replaying append-only review events in order."""
+    """Replay append-only review events and build explicit successor overlays."""
 
     def materialize(self, overlay: PageOverlay) -> list[OverlayState]:
         """
@@ -131,7 +131,7 @@ class ReviewOverlayService:
         run_id, graph_revision, checksum = _successor_bindings(tasks, conflict_tasks)
         copied: list[ReviewEvent] = []
         for event in overlay.review_events:
-            rebound = self._try_rebind_event(
+            rebound = _try_rebind_event(
                 event,
                 tasks=tasks,
                 task_id_map=task_id_map,
@@ -157,60 +157,6 @@ class ReviewOverlayService:
         )
         states = self.materialize(successor)
         return successor.model_copy(update={"current_state": states})
-
-    def _try_rebind_event(  # noqa: PLR0913
-        self,
-        event: ReviewEvent,
-        *,
-        tasks: Mapping[str, ReviewTask],
-        task_id_map: Mapping[str, str],
-        object_id_map: Mapping[str, str],
-        resolvable_coordinate_space_ids: set[str],
-        event_id_map: Mapping[str, str],
-        run_id: str,
-        graph_revision: str,
-    ) -> ReviewEvent | None:
-        """
-        Rebind one event when every required id resolves; otherwise skip it.
-
-        Keyword Args:
-            tasks: Successor task map keyed by new task id.
-            task_id_map: Explicit old→new task id map.
-            object_id_map: Explicit old→new object id map.
-            resolvable_coordinate_space_ids: Valid geometry spaces.
-            event_id_map: Caller-supplied old→new event ids.
-            run_id: Successor machine run id.
-            graph_revision: Successor graph revision.
-
-        Args:
-            event: Predecessor event considered for copy.
-
-        Returns:
-            A distinct remapped event, or ``None`` when the event conflicts.
-
-        """
-        new_task_id = task_id_map.get(event.task_id)
-        new_event_id = event_id_map.get(event.event_id)
-        if new_task_id is None or new_event_id is None:
-            return None
-        if new_task_id not in tasks:
-            return None
-        if event.target_object_id not in object_id_map:
-            return None
-        nested = _nested_object_ids(event)
-        if any(object_id not in object_id_map for object_id in nested):
-            return None
-        spaces = _coordinate_space_ids(event)
-        if any(space_id not in resolvable_coordinate_space_ids for space_id in spaces):
-            return None
-        return _rebind_event(
-            event,
-            new_event_id=new_event_id,
-            new_task_id=new_task_id,
-            object_id_map=object_id_map,
-            run_id=run_id,
-            graph_revision=graph_revision,
-        )
 
     def _apply_event(self, state: OverlayState, event: ReviewEvent) -> None:
         """
@@ -290,6 +236,60 @@ class ReviewOverlayService:
                 for flag_id in state.active_flag_ids
                 if flag_id != event.flag_id
             ]
+
+
+def _try_rebind_event(  # noqa: PLR0913
+    event: ReviewEvent,
+    *,
+    tasks: Mapping[str, ReviewTask],
+    task_id_map: Mapping[str, str],
+    object_id_map: Mapping[str, str],
+    resolvable_coordinate_space_ids: set[str],
+    event_id_map: Mapping[str, str],
+    run_id: str,
+    graph_revision: str,
+) -> ReviewEvent | None:
+    """
+    Rebind one event when every required id resolves; otherwise skip it.
+
+    Args:
+        event: Predecessor event considered for copy.
+
+    Keyword Args:
+        tasks: Successor task map keyed by new task id.
+        task_id_map: Explicit old→new task id map.
+        object_id_map: Explicit old→new object id map.
+        resolvable_coordinate_space_ids: Valid geometry spaces.
+        event_id_map: Caller-supplied old→new event ids.
+        run_id: Successor machine run id.
+        graph_revision: Successor graph revision.
+
+    Returns:
+        A distinct remapped event, or ``None`` when the event conflicts.
+
+    """
+    new_task_id = task_id_map.get(event.task_id)
+    new_event_id = event_id_map.get(event.event_id)
+    if new_task_id is None or new_event_id is None:
+        return None
+    if new_task_id not in tasks:
+        return None
+    if event.target_object_id not in object_id_map:
+        return None
+    nested = _nested_object_ids(event)
+    if any(object_id not in object_id_map for object_id in nested):
+        return None
+    spaces = _coordinate_space_ids(event)
+    if any(space_id not in resolvable_coordinate_space_ids for space_id in spaces):
+        return None
+    return _rebind_event(
+        event,
+        new_event_id=new_event_id,
+        new_task_id=new_task_id,
+        object_id_map=object_id_map,
+        run_id=run_id,
+        graph_revision=graph_revision,
+    )
 
 
 def _normalize_tasks(
@@ -482,12 +482,14 @@ def _rebind_event(  # noqa: PLR0913
         regions = data["replacement_regions"]
         if not isinstance(regions, list):
             msg = "replacement_regions must be a list"
-            raise TypeError(msg)
-        data["replacement_regions"] = [
-            _rebind_region(region, object_id_map)
-            for region in regions
-            if isinstance(region, Mapping)
-        ]
+            raise ValueError(msg)  # noqa: TRY004
+        remapped_regions: list[dict[str, object]] = []
+        for region in regions:
+            if not isinstance(region, Mapping):
+                msg = "replacement region must be a mapping"
+                raise ValueError(msg)  # noqa: TRY004
+            remapped_regions.append(_rebind_region(region, object_id_map))
+        data["replacement_regions"] = remapped_regions
     elif isinstance(event, MergeRegionReviewEvent):
         data["source_region_ids"] = [
             object_id_map[item] for item in event.source_region_ids
@@ -495,7 +497,7 @@ def _rebind_event(  # noqa: PLR0913
         replacement = data["replacement_region"]
         if not isinstance(replacement, Mapping):
             msg = "replacement_region must be a mapping"
-            raise TypeError(msg)
+            raise ValueError(msg)  # noqa: TRY004
         data["replacement_region"] = _rebind_region(replacement, object_id_map)
     elif isinstance(event, ReorderReviewEvent):
         data["ordered_object_ids"] = [
@@ -524,7 +526,7 @@ def _rebind_region(
     raw_lines = payload.get("line_ids", [])
     if not isinstance(raw_lines, list):
         msg = "region line_ids must be a list"
-        raise TypeError(msg)
+        raise ValueError(msg)  # noqa: TRY004
     payload["line_ids"] = [object_id_map[str(item)] for item in raw_lines]
     return payload
 
