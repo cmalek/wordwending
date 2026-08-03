@@ -1412,12 +1412,14 @@ class OverlayState(SchemaModel):
     role_overrides: list[TextRole] = Field(default_factory=list)
     #: Current geometry override in a bound coordinate space.
     bounding_box_override: BoundingBox | None = None
+    #: Current polygon override when rectangular geometry is lossy.
+    polygon_override: Polygon | None = None
     #: Current region class after structural review.
     region_kind_override: RegionKind | None = None
     #: Whether the operator certified the target as illegible.
     illegible: bool = False
-    #: Current linked note ids after note-link review.
-    linked_note_ids: list[str] = Field(default_factory=list)
+    #: Marker span ids linked to this note after note-link review.
+    linked_marker_span_ids: list[str] = Field(default_factory=list)
 
 
 class ReviewEventBase(SchemaModel):
@@ -1506,6 +1508,30 @@ class UnlinkNoteReviewEvent(ReviewEventBase):
     note_id: str
 
 
+def _validate_geometry_coordinate_spaces(
+    bounding_box: BoundingBox | None,
+    polygon: Polygon | None,
+) -> None:
+    """
+    Reject mixed coordinate-space identity when both geometry forms are present.
+
+    Args:
+        bounding_box: Optional axis-aligned replacement geometry.
+        polygon: Optional polygon replacement geometry.
+
+    Raises:
+        ValueError: If box and polygon name different coordinate spaces.
+
+    """
+    if (
+        bounding_box is not None
+        and polygon is not None
+        and bounding_box.coordinate_space_id != polygon.coordinate_space_id
+    ):
+        msg = "bounding box and polygon must share the same coordinate space"
+        raise ValueError(msg)
+
+
 class RegionRevision(SchemaModel):
     """Complete replayable structural definition for a corrected region."""
 
@@ -1521,6 +1547,24 @@ class RegionRevision(SchemaModel):
     polygon: Polygon | None = None
     #: Ordered line identifiers assigned to this region.
     line_ids: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_geometry(self) -> RegionRevision:
+        """
+        Require resolvable geometry with a single coordinate-space identity.
+
+        Returns:
+            The validated region revision.
+
+        Raises:
+            ValueError: If geometry is missing or names conflicting spaces.
+
+        """
+        if self.bounding_box is None and self.polygon is None:
+            msg = "region revisions require a bounding box or polygon"
+            raise ValueError(msg)
+        _validate_geometry_coordinate_spaces(self.bounding_box, self.polygon)
+        return self
 
 
 class SplitRegionReviewEvent(ReviewEventBase):
@@ -1559,6 +1603,23 @@ class FlagReviewEvent(ReviewEventBase):
     #: Human-readable flag message.
     message: str
 
+    @model_validator(mode="after")
+    def validate_trust_state_unchanged(self) -> FlagReviewEvent:
+        """
+        Require flag events to record concern without changing trust state.
+
+        Returns:
+            The validated flag event.
+
+        Raises:
+            ValueError: If the event changes trust state.
+
+        """
+        if self.new_trust_state != self.prior_trust_state:
+            msg = "flag events must not change trust state"
+            raise ValueError(msg)
+        return self
+
 
 class ResolveFlagReviewEvent(ReviewEventBase):
     """Event closing one previously raised review flag."""
@@ -1596,6 +1657,7 @@ class CorrectGeometryReviewEvent(ReviewEventBase):
         if self.bounding_box is None and self.polygon is None:
             msg = "correct_geometry requires a bounding box or polygon"
             raise ValueError(msg)
+        _validate_geometry_coordinate_spaces(self.bounding_box, self.polygon)
         return self
 
 
@@ -1758,6 +1820,17 @@ class PageOverlay(SchemaModel):
                     f"review event {event.event_id} targets an object outside its task"
                 )
                 raise ValueError(msg)
+            if event.target_scope != event_task.target_scope:
+                msg = (
+                    f"review event {event.event_id} target scope must match its task"
+                )
+                raise ValueError(msg)
+            if event.guideline_version != event_task.guideline_version:
+                msg = (
+                    f"review event {event.event_id} guideline version "
+                    "must match its task"
+                )
+                raise ValueError(msg)
             if event.action not in event_task.allowed_actions:
                 msg = (
                     f"review event {event.event_id} uses an action "
@@ -1783,10 +1856,22 @@ class PageOverlay(SchemaModel):
                     msg = f"flag {event.flag_id} cannot be resolved before it is raised"
                     raise ValueError(msg)
                 open_flag_ids.remove(event.flag_id)
+        events_by_id = {event.event_id: event for event in self.review_events}
         for state in self.current_state:
             if not set(state.applied_event_ids).issubset(event_ids):
                 msg = f"overlay state {state.object_id} references an unknown event"
                 raise ValueError(msg)
+            for event_id in state.applied_event_ids:
+                event = events_by_id[event_id]
+                if (
+                    event.target_object_id != state.object_id
+                    or event.target_scope != state.scope
+                ):
+                    msg = (
+                        f"overlay state {state.object_id} references an event "
+                        "for another object or scope"
+                    )
+                    raise ValueError(msg)
             if not set(state.active_flag_ids).issubset(open_flag_ids):
                 msg = f"overlay state {state.object_id} references an inactive flag"
                 raise ValueError(msg)
