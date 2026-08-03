@@ -1412,12 +1412,14 @@ class OverlayState(SchemaModel):
     role_overrides: list[TextRole] = Field(default_factory=list)
     #: Current geometry override in a bound coordinate space.
     bounding_box_override: BoundingBox | None = None
+    #: Current polygon override when rectangular geometry is lossy.
+    polygon_override: Polygon | None = None
     #: Current region class after structural review.
     region_kind_override: RegionKind | None = None
     #: Whether the operator certified the target as illegible.
     illegible: bool = False
-    #: Current linked note ids after note-link review.
-    linked_note_ids: list[str] = Field(default_factory=list)
+    #: Marker span ids linked to this note after note-link review.
+    linked_marker_span_ids: list[str] = Field(default_factory=list)
 
 
 class ReviewEventBase(SchemaModel):
