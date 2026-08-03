@@ -406,6 +406,28 @@
       "action": "resolve_flag",
       "flag_id": "flag-1",
       "resolution": "confirmed long-s"
+    },
+    {
+      "event_id": "evt-flag-2",
+      "task_id": "task-text",
+      "target_object_id": "span-1",
+      "target_scope": "span",
+      "review_dimensions": [
+        "text"
+      ],
+      "base_run_id": "run-1",
+      "base_graph_revision": "graph-1",
+      "guideline_version": "1.0.0",
+      "prior_trust_state": "corrected",
+      "new_trust_state": "corrected",
+      "operator_id": "editor-1",
+      "timestamp_utc": "2026-08-03T00:00:00Z",
+      "operator_note": null,
+      "action": "flag",
+      "flag_id": "flag-2",
+      "flag_type": "ambiguous-diacritic",
+      "severity": "info",
+      "message": "macron may be absent"
     }
   ],
   "current_state": [
@@ -423,7 +445,9 @@
         "typography",
         "structure"
       ],
-      "active_flag_ids": [],
+      "active_flag_ids": [
+        "flag-2"
+      ],
       "applied_event_ids": [
         "evt-accept",
         "evt-text",
@@ -431,7 +455,8 @@
         "evt-geo",
         "evt-illegible",
         "evt-flag",
-        "evt-resolve"
+        "evt-resolve",
+        "evt-flag-2"
       ],
       "text_diplomatic_override": "emended",
       "typography_override": {

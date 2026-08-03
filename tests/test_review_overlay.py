@@ -343,6 +343,12 @@ def test_overlay_v1_fixture_replay_matches_current_state() -> None:
     assert [state.model_dump(mode="json") for state in materialized] == raw[
         "current_state"
     ]
+    span_state = next(
+        state
+        for state in materialized
+        if state.object_id == "span-1" and state.scope == ReviewScope.SPAN
+    )
+    assert span_state.active_flag_ids == ["flag-2"]
 
 
 def test_replay_materializes_only_append_only_event_effects() -> None:
