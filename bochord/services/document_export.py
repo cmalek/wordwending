@@ -17,10 +17,12 @@ from bochord.models import (
     NoteRecord,
     RagChunk,
     RagDocument,
+    RegionKind,
     RegionRecord,
     RetrievalMetadata,
     RetrievalProvenance,
     SpanRecord,
+    StitchedChunk,
     TrustState,
     Typography,
 )
@@ -33,6 +35,9 @@ RAG_SCHEMA_VERSION = "1.0.0"
 
 #: Reproducible recipe identifier for page-local region and footnote chunking.
 PAGE_REGIONS_CHUNKING_RECIPE_ID = "page-regions-v1"
+
+#: Minimum distinct pages required before emitting a stitched chunk.
+MIN_STITCHED_PAGE_COUNT = 2
 
 
 @dataclass(frozen=True)
@@ -85,13 +90,170 @@ class DocumentExportService:
                 )
                 for note in page.notes
             )
+        region_chunks = [
+            chunk for chunk in chunks if chunk.chunk_type == ChunkType.REGION
+        ]
+        stitched_chunks = self._build_stitched_chunks(
+            bundle.document_id,
+            bundle.pages,
+            region_chunks,
+        )
         return RagDocument(
             schema_version=RAG_SCHEMA_VERSION,
             chunking_recipe_id=PAGE_REGIONS_CHUNKING_RECIPE_ID,
             document_id=bundle.document_id,
             chunks=chunks,
-            stitched_chunks=[],
+            stitched_chunks=stitched_chunks,
         )
+
+    def _build_stitched_chunks(
+        self,
+        document_id: str,
+        pages: Sequence[BundlePage],
+        region_chunks: list[RagChunk],
+    ) -> list[StitchedChunk]:
+        """
+        Build cross-page stitched chunks from contiguous region-kind runs.
+
+        Args:
+            document_id: Owning document identifier.
+            pages: Accepted pages in canonical bundle order.
+            region_chunks: Page-local region chunks keyed by region graph order.
+
+        Returns:
+            Stitched chunks for same-kind runs spanning at least two pages.
+
+        """
+        chunks_by_region = {
+            chunk.chunk_id.removeprefix("region-"): chunk
+            for chunk in region_chunks
+        }
+        ordered_region_chunks: list[RagChunk] = []
+        for page in pages:
+            for region in sorted(
+                page.regions,
+                key=lambda record: record.reading_order_index,
+            ):
+                chunk = chunks_by_region.get(region.region_id)
+                if chunk is not None:
+                    ordered_region_chunks.append(chunk)
+
+        stitched_chunks: list[StitchedChunk] = []
+        current_run: list[RagChunk] = []
+        current_kind: RegionKind | None = None
+        for chunk in ordered_region_chunks:
+            region_kind = chunk.retrieval_metadata.region_kind
+            if (
+                current_run
+                and region_kind is not None
+                and region_kind != current_kind
+            ):
+                stitched = self._finalize_stitched_run(document_id, current_run)
+                if stitched is not None:
+                    stitched_chunks.append(stitched)
+                current_run = []
+            current_kind = region_kind
+            current_run.append(chunk)
+        stitched = self._finalize_stitched_run(document_id, current_run)
+        if stitched is not None:
+            stitched_chunks.append(stitched)
+        return stitched_chunks
+
+    def _finalize_stitched_run(
+        self,
+        document_id: str,
+        run: list[RagChunk],
+    ) -> StitchedChunk | None:
+        """
+        Emit one stitched chunk when a region-kind run spans multiple pages.
+
+        Args:
+            document_id: Owning document identifier.
+            run: Contiguous same-kind region chunks in accepted graph order.
+
+        Returns:
+            Stitched chunk when the run spans at least two distinct pages.
+
+        """
+        if not run:
+            return None
+        page_ids: list[str] = []
+        seen_pages: set[str] = set()
+        for chunk in run:
+            for page_id in chunk.page_ids:
+                if page_id not in seen_pages:
+                    seen_pages.add(page_id)
+                    page_ids.append(page_id)
+        if len(page_ids) < MIN_STITCHED_PAGE_COUNT:
+            return None
+
+        component_chunk_ids = [chunk.chunk_id for chunk in run]
+        source_object_ids: list[str] = []
+        seen_objects: set[str] = set()
+        provenance_pages: list[str] = []
+        provenance_witnesses: list[str] = []
+        provenance_runners: list[str] = []
+        seen_provenance_pages: set[str] = set()
+        seen_provenance_witnesses: set[str] = set()
+        seen_provenance_runners: set[str] = set()
+        for chunk in run:
+            for object_id in chunk.source_object_ids:
+                if object_id not in seen_objects:
+                    seen_objects.add(object_id)
+                    source_object_ids.append(object_id)
+            self._extend_unique(
+                provenance_pages,
+                seen_provenance_pages,
+                chunk.provenance.source_page_ids,
+            )
+            self._extend_unique(
+                provenance_witnesses,
+                seen_provenance_witnesses,
+                chunk.provenance.witness_ids,
+            )
+            self._extend_unique(
+                provenance_runners,
+                seen_provenance_runners,
+                chunk.provenance.runner_ids,
+            )
+
+        first_id = component_chunk_ids[0]
+        last_id = component_chunk_ids[-1]
+        return StitchedChunk(
+            stitched_chunk_id=f"stitched-{first_id}-{last_id}",
+            document_id=document_id,
+            component_chunk_ids=component_chunk_ids,
+            page_ids=page_ids,
+            text="\n".join(chunk.text for chunk in run),
+            trust_state=self._aggregate_chunk_trust(run),
+            source_object_ids=source_object_ids,
+            provenance=RetrievalProvenance(
+                source_page_ids=provenance_pages,
+                witness_ids=provenance_witnesses,
+                runner_ids=provenance_runners,
+            ),
+        )
+
+    def _aggregate_chunk_trust(self, chunks: Sequence[RagChunk]) -> TrustState:
+        """
+        Aggregate trust for stitched component chunks.
+
+        Args:
+            chunks: Region chunks whose trust states contribute to the stitch.
+
+        Returns:
+            Corrected when any chunk is corrected, else reviewed when all are
+            reviewed, else machine.
+
+        """
+        trust_states = [chunk.trust_state for chunk in chunks]
+        if any(state == TrustState.CORRECTED for state in trust_states):
+            return TrustState.CORRECTED
+        if trust_states and all(
+            state == TrustState.REVIEWED for state in trust_states
+        ):
+            return TrustState.REVIEWED
+        return TrustState.MACHINE
 
     def _build_page_indexes(self, page: BundlePage) -> PageGraphIndex:
         """
