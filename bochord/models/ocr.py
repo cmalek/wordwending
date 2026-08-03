@@ -1708,7 +1708,7 @@ class PageOverlay(SchemaModel):
     current_state: list[OverlayState] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_review_bindings(self) -> PageOverlay:  # noqa: PLR0912
+    def validate_review_bindings(self) -> PageOverlay:  # noqa: PLR0912, PLR0915
         """
         Bind events to valid tasks, evidence revisions, targets, and actions.
 
@@ -1731,6 +1731,9 @@ class PageOverlay(SchemaModel):
                 or task.base_graph_revision != self.base_graph_revision
             ):
                 msg = "review tasks must match the overlay run and graph revision"
+                raise ValueError(msg)
+            if task.prepared_image_checksum != self.prepared_image_checksum:
+                msg = "review tasks must match the overlay prepared image checksum"
                 raise ValueError(msg)
             expected_dimension = _EXCLUSIVE_TASK_DIMENSIONS.get(task.task_type)
             if expected_dimension is not None and task.dimensions != [

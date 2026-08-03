@@ -325,6 +325,39 @@ class TestOcrModels:
                 review_events=[],
             )
 
+    def test_page_overlay_rejects_task_with_mismatched_prepared_image_checksum(
+        self,
+    ) -> None:
+        """Tasks must bind to the same prepared image the overlay records."""
+        with pytest.raises(ValidationError, match="prepared image checksum"):
+            PageOverlay(
+                schema_version="1.0.0",
+                overlay_id="overlay-1",
+                page_id="page-1",
+                source_run_id="run-1",
+                base_graph_revision="graph-1",
+                prepared_image_checksum="sha256:prepared",
+                review_tasks=[
+                    ReviewTask(
+                        task_id="task-1",
+                        task_type=ReviewTaskType.TEXT,
+                        dimensions=[ReviewDimension.TEXT],
+                        target_scope=ReviewScope.SPAN,
+                        target_object_ids=["span-1"],
+                        question="Does the diplomatic text match?",
+                        required_evidence=["prepared-page", "text-witness"],
+                        allowed_actions=["accept", "flag"],
+                        completion_criteria=["graphemes inspected"],
+                        guideline_id="review",
+                        guideline_version="1.0.0",
+                        base_run_id="run-1",
+                        base_graph_revision="graph-1",
+                        prepared_image_checksum="sha256:WRONG-IMAGE",
+                    )
+                ],
+                review_events=[],
+            )
+
     def test_review_task_tells_operator_what_to_inspect_and_certify(self):
         """A review task should be actionable without undocumented context."""
         task = ReviewTask(
