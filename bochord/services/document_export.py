@@ -167,15 +167,13 @@ class DocumentExportService:
             Page-local footnote chunk with marker and region linkage retained.
 
         """
-        marker_spans = [
-            page_index[span_id]
+        marker_span_records = [
+            span
             for span_id in note.linked_marker_span_ids
-            if span_id in page_index
+            if (span := page_index.get(span_id)) is not None
+            and isinstance(span, SpanRecord)
         ]
-        trust_objects: list[NoteRecord | SpanRecord] = [note]
-        trust_objects.extend(
-            span for span in marker_spans if isinstance(span, SpanRecord)
-        )
+        trust_objects: list[NoteRecord | SpanRecord] = [note, *marker_span_records]
         provenance_objects: list[
             NoteRecord | SpanRecord | RegionRecord
         ] = list(trust_objects)
@@ -194,7 +192,13 @@ class DocumentExportService:
             trust_state=self._aggregate_trust(trust_objects),
             source_object_ids=self._footnote_source_object_ids(note, region),
             provenance=self._aggregate_provenance(provenance_objects),
-            note_summary=[note.note_id, *note.linked_marker_span_ids],
+            note_summary=self._footnote_note_summary(note),
+            retrieval_metadata=RetrievalMetadata(
+                page_number=page.page_number,
+                contains_reviewed_content=self._contains_reviewed(trust_objects),
+                contains_corrected_content=self._contains_corrected(trust_objects),
+                typography_signals=self._typography_summary(marker_span_records),
+            ),
         )
 
     def _ordered_region_lines(
@@ -425,6 +429,23 @@ class DocumentExportService:
                 seen.add(object_id)
                 object_ids.append(object_id)
         return object_ids
+
+    def _footnote_note_summary(self, note: NoteRecord) -> list[str]:
+        """
+        Build ordered note linkage ids for footnote retrieval consumers.
+
+        Args:
+            note: Accepted note whose linkage ids should be summarized.
+
+        Returns:
+            ``note_id``, linked marker span ids, then parent ``region_id`` when
+            the note is region-scoped.
+
+        """
+        summary = [note.note_id, *note.linked_marker_span_ids]
+        if note.region_id is not None:
+            summary.append(note.region_id)
+        return summary
 
     def _footnote_source_object_ids(
         self,
