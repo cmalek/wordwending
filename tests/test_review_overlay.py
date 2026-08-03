@@ -27,6 +27,7 @@ from bochord.models import (
     ReviewDimension,
     ReviewScope,
     ReviewTask,
+    ReviewTaskStatus,
     ReviewTaskType,
     TextRole,
     TrustState,
@@ -76,6 +77,11 @@ def _task(  # noqa: PLR0913
     target_scope: ReviewScope,
     target_object_ids: list[str],
     allowed_actions: list[ReviewAction],
+    base_run_id: str = "run-1",
+    base_graph_revision: str = "graph-1",
+    prepared_image_checksum: str = "sha256:prepared",
+    status: ReviewTaskStatus = ReviewTaskStatus.PENDING,
+    related_object_ids: list[str] | None = None,
 ) -> ReviewTask:
     """Return a review task bound to the shared overlay evidence."""
     return ReviewTask(
@@ -84,15 +90,17 @@ def _task(  # noqa: PLR0913
         dimensions=dimensions,
         target_scope=target_scope,
         target_object_ids=target_object_ids,
+        related_object_ids=related_object_ids or [],
         question="Inspect the target.",
         required_evidence=["prepared-page", "witness"],
         allowed_actions=allowed_actions,
         completion_criteria=["evidence inspected"],
         guideline_id="review",
         guideline_version="1.0.0",
-        base_run_id="run-1",
-        base_graph_revision="graph-1",
-        prepared_image_checksum="sha256:prepared",
+        base_run_id=base_run_id,
+        base_graph_revision=base_graph_revision,
+        prepared_image_checksum=prepared_image_checksum,
+        status=status,
     )
 
 
@@ -365,3 +373,210 @@ def test_replay_materializes_only_append_only_event_effects() -> None:
     # Flag then resolve must leave trust unchanged while clearing the flag.
     assert span.trust_state == TrustState.CORRECTED
     assert "flag-1" not in span.active_flag_ids
+
+
+def _successor_source_overlay() -> PageOverlay:
+    """
+    Build a compact predecessor with one copyable and two conflict events.
+
+    Copyable: text correction whose task, target, and event ids all map.
+    Conflicts: geometry whose coordinate space is outside the resolvable set,
+    and a note link whose nested marker id is absent from the object map.
+    """
+    text_task = _task(
+        task_id="task-text",
+        task_type=ReviewTaskType.TEXT,
+        dimensions=[ReviewDimension.TEXT],
+        target_scope=ReviewScope.SPAN,
+        target_object_ids=["span-1"],
+        allowed_actions=[ReviewAction.CORRECT_TEXT],
+    )
+    geo_task = _task(
+        task_id="task-geo",
+        task_type=ReviewTaskType.LAYOUT,
+        dimensions=[ReviewDimension.STRUCTURE],
+        target_scope=ReviewScope.SPAN,
+        target_object_ids=["span-1"],
+        allowed_actions=[ReviewAction.CORRECT_GEOMETRY],
+    )
+    note_task = _task(
+        task_id="task-note",
+        task_type=ReviewTaskType.NOTE_LINKAGE,
+        dimensions=[ReviewDimension.NOTE_LINKAGE],
+        target_scope=ReviewScope.NOTE,
+        target_object_ids=["note-1"],
+        allowed_actions=[ReviewAction.LINK_NOTE],
+    )
+    events = [
+        CorrectTextReviewEvent(
+            **_event_base(
+                event_id="evt-text",
+                task_id="task-text",
+                target_object_id="span-1",
+                target_scope=ReviewScope.SPAN,
+                review_dimensions=[ReviewDimension.TEXT],
+                prior_trust_state=TrustState.MACHINE,
+                new_trust_state=TrustState.CORRECTED,
+            ),
+            text_diplomatic="emended",
+        ),
+        CorrectGeometryReviewEvent(
+            **_event_base(
+                event_id="evt-geo",
+                task_id="task-geo",
+                target_object_id="span-1",
+                target_scope=ReviewScope.SPAN,
+                review_dimensions=[ReviewDimension.STRUCTURE],
+                prior_trust_state=TrustState.MACHINE,
+                new_trust_state=TrustState.CORRECTED,
+            ),
+            polygon=_polygon(),
+        ),
+        LinkNoteReviewEvent(
+            **_event_base(
+                event_id="evt-link",
+                task_id="task-note",
+                target_object_id="note-1",
+                target_scope=ReviewScope.NOTE,
+                review_dimensions=[ReviewDimension.NOTE_LINKAGE],
+                prior_trust_state=TrustState.MACHINE,
+                new_trust_state=TrustState.CORRECTED,
+            ),
+            marker_span_ids=["marker-1", "marker-unmapped"],
+            note_id="note-1",
+        ),
+    ]
+    return PageOverlay(
+        schema_version="1.0.0",
+        overlay_id="overlay-old",
+        page_id="page-1",
+        source_run_id="run-1",
+        base_graph_revision="graph-1",
+        prepared_image_checksum="sha256:prepared",
+        review_tasks=[text_task, geo_task, note_task],
+        review_events=events,
+        current_state=[],
+    )
+
+
+def test_successor_rebases_only_resolved_events_and_queues_conflicts() -> None:
+    """Successor copies resolvable events only and keeps conflict packets."""
+    source = _successor_source_overlay()
+    source_event_dump = [event.model_dump() for event in source.review_events]
+    binding = {
+        "base_run_id": "run-2",
+        "base_graph_revision": "graph-2",
+        "prepared_image_checksum": "sha256:prepared-v2",
+    }
+    successor_text = _task(
+        task_id="task-text-v2",
+        task_type=ReviewTaskType.TEXT,
+        dimensions=[ReviewDimension.TEXT],
+        target_scope=ReviewScope.SPAN,
+        target_object_ids=["span-2"],
+        allowed_actions=[ReviewAction.CORRECT_TEXT],
+        **binding,
+    )
+    successor_geo = _task(
+        task_id="task-geo-v2",
+        task_type=ReviewTaskType.LAYOUT,
+        dimensions=[ReviewDimension.STRUCTURE],
+        target_scope=ReviewScope.SPAN,
+        target_object_ids=["span-2"],
+        allowed_actions=[ReviewAction.CORRECT_GEOMETRY],
+        **binding,
+    )
+    successor_note = _task(
+        task_id="task-note-v2",
+        task_type=ReviewTaskType.NOTE_LINKAGE,
+        dimensions=[ReviewDimension.NOTE_LINKAGE],
+        target_scope=ReviewScope.NOTE,
+        target_object_ids=["note-2"],
+        allowed_actions=[ReviewAction.LINK_NOTE],
+        **binding,
+    )
+    conflict_geo = _task(
+        task_id="task-conflict-geo",
+        task_type=ReviewTaskType.ADJUDICATION,
+        dimensions=[ReviewDimension.STRUCTURE],
+        target_scope=ReviewScope.SPAN,
+        target_object_ids=["span-2"],
+        allowed_actions=[ReviewAction.FLAG],
+        status=ReviewTaskStatus.PENDING,
+        related_object_ids=["span-1"],
+        **binding,
+    )
+    conflict_note = _task(
+        task_id="task-conflict-note",
+        task_type=ReviewTaskType.ADJUDICATION,
+        dimensions=[ReviewDimension.NOTE_LINKAGE],
+        target_scope=ReviewScope.NOTE,
+        target_object_ids=["note-2"],
+        allowed_actions=[ReviewAction.FLAG],
+        status=ReviewTaskStatus.PENDING,
+        related_object_ids=["marker-unmapped"],
+        **binding,
+    )
+    service = ReviewOverlayService()
+
+    successor = service.create_successor(
+        source,
+        new_overlay_id="overlay-new",
+        successor_tasks={
+            "task-text-v2": successor_text,
+            "task-geo-v2": successor_geo,
+            "task-note-v2": successor_note,
+        },
+        task_id_map={
+            "task-text": "task-text-v2",
+            "task-geo": "task-geo-v2",
+            "task-note": "task-note-v2",
+        },
+        object_id_map={
+            "span-1": "span-2",
+            "note-1": "note-2",
+            "marker-1": "marker-a",
+        },
+        resolvable_coordinate_space_ids={"prepared-page-2"},
+        event_id_map={"evt-text": "evt-text-v2"},
+        conflict_tasks=[conflict_geo, conflict_note],
+    )
+
+    assert successor.overlay_id == "overlay-new"
+    assert successor.predecessor_overlay_id == "overlay-old"
+    assert successor.source_run_id == "run-2"
+    assert successor.base_graph_revision == "graph-2"
+    assert successor.prepared_image_checksum == "sha256:prepared-v2"
+    assert [event.event_id for event in successor.review_events] == ["evt-text-v2"]
+    copied = successor.review_events[0]
+    assert isinstance(copied, CorrectTextReviewEvent)
+    assert copied.task_id == "task-text-v2"
+    assert copied.target_object_id == "span-2"
+    assert copied.base_run_id == "run-2"
+    assert copied.base_graph_revision == "graph-2"
+    assert copied.text_diplomatic == "emended"
+
+    task_ids = {task.task_id for task in successor.review_tasks}
+    assert task_ids == {
+        "task-text-v2",
+        "task-geo-v2",
+        "task-note-v2",
+        "task-conflict-geo",
+        "task-conflict-note",
+    }
+    by_id = {task.task_id: task for task in successor.review_tasks}
+    assert by_id["task-conflict-geo"].task_type == ReviewTaskType.ADJUDICATION
+    assert by_id["task-conflict-geo"].status == ReviewTaskStatus.PENDING
+    assert by_id["task-conflict-note"].task_type == ReviewTaskType.ADJUDICATION
+    assert by_id["task-conflict-note"].status == ReviewTaskStatus.PENDING
+
+    assert source.overlay_id == "overlay-old"
+    assert [event.model_dump() for event in source.review_events] == source_event_dump
+
+    assert len(successor.current_state) == 1
+    state = successor.current_state[0]
+    assert state.object_id == "span-2"
+    assert state.scope == ReviewScope.SPAN
+    assert state.text_diplomatic_override == "emended"
+    assert state.applied_event_ids == ["evt-text-v2"]
+    assert state.trust_state == TrustState.CORRECTED
