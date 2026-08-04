@@ -937,6 +937,45 @@ class PreparedPage(SchemaModel):
     #: Prepared subdivisions preserved for runner use.
     prepared_units: list[PreparedArtifactRef] = Field(default_factory=list)
 
+    @model_validator(mode="after")
+    def validate_prepared_units(self) -> PreparedPage:
+        """
+        Keep prepared-unit ids unique and bound to this page's spaces.
+
+        Returns:
+            The validated prepared page.
+
+        Raises:
+            ValueError: If a prepared unit id duplicates or leaves page context.
+
+        """
+        known_spaces = _known_preparation_space_ids(self)
+        unit_ids: list[str] = []
+        for unit in self.prepared_units:
+            if unit.prepared_unit_id is not None:
+                unit_ids.append(unit.prepared_unit_id)
+            if unit.kind != InputKind.PREPARED_UNIT:
+                continue
+            if unit.parent_prepared_page_id != self.prepared_page_id:
+                msg = (
+                    "prepared unit parent_prepared_page_id must match "
+                    "prepared_page_id"
+                )
+                raise ValueError(msg)
+            if (
+                unit.bounding_box is not None
+                and unit.bounding_box.coordinate_space_id not in known_spaces
+            ):
+                msg = (
+                    "prepared unit bounding boxes must name a known page "
+                    "coordinate space"
+                )
+                raise ValueError(msg)
+        if len(set(unit_ids)) != len(unit_ids):
+            msg = "prepared unit ids must be unique within a prepared page"
+            raise ValueError(msg)
+        return self
+
 
 class SpanRecord(SchemaModel):
     """Accepted text span in the page graph."""
@@ -978,6 +1017,8 @@ class LineRecord(SchemaModel):
     polygon: Polygon | None = None
     #: Baseline polyline points in reading order when available.
     baseline: list[Point] = Field(default_factory=list)
+    #: Coordinate-space id for a non-empty baseline polyline.
+    baseline_coordinate_space_id: str | None = None
     #: Ordered span identifiers contained by the line.
     span_ids: list[str]
     #: Current trust state for this line.
@@ -988,6 +1029,95 @@ class LineRecord(SchemaModel):
     review: ReviewSummary = Field(default_factory=ReviewSummary)
     #: Optional joined successor line when this line continues on the next line.
     joins_to_line_id: str | None = None
+
+    @model_validator(mode="after")
+    def validate_baseline_coordinate_space(self) -> LineRecord:
+        """
+        Require baseline_coordinate_space_id exactly when baseline is present.
+
+        Returns:
+            The validated line record.
+
+        Raises:
+            ValueError: If baseline presence and space id disagree.
+
+        """
+        has_baseline = bool(self.baseline)
+        has_space = self.baseline_coordinate_space_id is not None
+        if has_baseline != has_space:
+            msg = (
+                "baseline_coordinate_space_id is required if and only if "
+                "baseline is non-empty"
+            )
+            raise ValueError(msg)
+        return self
+
+
+def _known_preparation_space_ids(prepared_page: PreparedPage) -> set[str]:
+    """
+    Collect coordinate-space ids declared by preparation context.
+
+    Args:
+        prepared_page: Prepared page whose space and transforms define identity.
+
+    Returns:
+        The set of known preparation coordinate-space identifiers.
+
+    """
+    known = {prepared_page.coordinate_space.space_id}
+    for transform in prepared_page.transforms:
+        known.add(transform.source_space_id)
+        known.add(transform.target_space_id)
+    return known
+
+
+def _known_page_space_ids(prepared_page: PreparedPage) -> set[str]:
+    """
+    Collect coordinate-space ids usable by page-graph geometry.
+
+    Args:
+        prepared_page: Prepared page supplying spaces, transforms, and units.
+
+    Returns:
+        Known space ids including prepared-unit bounding-box spaces.
+
+    """
+    known = _known_preparation_space_ids(prepared_page)
+    for unit in prepared_page.prepared_units:
+        if unit.bounding_box is not None:
+            known.add(unit.bounding_box.coordinate_space_id)
+    return known
+
+
+def _geometry_space_id(
+    box: BoundingBox | None,
+    polygon: Polygon | None,
+) -> str | None:
+    """
+    Return the named coordinate space for optional box or polygon geometry.
+
+    Args:
+        box: Optional bounding box.
+        polygon: Optional polygon.
+
+    Returns:
+        The coordinate-space id when geometry is present, otherwise ``None``.
+
+    Raises:
+        ValueError: If box and polygon name different spaces.
+
+    """
+    space_ids = {
+        geometry.coordinate_space_id
+        for geometry in (box, polygon)
+        if geometry is not None
+    }
+    if not space_ids:
+        return None
+    if len(space_ids) > 1:
+        msg = "box and polygon must name the same coordinate space"
+        raise ValueError(msg)
+    return next(iter(space_ids))
 
 
 class NoteRecord(SchemaModel):
@@ -1069,7 +1199,7 @@ class BundlePage(SchemaModel):
     review_event_ids: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_graph_references(self) -> BundlePage:  # noqa: PLR0912
+    def validate_graph_references(self) -> BundlePage:  # noqa: PLR0912, PLR0915
         """
         Reject duplicate ids and dangling page-graph references.
 
@@ -1097,6 +1227,37 @@ class BundlePage(SchemaModel):
         line_id_set = set(line_ids)
         span_id_set = set(span_ids)
         note_id_set = set(note_ids)
+        lines_by_id = {line.line_id: line for line in self.lines}
+        spans_by_id = {span.span_id: span for span in self.spans}
+        notes_by_id = {note.note_id: note for note in self.notes}
+        known_spaces = _known_page_space_ids(self.prepared_page)
+        page_witness_ids = {witness.witness_id for witness in self.witnesses}
+        page_runner_ids = {witness.runner_id for witness in self.witnesses}
+        for witness in self.witnesses:
+            if witness.page_id != self.page_id:
+                msg = f"witness {witness.witness_id} page_id must match owning page"
+                raise ValueError(msg)
+        for unit in self.prepared_page.prepared_units:
+            if unit.page_id != self.page_id:
+                msg = "prepared unit page_id must match owning BundlePage.page_id"
+                raise ValueError(msg)
+        reading_orders = [region.reading_order_index for region in self.regions]
+        if any(index < 1 for index in reading_orders):
+            msg = "region reading_order_index values must be positive"
+            raise ValueError(msg)
+        if len(set(reading_orders)) != len(reading_orders):
+            msg = "region reading_order_index values must be unique"
+            raise ValueError(msg)
+        line_orders_by_region: dict[str, list[int]] = {}
+        for line in self.lines:
+            line_orders_by_region.setdefault(line.region_id, []).append(line.line_order)
+        for region_id, orders in line_orders_by_region.items():
+            if any(order < 1 for order in orders):
+                msg = f"line_order values must be positive in region {region_id}"
+                raise ValueError(msg)
+            if len(set(orders)) != len(orders):
+                msg = f"line_order values must be unique within region {region_id}"
+                raise ValueError(msg)
         for region in self.regions:
             if not set(region.line_ids).issubset(line_id_set):
                 msg = f"region {region.region_id} references an unknown line"
@@ -1104,6 +1265,35 @@ class BundlePage(SchemaModel):
             if not set(region.note_ids).issubset(note_id_set):
                 msg = f"region {region.region_id} references an unknown note"
                 raise ValueError(msg)
+            for line_id in region.line_ids:
+                listed_line = lines_by_id[line_id]
+                if listed_line.region_id != region.region_id:
+                    msg = (
+                        f"line {line_id} listed by region {region.region_id} "
+                        "must have that region_id"
+                    )
+                    raise ValueError(msg)
+            for note_id in region.note_ids:
+                listed_note = notes_by_id[note_id]
+                if listed_note.region_id != region.region_id:
+                    msg = (
+                        f"note {note_id} listed by region {region.region_id} "
+                        "must have that region_id"
+                    )
+                    raise ValueError(msg)
+            _validate_geometry_space(
+                region.bounding_box,
+                region.polygon,
+                known_spaces,
+                owner=f"region {region.region_id}",
+            )
+            _validate_object_provenance(
+                region.provenance,
+                page_id=self.page_id,
+                witness_ids=page_witness_ids,
+                runner_ids=page_runner_ids,
+                owner=f"region {region.region_id}",
+            )
         for line in self.lines:
             if region_id_set and line.region_id not in region_id_set:
                 msg = f"line {line.line_id} references an unknown region"
@@ -1111,16 +1301,59 @@ class BundlePage(SchemaModel):
             if not set(line.span_ids).issubset(span_id_set):
                 msg = f"line {line.line_id} references an unknown span"
                 raise ValueError(msg)
+            for span_id in line.span_ids:
+                listed_span = spans_by_id[span_id]
+                if listed_span.line_id != line.line_id:
+                    msg = (
+                        f"span {span_id} listed by line {line.line_id} "
+                        "must have that line_id"
+                    )
+                    raise ValueError(msg)
             if (
                 line.joins_to_line_id is not None
                 and line.joins_to_line_id not in line_id_set
             ):
                 msg = f"line {line.line_id} references an unknown joined line"
                 raise ValueError(msg)
+            _validate_geometry_space(
+                line.bounding_box,
+                line.polygon,
+                known_spaces,
+                owner=f"line {line.line_id}",
+            )
+            if (
+                line.baseline_coordinate_space_id is not None
+                and line.baseline_coordinate_space_id not in known_spaces
+            ):
+                msg = (
+                    f"line {line.line_id} baseline names an unknown "
+                    "coordinate space"
+                )
+                raise ValueError(msg)
+            _validate_object_provenance(
+                line.provenance,
+                page_id=self.page_id,
+                witness_ids=page_witness_ids,
+                runner_ids=page_runner_ids,
+                owner=f"line {line.line_id}",
+            )
         for span in self.spans:
             if span.line_id not in line_id_set:
                 msg = f"span {span.span_id} references an unknown line"
                 raise ValueError(msg)
+            _validate_geometry_space(
+                span.bounding_box,
+                None,
+                known_spaces,
+                owner=f"span {span.span_id}",
+            )
+            _validate_object_provenance(
+                span.provenance,
+                page_id=self.page_id,
+                witness_ids=page_witness_ids,
+                runner_ids=page_runner_ids,
+                owner=f"span {span.span_id}",
+            )
         for note in self.notes:
             if note.region_id is not None and note.region_id not in region_id_set:
                 msg = f"note {note.note_id} references an unknown region"
@@ -1128,8 +1361,83 @@ class BundlePage(SchemaModel):
             if not set(note.linked_marker_span_ids).issubset(span_id_set):
                 msg = f"note {note.note_id} references an unknown marker span"
                 raise ValueError(msg)
+            _validate_geometry_space(
+                note.bounding_box,
+                None,
+                known_spaces,
+                owner=f"note {note.note_id}",
+            )
+            _validate_object_provenance(
+                note.provenance,
+                page_id=self.page_id,
+                witness_ids=page_witness_ids,
+                runner_ids=page_runner_ids,
+                owner=f"note {note.note_id}",
+            )
         return self
 
+
+def _validate_geometry_space(
+    box: BoundingBox | None,
+    polygon: Polygon | None,
+    known_spaces: set[str],
+    *,
+    owner: str,
+) -> None:
+    """
+    Require graph geometry to name one known page coordinate space.
+
+    Args:
+        box: Optional bounding box.
+        polygon: Optional polygon.
+        known_spaces: Allowed coordinate-space identifiers for the page.
+
+    Keyword Args:
+        owner: Human-readable owner label for error messages.
+
+    Raises:
+        ValueError: If geometry names an unknown or inconsistent space.
+
+    """
+    space_id = _geometry_space_id(box, polygon)
+    if space_id is not None and space_id not in known_spaces:
+        msg = f"{owner} names an unknown coordinate space"
+        raise ValueError(msg)
+
+
+def _validate_object_provenance(
+    provenance: ObjectProvenance,
+    *,
+    page_id: str,
+    witness_ids: set[str],
+    runner_ids: set[str],
+    owner: str,
+) -> None:
+    """
+    Require provenance pointers to stay local to the owning page.
+
+    Args:
+        provenance: Object provenance being validated.
+
+    Keyword Args:
+        page_id: Owning bundle page identifier.
+        witness_ids: Witness ids owned by the page.
+        runner_ids: Runner ids attested by page witnesses.
+        owner: Human-readable owner label for error messages.
+
+    Raises:
+        ValueError: If provenance points outside the owning page.
+
+    """
+    if provenance.source_page_id != page_id:
+        msg = f"{owner} provenance source_page_id must equal owning page_id"
+        raise ValueError(msg)
+    if not set(provenance.witness_ids).issubset(witness_ids):
+        msg = f"{owner} provenance references an unknown witness"
+        raise ValueError(msg)
+    if not set(provenance.runner_ids).issubset(runner_ids):
+        msg = f"{owner} provenance references an unknown runner"
+        raise ValueError(msg)
 
 class DocumentEvaluationSummary(SchemaModel):
     """Document-level grouped evaluation output."""

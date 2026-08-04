@@ -23,6 +23,7 @@ from bochord.models import (
     BundlePage,
     ChunkType,
     CoordinateSpace,
+    CoordinateTransform,
     CorrectGeometryReviewEvent,
     DecidePreparationReviewEvent,
     DecideSourceTriageReviewEvent,
@@ -46,6 +47,7 @@ from bochord.models import (
     LineRecord,
     LinkNoteReviewEvent,
     MetricProfile,
+    NoteKind,
     ObjectProvenance,
     OverlayState,
     PackagedRunnerInput,
@@ -88,8 +90,10 @@ from bochord.models import (
     SpanRecord,
     StyleEvaluationSummary,
     TextRole,
+    TransformKind,
     TrustState,
     Typography,
+    WitnessReference,
 )
 
 if TYPE_CHECKING:
@@ -101,14 +105,25 @@ OVERLAY_V1_FIXTURE = (
 )
 
 
-def _provenance() -> ObjectProvenance:
+def _provenance(*, source_page_id: str = "page-1") -> ObjectProvenance:
     """Return valid single-page object provenance."""
     return ObjectProvenance(
-        source_page_id="page-0001",
+        source_page_id=source_page_id,
         witness_ids=["wit-1"],
         runner_ids=["olmocr"],
         machine_confidence=0.91,
         merge_confidence=0.84,
+    )
+
+
+def _page_witness(*, page_id: str = "page-1") -> WitnessReference:
+    """Return a witness owned by the given page."""
+    return WitnessReference(
+        witness_id="wit-1",
+        witness_kind="text",
+        artifact_path="pages/page-1/witnesses/text/olmocr.json",
+        runner_id="olmocr",
+        page_id=page_id,
     )
 
 
@@ -164,6 +179,7 @@ def valid_bundle_page() -> BundlePage:
                 height_px=100,
             ),
         ),
+        witnesses=[_page_witness()],
         regions=[
             RegionRecord(
                 region_id="region-1",
@@ -654,7 +670,7 @@ class TestOcrModels:
     def test_document_bundle_and_rag_models_round_trip(self):
         """Bundle and RAG contracts should round-trip one valid page graph."""
         timestamp = datetime(2026, 7, 26, tzinfo=UTC)
-        provenance = _provenance()
+        provenance = _provenance(source_page_id="page-0001")
         prepared_unit = PreparedArtifactRef(
             artifact_id="prep-unit-1",
             kind=InputKind.PREPARED_UNIT,
@@ -664,7 +680,13 @@ class TestOcrModels:
             parent_prepared_page_id="prepared-page-1",
             checksum="sha256:col-1-part-1",
             order=1,
-            bounding_box=BoundingBox(x0=0, y0=0, x1=1200, y1=3600),
+            bounding_box=BoundingBox(
+                x0=0,
+                y0=0,
+                x1=1200,
+                y1=3600,
+                coordinate_space_id="prepared-page-1",
+            ),
         )
         page = BundlePage(
             page_id="page-0001",
@@ -686,6 +708,15 @@ class TestOcrModels:
                 ),
                 prepared_units=[prepared_unit],
             ),
+            witnesses=[
+                WitnessReference(
+                    witness_id="wit-1",
+                    witness_kind="text",
+                    artifact_path="pages/page-0001/witnesses/text/olmocr.json",
+                    runner_id="olmocr",
+                    page_id="page-0001",
+                )
+            ],
             regions=[
                 RegionRecord(
                     region_id="region-1",
@@ -1005,6 +1036,7 @@ class TestOcrModels:
                         height_px=100,
                     ),
                 ),
+                witnesses=[_page_witness()],
                 regions=[
                     RegionRecord(
                         region_id="region-1",
@@ -1073,6 +1105,327 @@ def test_bundle_rejects_unknown_line_join_target() -> None:
     page.lines[0].joins_to_line_id = "missing-line"
     with pytest.raises(ValidationError, match="unknown joined line"):
         BundlePage.model_validate(page.model_dump())
+
+
+def _prepared_unit_ref(
+    *,
+    prepared_unit_id: str = "col-1",
+    page_id: str = "page-1",
+    parent_prepared_page_id: str = "prepared-page-1",
+    coordinate_space_id: str = "prepared-page-1",
+    order: int = 1,
+) -> PreparedArtifactRef:
+    """Return a prepared-unit artifact bound to page preparation context."""
+    return PreparedArtifactRef(
+        artifact_id=f"prep-{prepared_unit_id}",
+        kind=InputKind.PREPARED_UNIT,
+        page_id=page_id,
+        prepared_unit_id=prepared_unit_id,
+        artifact_path=f"pages/{page_id}/image/{prepared_unit_id}.png",
+        parent_prepared_page_id=parent_prepared_page_id,
+        checksum=f"sha256:{prepared_unit_id}",
+        order=order,
+        bounding_box=BoundingBox(
+            x0=0,
+            y0=0,
+            x1=50,
+            y1=100,
+            coordinate_space_id=coordinate_space_id,
+        ),
+    )
+
+
+def _bundle_page_payload(**overrides: object) -> dict[str, object]:
+    """Return a mutable dump of a valid bundle page with optional overrides."""
+    payload = valid_bundle_page().model_dump(mode="python")
+    payload.update(overrides)
+    return payload
+
+
+def _minimal_document_bundle(pages: list[BundlePage]) -> DocumentBundle:
+    """Return a document bundle wrapping the given pages."""
+    return DocumentBundle(
+        document_id="doc-1",
+        bundle_schema_version="1.0.0",
+        source=SourceDescriptor(
+            source_id="src-1",
+            source_type=SourceType.IMAGE_SET,
+            source_label="pages.zip",
+            original_path="sources/pages.zip",
+            page_count=len(pages),
+        ),
+        bibliographic_provenance=BibliographicProvenance(
+            title="Demo",
+            authors=["Author"],
+        ),
+        acquisition_provenance=AcquisitionProvenance(
+            acquisition_kind="local",
+            acquired_from="fixture",
+        ),
+        run=RunMetadata(
+            run_id="run-1",
+            run_timestamp_utc=datetime(2026, 7, 26, tzinfo=UTC),
+            preparation_recipe_id="prep-v1",
+            config_digest="sha256:config",
+            runner_set=[RunnerReference(runner_id="fixture")],
+            bundle_schema_version="1.0.0",
+        ),
+        pages=pages,
+        evaluation_summary=DocumentEvaluationSummary(),
+        exports=ExportSummary(bundle_json_path="exports/bundle.json"),
+    )
+
+
+def test_prepared_page_rejects_duplicate_prepared_unit_ids() -> None:
+    """Prepared-unit identifiers must be unique on one prepared page."""
+    unit = _prepared_unit_ref()
+    duplicate = _prepared_unit_ref(order=2)
+    with pytest.raises(ValidationError, match=r"prepared unit"):
+        PreparedPage(
+            prepared_page_id="prepared-page-1",
+            preparation_mode=PreparationMode.COLUMNS,
+            page_class=PageClass.DENSE_DICTIONARY,
+            image_path="page.png",
+            source_artifact_id="source-1",
+            image_checksum="sha256:image",
+            preparation_recipe_id="prep-v1",
+            preparation_recipe_digest="digest-prep-v1",
+            coordinate_space=CoordinateSpace(
+                space_id="prepared-page-1",
+                width_px=100,
+                height_px=100,
+            ),
+            prepared_units=[unit, duplicate],
+        )
+
+
+def test_prepared_page_rejects_unit_outside_prepared_page_context() -> None:
+    """Prepared units must belong to the prepared page and known spaces."""
+    with pytest.raises(ValidationError):
+        PreparedPage(
+            prepared_page_id="prepared-page-1",
+            preparation_mode=PreparationMode.COLUMNS,
+            page_class=PageClass.DENSE_DICTIONARY,
+            image_path="page.png",
+            source_artifact_id="source-1",
+            image_checksum="sha256:image",
+            preparation_recipe_id="prep-v1",
+            preparation_recipe_digest="digest-prep-v1",
+            coordinate_space=CoordinateSpace(
+                space_id="prepared-page-1",
+                width_px=100,
+                height_px=100,
+            ),
+            prepared_units=[
+                _prepared_unit_ref(
+                    parent_prepared_page_id="other-prepared-page",
+                    coordinate_space_id="unknown-space",
+                )
+            ],
+        )
+
+
+def test_bundle_page_rejects_unknown_geometry_coordinate_space() -> None:
+    """Graph boxes and polygons must name a known page coordinate space."""
+    payload = _bundle_page_payload()
+    payload["regions"][0]["bounding_box"] = {
+        "x0": 0,
+        "y0": 0,
+        "x1": 10,
+        "y1": 10,
+        "coordinate_space_id": "not-a-known-space",
+    }
+    with pytest.raises(ValidationError, match="coordinate space"):
+        BundlePage.model_validate(payload)
+
+
+def test_bundle_page_rejects_baseline_without_coordinate_space() -> None:
+    """Non-empty baselines require an explicit baseline coordinate space id."""
+    payload = _bundle_page_payload()
+    payload["lines"][0]["baseline"] = [{"x": 0, "y": 1}, {"x": 10, "y": 1}]
+    payload["lines"][0]["baseline_coordinate_space_id"] = None
+    with pytest.raises(ValidationError, match="baseline"):
+        BundlePage.model_validate(payload)
+
+
+def test_bundle_page_rejects_baseline_unknown_coordinate_space() -> None:
+    """Baseline coordinate spaces must resolve to a known page space."""
+    payload = _bundle_page_payload()
+    payload["lines"][0]["baseline"] = [{"x": 0, "y": 1}, {"x": 10, "y": 1}]
+    payload["lines"][0]["baseline_coordinate_space_id"] = "ghost-space"
+    with pytest.raises(ValidationError, match="coordinate space"):
+        BundlePage.model_validate(payload)
+
+
+def test_bundle_page_rejects_line_not_owned_by_listing_region() -> None:
+    """Every line listed by a region must claim that region as parent."""
+    payload = _bundle_page_payload()
+    payload["regions"].append(
+        {
+            "region_id": "region-2",
+            "region_kind": RegionKind.BODY.value,
+            "reading_order_index": 2,
+            "line_ids": ["line-1"],
+            "note_ids": [],
+            "trust_state": TrustState.MACHINE.value,
+            "provenance": _provenance().model_dump(mode="python"),
+            "review": ReviewSummary().model_dump(mode="python"),
+        }
+    )
+    with pytest.raises(ValidationError, match="region_id"):
+        BundlePage.model_validate(payload)
+
+
+def test_bundle_page_rejects_span_not_owned_by_listing_line() -> None:
+    """Every span listed by a line must claim that line as parent."""
+    payload = _bundle_page_payload()
+    payload["lines"][0]["span_ids"] = ["span-1", "span-2"]
+    with pytest.raises(ValidationError, match="line_id"):
+        BundlePage.model_validate(payload)
+
+
+def test_bundle_page_rejects_note_not_owned_by_listing_region() -> None:
+    """Every note listed by a region must claim that region as parent."""
+    payload = _bundle_page_payload()
+    payload["notes"] = [
+        {
+            "note_id": "note-1",
+            "note_kind": NoteKind.FOOTNOTE_BLOCK.value,
+            "region_id": None,
+            "text_diplomatic": "note",
+            "linked_marker_span_ids": [],
+            "trust_state": TrustState.MACHINE.value,
+            "provenance": _provenance().model_dump(mode="python"),
+            "review": ReviewSummary().model_dump(mode="python"),
+        }
+    ]
+    payload["regions"][0]["note_ids"] = ["note-1"]
+    with pytest.raises(ValidationError, match="region_id"):
+        BundlePage.model_validate(payload)
+
+
+def test_bundle_page_rejects_non_positive_or_duplicate_reading_order() -> None:
+    """Region reading_order_index values must be positive and unique."""
+    payload = _bundle_page_payload()
+    payload["regions"].append(
+        {
+            "region_id": "region-2",
+            "region_kind": RegionKind.BODY.value,
+            "reading_order_index": 1,
+            "line_ids": [],
+            "note_ids": [],
+            "trust_state": TrustState.MACHINE.value,
+            "provenance": _provenance().model_dump(mode="python"),
+            "review": ReviewSummary().model_dump(mode="python"),
+        }
+    )
+    with pytest.raises(ValidationError, match="reading_order"):
+        BundlePage.model_validate(payload)
+
+    payload = _bundle_page_payload()
+    payload["regions"][0]["reading_order_index"] = 0
+    with pytest.raises(ValidationError, match="reading_order"):
+        BundlePage.model_validate(payload)
+
+
+def test_bundle_page_rejects_non_positive_or_duplicate_line_order() -> None:
+    """Line order values must be positive and unique within a parent region."""
+    payload = _bundle_page_payload()
+    payload["lines"][1]["line_order"] = 1
+    with pytest.raises(ValidationError, match="line_order"):
+        BundlePage.model_validate(payload)
+
+    payload = _bundle_page_payload()
+    payload["lines"][0]["line_order"] = 0
+    with pytest.raises(ValidationError, match="line_order"):
+        BundlePage.model_validate(payload)
+
+
+def test_bundle_page_rejects_provenance_outside_owning_page() -> None:
+    """Provenance source/witness/runner ids must belong to the owning page."""
+    payload = _bundle_page_payload()
+    payload["spans"][0]["provenance"]["source_page_id"] = "other-page"
+    with pytest.raises(ValidationError, match="source_page_id"):
+        BundlePage.model_validate(payload)
+
+    payload = _bundle_page_payload()
+    payload["spans"][0]["provenance"]["witness_ids"] = ["missing-witness"]
+    with pytest.raises(ValidationError, match="witness"):
+        BundlePage.model_validate(payload)
+
+    payload = _bundle_page_payload()
+    payload["spans"][0]["provenance"]["runner_ids"] = ["missing-runner"]
+    with pytest.raises(ValidationError, match="runner"):
+        BundlePage.model_validate(payload)
+
+
+def test_bundle_page_keeps_review_overlay_as_external_references() -> None:
+    """Bundle pages store review event ids, not an embedded overlay graph."""
+    page = valid_bundle_page()
+    page = BundlePage.model_validate(
+        {
+            **page.model_dump(mode="python"),
+            "review_event_ids": ["external-evt-1", "external-evt-2"],
+        }
+    )
+    assert page.review_event_ids == ["external-evt-1", "external-evt-2"]
+    assert "review_events" not in BundlePage.model_fields
+    assert "review_tasks" not in BundlePage.model_fields
+    assert "current_state" not in BundlePage.model_fields
+    overlay = _minimal_page_overlay(page_id=page.page_id)
+    assert overlay.page_id == page.page_id
+    assert overlay.model_dump(mode="python")["review_events"] == []
+
+
+def test_document_bundle_rejects_duplicate_page_ids() -> None:
+    """Document page ids must stay unique."""
+    first = valid_bundle_page()
+    second_payload = valid_bundle_page().model_dump(mode="python")
+    second_payload["page_number"] = 2
+    second = BundlePage.model_validate(second_payload)
+    with pytest.raises(ValidationError, match="page ids must be unique"):
+        _minimal_document_bundle([first, second])
+
+
+def test_document_bundle_rejects_inexact_source_page_count() -> None:
+    """Source page_count must remain exact versus exported pages."""
+    page = valid_bundle_page()
+    bundle = _minimal_document_bundle([page])
+    payload = bundle.model_dump(mode="python")
+    payload["source"]["page_count"] = 2
+    with pytest.raises(ValidationError, match="page_count"):
+        DocumentBundle.model_validate(payload)
+
+
+def test_bundle_page_accepts_known_transform_and_unit_spaces() -> None:
+    """Transform and prepared-unit spaces are valid geometry contexts."""
+    payload = _bundle_page_payload()
+    payload["prepared_page"]["transforms"] = [
+        CoordinateTransform(
+            kind=TransformKind.CROP,
+            source_space_id="source-page-1",
+            target_space_id="prepared-page-1",
+            parameters={"x0": 0, "y0": 0, "x1": 100, "y1": 100},
+        ).model_dump(mode="python")
+    ]
+    payload["prepared_page"]["prepared_units"] = [
+        _prepared_unit_ref(coordinate_space_id="source-page-1").model_dump(
+            mode="python"
+        )
+    ]
+    payload["regions"][0]["bounding_box"] = {
+        "x0": 0,
+        "y0": 0,
+        "x1": 10,
+        "y1": 10,
+        "coordinate_space_id": "source-page-1",
+    }
+    payload["lines"][0]["baseline"] = [{"x": 0, "y": 1}, {"x": 10, "y": 1}]
+    payload["lines"][0]["baseline_coordinate_space_id"] = "prepared-page-1"
+    page = BundlePage.model_validate(payload)
+    assert page.regions[0].bounding_box is not None
+    assert page.regions[0].bounding_box.coordinate_space_id == "source-page-1"
+    assert page.lines[0].baseline_coordinate_space_id == "prepared-page-1"
 
 
 def model_runner_payload(**overrides: object) -> dict[str, object]:
