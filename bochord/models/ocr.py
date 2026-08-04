@@ -1626,6 +1626,87 @@ class RagDocument(SchemaModel):
     #: Cross-page stitched retrieval chunks.
     stitched_chunks: list[StitchedChunk] = Field(default_factory=list)
 
+    @model_validator(mode="after")
+    def validate_references(self) -> RagDocument:  # noqa: PLR0912
+        """
+        Keep page-local and stitched retrieval references coherent.
+
+        Returns:
+            The validated RAG document.
+
+        Raises:
+            ValueError: If chunk ownership, ids, page tiers, or stitch
+                components contradict the document contract.
+
+        """
+        chunk_ids = [chunk.chunk_id for chunk in self.chunks]
+        if len(set(chunk_ids)) != len(chunk_ids):
+            msg = "chunk ids must be unique"
+            raise ValueError(msg)
+        stitched_ids = [
+            chunk.stitched_chunk_id for chunk in self.stitched_chunks
+        ]
+        if len(set(stitched_ids)) != len(stitched_ids):
+            msg = "stitched chunk ids must be unique"
+            raise ValueError(msg)
+        chunks_by_id = {chunk.chunk_id: chunk for chunk in self.chunks}
+        for chunk in self.chunks:
+            if chunk.document_id != self.document_id:
+                msg = "chunk document_id must match RagDocument.document_id"
+                raise ValueError(msg)
+            if len(chunk.page_ids) != 1:
+                msg = "page-local RagChunk page_ids must be exactly one page"
+                raise ValueError(msg)
+            if not chunk.source_object_ids:
+                msg = "page-local RagChunk source_object_ids must be non-empty"
+                raise ValueError(msg)
+            if chunk.page_ids != chunk.provenance.source_page_ids:
+                msg = (
+                    "page-local RagChunk page_ids must match "
+                    "provenance.source_page_ids"
+                )
+                raise ValueError(msg)
+        min_stitched_pages = 2
+        for stitched in self.stitched_chunks:
+            if stitched.document_id != self.document_id:
+                msg = (
+                    "stitched chunk document_id must match "
+                    "RagDocument.document_id"
+                )
+                raise ValueError(msg)
+            missing = [
+                chunk_id
+                for chunk_id in stitched.component_chunk_ids
+                if chunk_id not in chunks_by_id
+            ]
+            if missing:
+                msg = (
+                    "stitched component chunk ids must resolve to "
+                    f"page-local chunks: {missing}"
+                )
+                raise ValueError(msg)
+            ordered_pages: list[str] = []
+            seen_pages: set[str] = set()
+            for chunk_id in stitched.component_chunk_ids:
+                component = chunks_by_id[chunk_id]
+                for page_id in component.provenance.source_page_ids:
+                    if page_id not in seen_pages:
+                        seen_pages.add(page_id)
+                        ordered_pages.append(page_id)
+            if len(ordered_pages) < min_stitched_pages:
+                msg = (
+                    "StitchedChunk page_ids must span at least two "
+                    "distinct ordered pages"
+                )
+                raise ValueError(msg)
+            if stitched.page_ids != ordered_pages:
+                msg = (
+                    "StitchedChunk page_ids must match the ordered distinct "
+                    "union of component provenance page ids"
+                )
+                raise ValueError(msg)
+        return self
+
 
 class ReviewTask(SchemaModel):
     """Self-contained instructions and evidence binding for human review."""

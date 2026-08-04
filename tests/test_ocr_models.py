@@ -88,6 +88,7 @@ from bochord.models import (
     SourceTriageDecision,
     SourceType,
     SpanRecord,
+    StitchedChunk,
     StyleEvaluationSummary,
     TextRole,
     TransformKind,
@@ -1932,3 +1933,306 @@ def test_evaluation_cohort_models_accept_fixed_report_shape() -> None:
         is PreparationMode.FULL_PAGE
     )
     assert report.by_page_class_and_runner[0].key.runner_id == "olmocr"
+
+
+def _retrieval_provenance(
+    *,
+    source_page_ids: list[str] | None = None,
+) -> RetrievalProvenance:
+    """Return multi-page retrieval provenance with stable witness pointers."""
+    return RetrievalProvenance(
+        source_page_ids=source_page_ids or ["page-0001"],
+        witness_ids=["wit-1"],
+        runner_ids=["olmocr"],
+    )
+
+
+def _rag_chunk(  # noqa: PLR0913
+    *,
+    chunk_id: str = "chunk-1",
+    chunk_type: ChunkType = ChunkType.REGION,
+    document_id: str = "doc-1",
+    page_ids: list[str] | None = None,
+    source_object_ids: list[str] | None = None,
+    provenance: RetrievalProvenance | None = None,
+    text: str = "andgit",
+) -> RagChunk:
+    """Return a page-local retrieval chunk with optional field overrides."""
+    pages = ["page-0001"] if page_ids is None else page_ids
+    return RagChunk(
+        chunk_id=chunk_id,
+        chunk_type=chunk_type,
+        document_id=document_id,
+        page_ids=pages,
+        text=text,
+        trust_state=TrustState.REVIEWED,
+        source_object_ids=(
+            ["region-1"] if source_object_ids is None else source_object_ids
+        ),
+        provenance=(
+            provenance
+            if provenance is not None
+            else _retrieval_provenance(source_page_ids=list(pages) or ["page-0001"])
+        ),
+    )
+
+
+def _stitched_chunk(  # noqa: PLR0913
+    *,
+    stitched_chunk_id: str = "stitched-1",
+    document_id: str = "doc-1",
+    component_chunk_ids: list[str] | None = None,
+    page_ids: list[str] | None = None,
+    source_object_ids: list[str] | None = None,
+    provenance: RetrievalProvenance | None = None,
+) -> StitchedChunk:
+    """Return a cross-page stitched chunk with optional field overrides."""
+    pages = ["page-0001", "page-0002"] if page_ids is None else page_ids
+    return StitchedChunk(
+        stitched_chunk_id=stitched_chunk_id,
+        document_id=document_id,
+        component_chunk_ids=(
+            ["chunk-1", "chunk-2"]
+            if component_chunk_ids is None
+            else component_chunk_ids
+        ),
+        page_ids=pages,
+        text="andgit þær",
+        trust_state=TrustState.REVIEWED,
+        source_object_ids=(
+            ["region-1", "region-2"]
+            if source_object_ids is None
+            else source_object_ids
+        ),
+        provenance=(
+            provenance
+            if provenance is not None
+            else _retrieval_provenance(source_page_ids=pages)
+        ),
+    )
+
+
+def _minimal_rag_document(
+    chunks: list[RagChunk] | None = None,
+    stitched_chunks: list[StitchedChunk] | None = None,
+    *,
+    document_id: str = "doc-1",
+) -> RagDocument:
+    """Return a document-level RAG export with optional chunk overrides."""
+    return RagDocument(
+        schema_version="1.0.0",
+        chunking_recipe_id="page-regions-v1",
+        document_id=document_id,
+        chunks=[_rag_chunk()] if chunks is None else chunks,
+        stitched_chunks=[] if stitched_chunks is None else stitched_chunks,
+    )
+
+
+def test_rag_document_rejects_duplicate_chunk_ids() -> None:
+    """Page-local chunk ids must stay unique within a RagDocument."""
+    with pytest.raises(ValidationError, match="chunk ids must be unique"):
+        _minimal_rag_document(
+            chunks=[
+                _rag_chunk(chunk_id="chunk-dup"),
+                _rag_chunk(
+                    chunk_id="chunk-dup",
+                    source_object_ids=["region-2"],
+                ),
+            ]
+        )
+
+
+def test_rag_document_rejects_duplicate_stitched_chunk_ids() -> None:
+    """Stitched chunk ids must stay unique within a RagDocument."""
+    chunks = [
+        _rag_chunk(chunk_id="chunk-1", page_ids=["page-0001"]),
+        _rag_chunk(
+            chunk_id="chunk-2",
+            page_ids=["page-0002"],
+            source_object_ids=["region-2"],
+        ),
+    ]
+    with pytest.raises(ValidationError, match="stitched chunk ids must be unique"):
+        _minimal_rag_document(
+            chunks=chunks,
+            stitched_chunks=[
+                _stitched_chunk(stitched_chunk_id="stitched-dup"),
+                _stitched_chunk(
+                    stitched_chunk_id="stitched-dup",
+                    component_chunk_ids=["chunk-2", "chunk-1"],
+                    page_ids=["page-0002", "page-0001"],
+                ),
+            ],
+        )
+
+
+def test_rag_document_rejects_chunk_document_id_mismatch() -> None:
+    """Page-local chunks must belong to the parent document."""
+    with pytest.raises(ValidationError, match="document_id"):
+        _minimal_rag_document(
+            chunks=[_rag_chunk(document_id="other-doc")],
+        )
+
+
+def test_rag_document_rejects_stitched_document_id_mismatch() -> None:
+    """Stitched chunks must belong to the parent document."""
+    chunks = [
+        _rag_chunk(chunk_id="chunk-1", page_ids=["page-0001"]),
+        _rag_chunk(
+            chunk_id="chunk-2",
+            page_ids=["page-0002"],
+            source_object_ids=["region-2"],
+        ),
+    ]
+    with pytest.raises(ValidationError, match="document_id"):
+        _minimal_rag_document(
+            chunks=chunks,
+            stitched_chunks=[_stitched_chunk(document_id="other-doc")],
+        )
+
+
+def test_rag_document_rejects_page_local_chunk_without_exactly_one_page() -> None:
+    """Each RagChunk must represent exactly one page."""
+    with pytest.raises(ValidationError, match="exactly one page"):
+        _minimal_rag_document(chunks=[_rag_chunk(page_ids=[])])
+    with pytest.raises(ValidationError, match="exactly one page"):
+        _minimal_rag_document(
+            chunks=[
+                _rag_chunk(
+                    page_ids=["page-0001", "page-0002"],
+                    provenance=_retrieval_provenance(
+                        source_page_ids=["page-0001", "page-0002"]
+                    ),
+                )
+            ]
+        )
+
+
+def test_rag_document_rejects_empty_source_object_ids() -> None:
+    """Page-local chunks must retain at least one accepted source object."""
+    with pytest.raises(ValidationError, match="source_object_ids"):
+        _minimal_rag_document(chunks=[_rag_chunk(source_object_ids=[])])
+
+
+def test_rag_document_rejects_chunk_page_provenance_mismatch() -> None:
+    """Page-local page_ids must equal provenance.source_page_ids."""
+    with pytest.raises(ValidationError, match="provenance"):
+        _minimal_rag_document(
+            chunks=[
+                _rag_chunk(
+                    page_ids=["page-0001"],
+                    provenance=_retrieval_provenance(
+                        source_page_ids=["page-0002"]
+                    ),
+                )
+            ]
+        )
+
+
+def test_rag_document_rejects_missing_stitched_component_chunk_ids() -> None:
+    """Stitched components must resolve to page-local chunks."""
+    with pytest.raises(ValidationError, match="component"):
+        _minimal_rag_document(
+            chunks=[_rag_chunk(chunk_id="chunk-1")],
+            stitched_chunks=[
+                _stitched_chunk(
+                    component_chunk_ids=["chunk-1", "missing-chunk"],
+                )
+            ],
+        )
+
+
+def test_stitched_chunk_rejects_fewer_than_two_distinct_pages() -> None:
+    """Stitched chunks must span at least two distinct ordered pages."""
+    chunks = [
+        _rag_chunk(chunk_id="chunk-1", page_ids=["page-0001"]),
+        _rag_chunk(
+            chunk_id="chunk-2",
+            page_ids=["page-0001"],
+            source_object_ids=["region-2"],
+        ),
+    ]
+    with pytest.raises(ValidationError, match="at least two distinct"):
+        _minimal_rag_document(
+            chunks=chunks,
+            stitched_chunks=[
+                _stitched_chunk(
+                    page_ids=["page-0001"],
+                    provenance=_retrieval_provenance(
+                        source_page_ids=["page-0001"]
+                    ),
+                )
+            ],
+        )
+
+
+def test_rag_document_rejects_stitched_page_ids_provenance_union_mismatch() -> None:
+    """Stitched page_ids must match ordered distinct component provenance pages."""
+    chunks = [
+        _rag_chunk(chunk_id="chunk-1", page_ids=["page-0001"]),
+        _rag_chunk(
+            chunk_id="chunk-2",
+            page_ids=["page-0002"],
+            source_object_ids=["region-2"],
+        ),
+        _rag_chunk(
+            chunk_id="chunk-3",
+            page_ids=["page-0003"],
+            source_object_ids=["region-3"],
+        ),
+    ]
+    with pytest.raises(ValidationError, match="ordered distinct"):
+        _minimal_rag_document(
+            chunks=chunks,
+            stitched_chunks=[
+                _stitched_chunk(
+                    component_chunk_ids=["chunk-1", "chunk-2", "chunk-3"],
+                    page_ids=["page-0001", "page-0003"],
+                    provenance=_retrieval_provenance(
+                        source_page_ids=["page-0001", "page-0003"]
+                    ),
+                )
+            ],
+        )
+
+
+def test_rag_document_accepts_region_footnote_and_stitched_chunk_round_trip() -> None:
+    """Valid region, footnote, and cross-page stitch contracts round-trip."""
+    chunks = [
+        _rag_chunk(
+            chunk_id="chunk-region-1",
+            chunk_type=ChunkType.REGION,
+            page_ids=["page-0001"],
+            source_object_ids=["region-1", "span-1"],
+            text="andgit",
+        ),
+        _rag_chunk(
+            chunk_id="chunk-note-1",
+            chunk_type=ChunkType.FOOTNOTE,
+            page_ids=["page-0001"],
+            source_object_ids=["note-1", "span-marker-1"],
+            text="see Bosworth",
+        ),
+        _rag_chunk(
+            chunk_id="chunk-region-2",
+            chunk_type=ChunkType.REGION,
+            page_ids=["page-0002"],
+            source_object_ids=["region-2", "span-2"],
+            text="þær",
+        ),
+    ]
+    stitched = _stitched_chunk(
+        stitched_chunk_id="stitched-region-1-2",
+        component_chunk_ids=["chunk-region-1", "chunk-region-2"],
+        page_ids=["page-0001", "page-0002"],
+        source_object_ids=["region-1", "span-1", "region-2", "span-2"],
+        provenance=_retrieval_provenance(
+            source_page_ids=["page-0001", "page-0002"]
+        ),
+    )
+    rag = _minimal_rag_document(chunks=chunks, stitched_chunks=[stitched])
+    restored = RagDocument.model_validate_json(rag.model_dump_json())
+    assert restored == rag
+    assert restored.chunks[0].chunk_type is ChunkType.REGION
+    assert restored.chunks[1].chunk_type is ChunkType.FOOTNOTE
+    assert restored.stitched_chunks[0].page_ids == ["page-0001", "page-0002"]
