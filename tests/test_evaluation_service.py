@@ -32,10 +32,13 @@ from bochord.models import (
     SpanRecord,
     TextRole,
     Typography,
+    WitnessReference,
 )
 from bochord.services.evaluation import EvaluationService
 
 _PROFILE_PATH = Path(__file__).parent / "fixtures/evaluation/metric-profile-v1.json"
+_PAGE_ID = "page-1"
+_COORDINATE_SPACE_ID = "prepared-page"
 
 
 def profile() -> MetricProfile:
@@ -43,14 +46,38 @@ def profile() -> MetricProfile:
     return MetricProfile.model_validate_json(_PROFILE_PATH.read_text(encoding="utf-8"))
 
 
-def _provenance() -> ObjectProvenance:
+def _provenance(*, source_page_id: str = _PAGE_ID) -> ObjectProvenance:
     """Return valid single-page object provenance."""
     return ObjectProvenance(
-        source_page_id="page-0001",
+        source_page_id=source_page_id,
         witness_ids=["wit-1"],
         runner_ids=["olmocr"],
         machine_confidence=0.91,
         merge_confidence=0.84,
+    )
+
+
+def _page_witnesses(*, page_id: str = _PAGE_ID) -> list[WitnessReference]:
+    """Return page-local witnesses matching fixture provenance."""
+    return [
+        WitnessReference(
+            witness_id="wit-1",
+            witness_kind="text",
+            artifact_path=f"pages/{page_id}/witnesses/text/olmocr.json",
+            runner_id="olmocr",
+            page_id=page_id,
+        )
+    ]
+
+
+def _box(x0: float, y0: float, x1: float, y1: float) -> BoundingBox:
+    """Return a bounding box in the fixture prepared-page space."""
+    return BoundingBox(
+        x0=x0,
+        y0=y0,
+        x1=x1,
+        y1=y1,
+        coordinate_space_id=_COORDINATE_SPACE_ID,
     )
 
 
@@ -77,11 +104,12 @@ def text_case(
             preparation_recipe_id="prep-v1",
             preparation_recipe_digest="digest-prep-v1",
             coordinate_space=CoordinateSpace(
-                space_id="prepared-page-1",
+                space_id=_COORDINATE_SPACE_ID,
                 width_px=100,
                 height_px=100,
             ),
         ),
+        witnesses=_page_witnesses(),
         regions=[
             RegionRecord(
                 region_id="region-1",
@@ -106,7 +134,7 @@ def text_case(
                 line_id="line-1",
                 text_diplomatic=predicted,
                 text_normalized=predicted,
-                bounding_box=BoundingBox(x0=0, y0=0, x1=40, y1=10),
+                bounding_box=_box(0, 0, 40, 10),
                 provenance=provenance,
             )
         ],
@@ -313,11 +341,12 @@ def test_iou_fallback_matches_highest_same_family_span() -> None:
             preparation_recipe_id="prep-v1",
             preparation_recipe_digest="digest-prep-v1",
             coordinate_space=CoordinateSpace(
-                space_id="prepared-page-1",
+                space_id=_COORDINATE_SPACE_ID,
                 width_px=100,
                 height_px=100,
             ),
         ),
+        witnesses=_page_witnesses(),
         regions=[
             RegionRecord(
                 region_id="region-1",
@@ -348,14 +377,14 @@ def test_iou_fallback_matches_highest_same_family_span() -> None:
                 span_id="span-near",
                 line_id="line-1",
                 text_diplomatic="match",
-                bounding_box=BoundingBox(x0=0, y0=0, x1=40, y1=10),
+                bounding_box=_box(0, 0, 40, 10),
                 provenance=provenance,
             ),
             SpanRecord(
                 span_id="span-far",
                 line_id="line-2",
                 text_diplomatic="other",
-                bounding_box=BoundingBox(x0=60, y0=60, x1=90, y1=90),
+                bounding_box=_box(60, 60, 90, 90),
                 provenance=provenance,
             ),
         ],
@@ -377,7 +406,7 @@ def test_iou_fallback_matches_highest_same_family_span() -> None:
         text_spans=[
             GoldTextSpan(
                 annotation_id="gold-span-1",
-                bounding_box=BoundingBox(x0=0, y0=0, x1=38, y1=10),
+                bounding_box=_box(0, 0, 38, 10),
                 text_diplomatic="match",
             )
         ],
@@ -399,7 +428,7 @@ def test_empty_ref_note_omitted_when_other_spans_contribute_denom() -> None:
             span_id="span-2",
             line_id="line-1",
             text_diplomatic="ok",
-            bounding_box=BoundingBox(x0=50, y0=0, x1=80, y1=10),
+            bounding_box=_box(50, 0, 80, 10),
             provenance=provenance,
         )
     )
@@ -434,7 +463,7 @@ def _prepared_page() -> PreparedPage:
         preparation_recipe_id="prep-v1",
         preparation_recipe_digest="digest-prep-v1",
         coordinate_space=CoordinateSpace(
-            space_id="prepared-page-1",
+            space_id=_COORDINATE_SPACE_ID,
             width_px=100,
             height_px=100,
         ),
@@ -448,12 +477,13 @@ def structured_prediction() -> BundlePage:
         page_id="page-1",
         page_number=1,
         prepared_page=_prepared_page(),
+        witnesses=_page_witnesses(),
         regions=[
             RegionRecord(
                 region_id="region-1",
                 region_kind=RegionKind.BODY,
                 reading_order_index=1,
-                bounding_box=BoundingBox(x0=0, y0=0, x1=40, y1=20),
+                bounding_box=_box(0, 0, 40, 20),
                 line_ids=["line-1"],
                 provenance=provenance,
             ),
@@ -461,7 +491,7 @@ def structured_prediction() -> BundlePage:
                 region_id="region-2",
                 region_kind=RegionKind.BODY,
                 reading_order_index=2,
-                bounding_box=BoundingBox(x0=0, y0=30, x1=40, y1=50),
+                bounding_box=_box(0, 30, 40, 50),
                 line_ids=["line-2"],
                 provenance=provenance,
             ),
@@ -548,6 +578,7 @@ def bold_but_not_italic_prediction() -> BundlePage:
         page_id="page-1",
         page_number=1,
         prepared_page=_prepared_page(),
+        witnesses=_page_witnesses(),
         regions=[
             RegionRecord(
                 region_id="region-1",
@@ -617,6 +648,7 @@ def wrong_note_link_prediction() -> BundlePage:
         page_id="page-1",
         page_number=1,
         prepared_page=_prepared_page(),
+        witnesses=_page_witnesses(),
         regions=[
             RegionRecord(
                 region_id="region-1",
@@ -807,7 +839,7 @@ def test_image_scoped_coverage_scores_intersecting_spans() -> None:
         GoldCoverage(
             coverage_id="coverage-box",
             dimensions=[ReviewDimension.TEXT],
-            bounding_box=BoundingBox(x0=0, y0=0, x1=50, y1=20),
+            bounding_box=_box(0, 0, 50, 20),
             exhaustive=True,
         )
     ]
@@ -825,7 +857,7 @@ def test_image_scoped_coverage_skips_nonintersecting_spans() -> None:
         GoldCoverage(
             coverage_id="coverage-elsewhere",
             dimensions=[ReviewDimension.TEXT],
-            bounding_box=BoundingBox(x0=80, y0=80, x1=90, y1=90),
+            bounding_box=_box(80, 80, 90, 90),
             exhaustive=True,
         )
     ]

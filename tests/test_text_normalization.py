@@ -28,6 +28,7 @@ from bochord.models import (
     SuperscriptNormalizedForm,
     TextNormalizationPolicy,
     UnicodeNormalizationForm,
+    WitnessReference,
 )
 from bochord.services.text_normalization import (
     DEFAULT_TEXT_NORMALIZATION_POLICY,
@@ -37,15 +38,28 @@ from bochord.services.text_normalization import (
 _CASES_PATH = Path(__file__).parent / "fixtures/text_normalization/cases.json"
 
 
-def _provenance() -> ObjectProvenance:
+def _provenance(*, source_page_id: str = "page-1") -> ObjectProvenance:
     """Return valid single-page object provenance."""
     return ObjectProvenance(
-        source_page_id="page-0001",
+        source_page_id=source_page_id,
         witness_ids=["wit-1"],
         runner_ids=["olmocr"],
         machine_confidence=0.91,
         merge_confidence=0.84,
     )
+
+
+def _page_witnesses(*, page_id: str = "page-1") -> list[WitnessReference]:
+    """Return page-local witnesses matching fixture provenance."""
+    return [
+        WitnessReference(
+            witness_id="wit-1",
+            witness_kind="text",
+            artifact_path=f"pages/{page_id}/witnesses/text/olmocr.json",
+            runner_id="olmocr",
+            page_id=page_id,
+        )
+    ]
 
 
 def _policy_from_overrides(overrides: dict[str, Any]) -> TextNormalizationPolicy:
@@ -126,6 +140,7 @@ def test_apply_to_page_leaves_diplomatic_unchanged() -> None:
                 height_px=100,
             ),
         ),
+        witnesses=_page_witnesses(),
         regions=[
             RegionRecord(
                 region_id="region-1",

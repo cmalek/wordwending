@@ -183,6 +183,21 @@ def _page_provenance(
     )
 
 
+def _page_witness(
+    page_id: str,
+    *,
+    witness_id: str = "wit-1",
+) -> WitnessReference:
+    """Return one page-local witness matching fixture provenance."""
+    return WitnessReference(
+        witness_id=witness_id,
+        witness_kind="text",
+        artifact_path=f"pages/{page_id}/witnesses/text/{witness_id}.json",
+        runner_id="olmocr",
+        page_id=page_id,
+    )
+
+
 def _prepared_page(page_id: str, page_number: int) -> PreparedPage:
     """Return a minimal prepared page shell for programmatic bundles."""
     return PreparedPage(
@@ -221,15 +236,7 @@ def _region_page(  # noqa: PLR0913
         page_id=page_id,
         page_number=page_number,
         prepared_page=_prepared_page(page_id, page_number),
-        witnesses=[
-            WitnessReference(
-                witness_id=witness_id,
-                witness_kind="text",
-                artifact_path=f"pages/{page_id}/witnesses/text/{witness_id}.json",
-                runner_id="olmocr",
-                page_id=page_id,
-            )
-        ],
+        witnesses=[_page_witness(page_id, witness_id=witness_id)],
         regions=[
             RegionRecord(
                 region_id=region_id,
@@ -363,6 +370,7 @@ def test_typed_page_indexes_resolve_colliding_ids_by_object_kind() -> None:
                 height_px=100,
             ),
         ),
+        witnesses=[_page_witness("page-0001")],
         regions=[
             RegionRecord(
                 region_id=shared_id,
@@ -648,13 +656,14 @@ def _markdown_style_page() -> BundlePage:
         page_number=1,
         prepared_page=_prepared_page(page_id, 1),
         witnesses=[
+            _page_witness(page_id),
             WitnessReference(
                 witness_id="wit-witness-only",
                 witness_kind="text",
                 artifact_path=f"pages/{page_id}/witnesses/text/{witness_only_phrase}.json",
                 runner_id="olmocr",
                 page_id=page_id,
-            )
+            ),
         ],
         regions=[
             RegionRecord(
@@ -903,6 +912,7 @@ def _single_span_body_page(
         page_id=page_id,
         page_number=1,
         prepared_page=_prepared_page(page_id, 1),
+        witnesses=[_page_witness(page_id)],
         regions=[
             RegionRecord(
                 region_id=region_id,

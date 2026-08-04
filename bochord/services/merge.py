@@ -27,6 +27,7 @@ from bochord.models import (
     SpanRecord,
     TextRole,
     Typography,
+    WitnessReference,
 )
 from bochord.services.text_normalization import (
     DEFAULT_TEXT_NORMALIZATION_POLICY,
@@ -519,6 +520,7 @@ class MergeOrchestrator:
             page_id=self._page_input.page_id,
             page_number=self._page_input.page_number,
             prepared_page=self._prepared_page,
+            witnesses=_witness_references_for_page(self._page_input),
             regions=self._regions,
             lines=self._lines,
             spans=self._spans,
@@ -558,6 +560,32 @@ class MergeOrchestrator:
                 message=message,
             )
         )
+
+
+def _witness_references_for_page(page_input: MergePageInput) -> list[WitnessReference]:
+    """
+    Project merge-input witnesses into page-local WitnessReference records.
+
+    Args:
+        page_input: Merge page input whose pass witnesses contributed provenance.
+
+    Returns:
+        Witness references owned by ``page_input.page_id``.
+
+    """
+    return [
+        WitnessReference(
+            witness_id=witness.witness_id,
+            witness_kind="pass-witness",
+            artifact_path=(
+                f"pages/{page_input.page_id}/witnesses/"
+                f"{witness.runner_id}/{witness.witness_id}.json"
+            ),
+            runner_id=witness.runner_id,
+            page_id=page_input.page_id,
+        )
+        for witness in page_input.witnesses
+    ]
 
 
 class AbstainingMergeService:

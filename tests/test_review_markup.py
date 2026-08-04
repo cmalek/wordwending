@@ -29,6 +29,7 @@ from bochord.models import (
     SourceTriageDecision,
     SpanRecord,
     StyleEvaluationSummary,
+    WitnessReference,
 )
 from bochord.services.review_markup import HumanMarkupService
 
@@ -89,6 +90,19 @@ def _provenance() -> ObjectProvenance:
     )
 
 
+def _page_witnesses() -> list[WitnessReference]:
+    """Return page-local witnesses matching fixture provenance."""
+    return [
+        WitnessReference(
+            witness_id="wit-1",
+            witness_kind="text",
+            artifact_path="pages/page-1/witnesses/text/runner-1.json",
+            runner_id="runner-1",
+            page_id="page-1",
+        )
+    ]
+
+
 @pytest.fixture
 def page() -> BundlePage:
     """Return a page graph with regions, spans, and a note for packet targeting."""
@@ -111,6 +125,7 @@ def page() -> BundlePage:
                 height_px=100,
             ),
         ),
+        witnesses=_page_witnesses(),
         regions=[
             RegionRecord(
                 region_id="region-1",

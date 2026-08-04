@@ -202,16 +202,21 @@ def _line(  # noqa: PLR0913
     span_ids: list[str],
     bounding_box: BoundingBox | None = None,
     baseline: list[tuple[float, float]] | None = None,
+    baseline_coordinate_space_id: str | None = None,
 ) -> LineRecord:
     """Build one line record for merge tests."""
     from bochord.models import Point
 
+    baseline_points = [Point(x=x, y=y) for x, y in (baseline or [])]
+    if baseline_points and baseline_coordinate_space_id is None:
+        baseline_coordinate_space_id = "prepared-page-1"
     return LineRecord(
         line_id=line_id,
         region_id=region_id,
         line_order=line_order,
         bounding_box=bounding_box,
-        baseline=[Point(x=x, y=y) for x, y in (baseline or [])],
+        baseline=baseline_points,
+        baseline_coordinate_space_id=baseline_coordinate_space_id,
         span_ids=span_ids,
         provenance=_provenance(),
     )
