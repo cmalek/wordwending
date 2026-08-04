@@ -26,6 +26,7 @@ from bochord.models import (
     PageClass,
     PreparationMode,
     PreparedPage,
+    RagDocument,
     RegionKind,
     RegionRecord,
     RunMetadata,
@@ -41,6 +42,9 @@ from bochord.services.document_export import DocumentExportService
 
 FIXTURES = Path(__file__).parent / "fixtures" / "exports"
 MINIMAL_BUNDLE = FIXTURES / "minimal-bundle.json"
+EXPORT_MODELS_FIXTURES = Path(__file__).parent / "fixtures" / "export_models"
+DOCUMENT_BUNDLE_V1_FIXTURE = EXPORT_MODELS_FIXTURES / "document-bundle-v1.json"
+RAG_DOCUMENT_V1_FIXTURE = EXPORT_MODELS_FIXTURES / "rag-document-v1.json"
 
 #: Relative paths written by ``BundleLayoutService.write_document_exports``.
 STANDARD_DOCUMENT_EXPORT_SUMMARY = ExportSummary(
@@ -55,6 +59,45 @@ def _load_minimal_bundle() -> DocumentBundle:
     """Load and validate the compact export fixture bundle."""
     raw = json.loads(MINIMAL_BUNDLE.read_text(encoding="utf-8"))
     return DocumentBundle.model_validate(raw)
+
+
+def _load_frozen_document_bundle_v1() -> DocumentBundle:
+    """Load and validate the frozen document-bundle-v1 contract fixture."""
+    return DocumentBundle.model_validate_json(
+        DOCUMENT_BUNDLE_V1_FIXTURE.read_text(encoding="utf-8")
+    )
+
+
+def test_build_rag_document_frozen_contract_validates() -> None:
+    """Exporter output from document-bundle-v1 satisfies the RagDocument contract."""
+    bundle = _load_frozen_document_bundle_v1()
+    frozen_contract = RagDocument.model_validate_json(
+        RAG_DOCUMENT_V1_FIXTURE.read_text(encoding="utf-8")
+    )
+    rag = DocumentExportService().build_rag_document(bundle)
+
+    restored = RagDocument.model_validate(rag.model_dump(mode="json"))
+    assert restored == rag
+    assert rag.schema_version == frozen_contract.schema_version
+    assert rag.chunking_recipe_id == frozen_contract.chunking_recipe_id
+    assert rag.document_id == bundle.document_id == frozen_contract.document_id
+
+    chunk_types = {chunk.chunk_type for chunk in rag.chunks}
+    assert ChunkType.REGION in chunk_types
+    assert ChunkType.FOOTNOTE in chunk_types
+    assert all(chunk.document_id == bundle.document_id for chunk in rag.chunks)
+    assert all(chunk.page_ids for chunk in rag.chunks)
+    assert all(chunk.chunk_id for chunk in rag.chunks)
+
+    assert rag.stitched_chunks, "frozen bundle must yield a multi-page stitch"
+    for stitched in rag.stitched_chunks:
+        assert stitched.document_id == bundle.document_id
+        assert stitched.stitched_chunk_id
+        assert len(stitched.page_ids) >= 2
+        assert len(stitched.component_chunk_ids) >= 2
+        assert set(stitched.component_chunk_ids) <= {
+            chunk.chunk_id for chunk in rag.chunks
+        }
 
 
 def test_standard_document_export_summary_paths() -> None:

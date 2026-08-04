@@ -21,11 +21,13 @@ from bochord.models import (
     OverlayState,
     PageBundleManifest,
     PageOverlay,
+    RagChunk,
     ReviewDimension,
     ReviewScope,
     RunnerReference,
     SourceDescriptor,
     SourceType,
+    StitchedChunk,
     TrustState,
     WitnessReference,
     page_dir_name,
@@ -45,6 +47,8 @@ EXPORT_FIXTURE_PATH = (
 OVERLAY_V1_FIXTURE = (
     Path(__file__).parent / "fixtures" / "review_overlay" / "page-overlay-v1.json"
 )
+EXPORT_MODELS_FIXTURES = Path(__file__).parent / "fixtures" / "export_models"
+DOCUMENT_BUNDLE_V1_FIXTURE = EXPORT_MODELS_FIXTURES / "document-bundle-v1.json"
 
 
 def load_minimal_bundle() -> DocumentBundle:
@@ -56,6 +60,13 @@ def load_export_minimal_bundle() -> DocumentBundle:
     """Load the compact export-fixture DocumentBundle."""
     return DocumentBundle.model_validate_json(
         EXPORT_FIXTURE_PATH.read_text(encoding="utf-8")
+    )
+
+
+def load_frozen_document_bundle_v1() -> DocumentBundle:
+    """Load the frozen document-bundle-v1 contract fixture."""
+    return DocumentBundle.model_validate_json(
+        DOCUMENT_BUNDLE_V1_FIXTURE.read_text(encoding="utf-8")
     )
 
 
@@ -889,9 +900,27 @@ def test_write_document_bundle_keeps_same_basename_witnesses(tmp_path) -> None:
     page = bundle.pages[0]
     wit_a = page.witnesses[0].model_copy(update={"witness_id": "wit-a"})
     wit_b = page.witnesses[0].model_copy(update={"witness_id": "wit-b"})
-    bundle = bundle.model_copy(
-        update={"pages": [page.model_copy(update={"witnesses": [wit_a, wit_b]})]}
+    witness_ids = ["wit-a", "wit-b"]
+
+    def _retarget_provenance(record):
+        return record.model_copy(
+            update={
+                "provenance": record.provenance.model_copy(
+                    update={"witness_ids": list(witness_ids)}
+                )
+            }
+        )
+
+    page = page.model_copy(
+        update={
+            "witnesses": [wit_a, wit_b],
+            "regions": [_retarget_provenance(region) for region in page.regions],
+            "lines": [_retarget_provenance(line) for line in page.lines],
+            "spans": [_retarget_provenance(span) for span in page.spans],
+            "notes": [_retarget_provenance(note) for note in page.notes],
+        }
     )
+    bundle = bundle.model_copy(update={"pages": [page]})
     service = BundleLayoutService()
     root = tmp_path / "bundle"
     source_files, source_page_images, page_images, _ = _write_minimal_inputs(tmp_path)
@@ -1187,3 +1216,62 @@ def test_write_document_exports_writes_derived_views(tmp_path) -> None:
     assert stale_marker not in rag_jsonl_path.read_text(encoding="utf-8")
     assert markdown_path.read_text(encoding="utf-8") == expected_markdown
     assert review_path.read_bytes() == seeded_events
+
+
+def test_write_document_exports_frozen_contract_jsonl_validates(tmp_path) -> None:
+    """Layout exports from document-bundle-v1 keep stable ids and model-valid JSONL."""
+    bundle = load_frozen_document_bundle_v1()
+    original_document_id = bundle.document_id
+    original_exports = bundle.exports.model_copy(deep=True)
+    root = tmp_path / "frozen-bundle"
+    root.mkdir(parents=True, exist_ok=True)
+
+    expected_rag = DocumentExportService().build_rag_document(bundle)
+    written = BundleLayoutService().write_document_exports(bundle, root)
+
+    assert bundle.exports == original_exports
+    assert written.document_id == original_document_id
+    assert written.exports.bundle_json_path == "exports/bundle.json"
+    assert written.exports.rag_jsonl_path == "exports/rag.jsonl"
+    assert written.exports.stitched_chunks_jsonl_path == "exports/stitched_chunks.jsonl"
+    assert written.exports.document_markdown_path == "exports/document.md"
+
+    restored_bundle = DocumentBundle.model_validate_json(
+        (root / written.exports.bundle_json_path).read_text(encoding="utf-8")
+    )
+    assert restored_bundle.document_id == original_document_id
+    assert restored_bundle.exports == written.exports
+
+    rag_lines = [
+        line
+        for line in (root / written.exports.rag_jsonl_path)
+        .read_text(encoding="utf-8")
+        .splitlines()
+        if line
+    ]
+    assert len(rag_lines) == len(expected_rag.chunks)
+    for line, expected in zip(rag_lines, expected_rag.chunks, strict=True):
+        chunk = RagChunk.model_validate_json(line)
+        assert chunk == expected
+        assert chunk.document_id == original_document_id
+        assert chunk.chunk_id
+
+    stitched_lines = [
+        line
+        for line in (root / written.exports.stitched_chunks_jsonl_path)
+        .read_text(encoding="utf-8")
+        .splitlines()
+        if line
+    ]
+    assert len(stitched_lines) == len(expected_rag.stitched_chunks)
+    assert stitched_lines, "frozen bundle must persist a multi-page stitched chunk"
+    for line, expected in zip(
+        stitched_lines,
+        expected_rag.stitched_chunks,
+        strict=True,
+    ):
+        chunk = StitchedChunk.model_validate_json(line)
+        assert chunk == expected
+        assert chunk.document_id == original_document_id
+        assert chunk.stitched_chunk_id
+        assert len(chunk.page_ids) >= 2
