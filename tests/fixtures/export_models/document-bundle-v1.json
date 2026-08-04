@@ -1,0 +1,670 @@
+{
+  "document_id": "bosworth-toller-demo",
+  "bundle_schema_version": "1.0.0",
+  "source": {
+    "source_id": "src-bt-demo",
+    "source_type": "image-set",
+    "source_label": "bosworth-toller-pages.zip",
+    "original_path": "sources/bosworth-toller-pages.zip",
+    "page_count": 2,
+    "checksum": null
+  },
+  "bibliographic_provenance": {
+    "title": "An Anglo-Saxon Dictionary",
+    "authors": [
+      "Joseph Bosworth",
+      "T. Northcote Toller"
+    ],
+    "publication_year": 1898,
+    "publisher": "Oxford University Press",
+    "edition": "enlarged",
+    "shelfmark": "PE279.B6",
+    "bibliographic_note": "Representative fixture for Spec 0016 export contracts."
+  },
+  "acquisition_provenance": {
+    "acquisition_kind": "archive-org",
+    "acquired_from": "archive.org",
+    "source_uri": "https://archive.org/details/anglosaxondiction00boswuoft",
+    "acquired_at_utc": "2026-08-02T12:00:00Z",
+    "rights_note": "Demo acquisition metadata for frozen fixtures."
+  },
+  "run": {
+    "run_id": "run-export-v1",
+    "run_timestamp_utc": "2026-08-02T12:00:00Z",
+    "preparation_recipe_id": "prep-v1",
+    "config_digest": "sha256:config-export-v1",
+    "runner_set": [
+      {
+        "runner_id": "olmocr",
+        "runner_version": "0.4.27",
+        "model_name": "allenai/olmOCR",
+        "model_revision": "model-revision",
+        "hardware_class": "nvidia-l40s",
+        "runtime_name": "huggingface-endpoint",
+        "runtime_revision": "container-digest",
+        "config_digest": "sha256:runner-config",
+        "prompt_digest": "sha256:prompt"
+      }
+    ],
+    "bundle_schema_version": "1.0.0"
+  },
+  "pages": [
+    {
+      "page_id": "page-0001",
+      "page_number": 1,
+      "source_page_label": "scan 1",
+      "prepared_page": {
+        "prepared_page_id": "prepared-page-0001",
+        "preparation_mode": "columns",
+        "page_class": "dense-dictionary",
+        "image_path": "pages/page-0001/image/page.png",
+        "source_artifact_id": "source-page-0001",
+        "image_checksum": "sha256:prepared-page-0001",
+        "preparation_recipe_id": "prep-v1",
+        "preparation_recipe_digest": "digest-prep-v1",
+        "coordinate_space": {
+          "space_id": "prepared-page-0001",
+          "width_px": 2400,
+          "height_px": 3600,
+          "dpi": 400.0,
+          "parent_space_id": "source-page-0001"
+        },
+        "transforms": [
+          {
+            "kind": "crop",
+            "source_space_id": "source-page-0001",
+            "target_space_id": "prepared-page-0001",
+            "parameters": {
+              "x0": 12.0,
+              "y0": 18.0,
+              "x1": 2412.0,
+              "y1": 3618.0
+            },
+            "mapping_artifact_path": null
+          },
+          {
+            "kind": "deskew",
+            "source_space_id": "prepared-page-0001",
+            "target_space_id": "prepared-page-0001",
+            "parameters": {
+              "angle_degrees": -0.35
+            },
+            "mapping_artifact_path": null
+          }
+        ],
+        "prepared_units": [
+          {
+            "artifact_id": "prep-page-0001-col-1",
+            "kind": "prepared-unit",
+            "page_id": "page-0001",
+            "prepared_unit_id": "page-0001-col-1",
+            "artifact_path": "pages/page-0001/image/page-0001-col-1.png",
+            "parent_prepared_page_id": "prepared-page-0001",
+            "checksum": "sha256:page-0001-col-1",
+            "order": 1,
+            "bounding_box": {
+              "x0": 0.0,
+              "y0": 0.0,
+              "x1": 1200.0,
+              "y1": 3600.0,
+              "coordinate_space_id": "prepared-page-0001"
+            }
+          }
+        ]
+      },
+      "witnesses": [
+        {
+          "witness_id": "wit-page-0001",
+          "witness_kind": "text",
+          "artifact_path": "pages/page-0001/witnesses/text/olmocr.json",
+          "runner_id": "olmocr",
+          "page_id": "page-0001",
+          "prepared_unit_id": "page-0001-col-1"
+        }
+      ],
+      "regions": [
+        {
+          "region_id": "region-page-0001-body",
+          "region_kind": "body",
+          "reading_order_index": 1,
+          "bounding_box": {
+            "x0": 10.0,
+            "y0": 20.0,
+            "x1": 1100.0,
+            "y1": 800.0,
+            "coordinate_space_id": "prepared-page-0001"
+          },
+          "polygon": null,
+          "line_ids": [
+            "line-page-0001-1"
+          ],
+          "note_ids": [
+            "note-page-0001-1"
+          ],
+          "trust_state": "reviewed",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": [
+              "wit-page-0001"
+            ],
+            "runner_ids": [
+              "olmocr"
+            ],
+            "machine_confidence": 0.91,
+            "merge_confidence": 0.84,
+            "disagreement_note": null,
+            "alternate_candidates": []
+          },
+          "review": {
+            "reviewed_dimensions": [
+              "text",
+              "typography"
+            ],
+            "corrected_dimensions": [],
+            "last_event_id": "evt-page-0001-1",
+            "event_ids": [
+              "evt-page-0001-1"
+            ]
+          }
+        }
+      ],
+      "lines": [
+        {
+          "line_id": "line-page-0001-1",
+          "region_id": "region-page-0001-body",
+          "line_order": 1,
+          "bounding_box": {
+            "x0": 10.0,
+            "y0": 20.0,
+            "x1": 1100.0,
+            "y1": 800.0,
+            "coordinate_space_id": "prepared-page-0001"
+          },
+          "polygon": null,
+          "baseline": [
+            {
+              "x": 10.0,
+              "y": 40.0
+            },
+            {
+              "x": 1100.0,
+              "y": 42.0
+            }
+          ],
+          "baseline_coordinate_space_id": "prepared-page-0001",
+          "span_ids": [
+            "span-page-0001-1",
+            "span-page-0001-marker"
+          ],
+          "trust_state": "reviewed",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": [
+              "wit-page-0001"
+            ],
+            "runner_ids": [
+              "olmocr"
+            ],
+            "machine_confidence": 0.91,
+            "merge_confidence": 0.84,
+            "disagreement_note": null,
+            "alternate_candidates": []
+          },
+          "review": {
+            "reviewed_dimensions": [
+              "text",
+              "typography"
+            ],
+            "corrected_dimensions": [],
+            "last_event_id": "evt-page-0001-1",
+            "event_ids": [
+              "evt-page-0001-1"
+            ]
+          },
+          "joins_to_line_id": null
+        }
+      ],
+      "spans": [
+        {
+          "span_id": "span-page-0001-1",
+          "line_id": "line-page-0001-1",
+          "text_diplomatic": "andgit",
+          "text_normalized": "andgit",
+          "typography": {
+            "font_families": [],
+            "font_size_points": null,
+            "font_size_confidence": null,
+            "weight": "regular",
+            "slant": "italic",
+            "baseline_shift": "baseline",
+            "small_caps": null,
+            "letter_spaced": null
+          },
+          "roles": [
+            "text"
+          ],
+          "bounding_box": {
+            "x0": 10.0,
+            "y0": 20.0,
+            "x1": 1100.0,
+            "y1": 800.0,
+            "coordinate_space_id": "prepared-page-0001"
+          },
+          "trust_state": "reviewed",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": [
+              "wit-page-0001"
+            ],
+            "runner_ids": [
+              "olmocr"
+            ],
+            "machine_confidence": 0.91,
+            "merge_confidence": 0.84,
+            "disagreement_note": null,
+            "alternate_candidates": []
+          },
+          "review": {
+            "reviewed_dimensions": [
+              "text",
+              "typography"
+            ],
+            "corrected_dimensions": [],
+            "last_event_id": "evt-page-0001-1",
+            "event_ids": [
+              "evt-page-0001-1"
+            ]
+          }
+        },
+        {
+          "span_id": "span-page-0001-marker",
+          "line_id": "line-page-0001-1",
+          "text_diplomatic": "\u00b9",
+          "text_normalized": "1",
+          "typography": {
+            "font_families": [],
+            "font_size_points": null,
+            "font_size_confidence": null,
+            "weight": "unknown",
+            "slant": "unknown",
+            "baseline_shift": "unknown",
+            "small_caps": null,
+            "letter_spaced": null
+          },
+          "roles": [
+            "footnote-marker"
+          ],
+          "bounding_box": null,
+          "trust_state": "reviewed",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": [
+              "wit-page-0001"
+            ],
+            "runner_ids": [
+              "olmocr"
+            ],
+            "machine_confidence": 0.91,
+            "merge_confidence": 0.84,
+            "disagreement_note": null,
+            "alternate_candidates": []
+          },
+          "review": {
+            "reviewed_dimensions": [
+              "text",
+              "typography"
+            ],
+            "corrected_dimensions": [],
+            "last_event_id": "evt-page-0001-1",
+            "event_ids": [
+              "evt-page-0001-1"
+            ]
+          }
+        }
+      ],
+      "notes": [
+        {
+          "note_id": "note-page-0001-1",
+          "note_kind": "footnote-block",
+          "region_id": "region-page-0001-body",
+          "text_diplomatic": "see Bosworth",
+          "text_normalized": "see Bosworth",
+          "linked_marker_span_ids": [
+            "span-page-0001-marker"
+          ],
+          "bounding_box": {
+            "x0": 10.0,
+            "y0": 3200.0,
+            "x1": 1100.0,
+            "y1": 3500.0,
+            "coordinate_space_id": "prepared-page-0001"
+          },
+          "trust_state": "reviewed",
+          "provenance": {
+            "source_page_id": "page-0001",
+            "witness_ids": [
+              "wit-page-0001"
+            ],
+            "runner_ids": [
+              "olmocr"
+            ],
+            "machine_confidence": 0.91,
+            "merge_confidence": 0.84,
+            "disagreement_note": null,
+            "alternate_candidates": []
+          },
+          "review": {
+            "reviewed_dimensions": [
+              "text",
+              "typography"
+            ],
+            "corrected_dimensions": [],
+            "last_event_id": "evt-page-0001-1",
+            "event_ids": [
+              "evt-page-0001-1"
+            ]
+          }
+        }
+      ],
+      "evaluation_summary": {
+        "text": {
+          "metrics": [],
+          "flags": []
+        },
+        "structure": {
+          "metrics": [],
+          "flags": []
+        },
+        "style": {
+          "typography": {
+            "metrics": [],
+            "flags": []
+          },
+          "note_linkage": {
+            "metrics": [],
+            "flags": []
+          }
+        }
+      },
+      "review_event_ids": [
+        "evt-page-0001-1"
+      ]
+    },
+    {
+      "page_id": "page-0002",
+      "page_number": 2,
+      "source_page_label": "scan 2",
+      "prepared_page": {
+        "prepared_page_id": "prepared-page-0002",
+        "preparation_mode": "columns",
+        "page_class": "dense-dictionary",
+        "image_path": "pages/page-0002/image/page.png",
+        "source_artifact_id": "source-page-0002",
+        "image_checksum": "sha256:prepared-page-0002",
+        "preparation_recipe_id": "prep-v1",
+        "preparation_recipe_digest": "digest-prep-v1",
+        "coordinate_space": {
+          "space_id": "prepared-page-0002",
+          "width_px": 2400,
+          "height_px": 3600,
+          "dpi": 400.0,
+          "parent_space_id": "source-page-0002"
+        },
+        "transforms": [
+          {
+            "kind": "crop",
+            "source_space_id": "source-page-0002",
+            "target_space_id": "prepared-page-0002",
+            "parameters": {
+              "x0": 12.0,
+              "y0": 18.0,
+              "x1": 2412.0,
+              "y1": 3618.0
+            },
+            "mapping_artifact_path": null
+          },
+          {
+            "kind": "deskew",
+            "source_space_id": "prepared-page-0002",
+            "target_space_id": "prepared-page-0002",
+            "parameters": {
+              "angle_degrees": -0.35
+            },
+            "mapping_artifact_path": null
+          }
+        ],
+        "prepared_units": [
+          {
+            "artifact_id": "prep-page-0002-col-1",
+            "kind": "prepared-unit",
+            "page_id": "page-0002",
+            "prepared_unit_id": "page-0002-col-1",
+            "artifact_path": "pages/page-0002/image/page-0002-col-1.png",
+            "parent_prepared_page_id": "prepared-page-0002",
+            "checksum": "sha256:page-0002-col-1",
+            "order": 1,
+            "bounding_box": {
+              "x0": 0.0,
+              "y0": 0.0,
+              "x1": 1200.0,
+              "y1": 3600.0,
+              "coordinate_space_id": "prepared-page-0002"
+            }
+          }
+        ]
+      },
+      "witnesses": [
+        {
+          "witness_id": "wit-page-0002",
+          "witness_kind": "text",
+          "artifact_path": "pages/page-0002/witnesses/text/olmocr.json",
+          "runner_id": "olmocr",
+          "page_id": "page-0002",
+          "prepared_unit_id": "page-0002-col-1"
+        }
+      ],
+      "regions": [
+        {
+          "region_id": "region-page-0002-body",
+          "region_kind": "body",
+          "reading_order_index": 1,
+          "bounding_box": {
+            "x0": 10.0,
+            "y0": 20.0,
+            "x1": 1100.0,
+            "y1": 800.0,
+            "coordinate_space_id": "prepared-page-0002"
+          },
+          "polygon": null,
+          "line_ids": [
+            "line-page-0002-1"
+          ],
+          "note_ids": [],
+          "trust_state": "reviewed",
+          "provenance": {
+            "source_page_id": "page-0002",
+            "witness_ids": [
+              "wit-page-0002"
+            ],
+            "runner_ids": [
+              "olmocr"
+            ],
+            "machine_confidence": 0.91,
+            "merge_confidence": 0.84,
+            "disagreement_note": null,
+            "alternate_candidates": []
+          },
+          "review": {
+            "reviewed_dimensions": [
+              "text",
+              "typography"
+            ],
+            "corrected_dimensions": [],
+            "last_event_id": "evt-page-0002-1",
+            "event_ids": [
+              "evt-page-0002-1"
+            ]
+          }
+        }
+      ],
+      "lines": [
+        {
+          "line_id": "line-page-0002-1",
+          "region_id": "region-page-0002-body",
+          "line_order": 1,
+          "bounding_box": {
+            "x0": 10.0,
+            "y0": 20.0,
+            "x1": 1100.0,
+            "y1": 800.0,
+            "coordinate_space_id": "prepared-page-0002"
+          },
+          "polygon": null,
+          "baseline": [
+            {
+              "x": 10.0,
+              "y": 40.0
+            },
+            {
+              "x": 1100.0,
+              "y": 42.0
+            }
+          ],
+          "baseline_coordinate_space_id": "prepared-page-0002",
+          "span_ids": [
+            "span-page-0002-1"
+          ],
+          "trust_state": "reviewed",
+          "provenance": {
+            "source_page_id": "page-0002",
+            "witness_ids": [
+              "wit-page-0002"
+            ],
+            "runner_ids": [
+              "olmocr"
+            ],
+            "machine_confidence": 0.91,
+            "merge_confidence": 0.84,
+            "disagreement_note": null,
+            "alternate_candidates": []
+          },
+          "review": {
+            "reviewed_dimensions": [
+              "text",
+              "typography"
+            ],
+            "corrected_dimensions": [],
+            "last_event_id": "evt-page-0002-1",
+            "event_ids": [
+              "evt-page-0002-1"
+            ]
+          },
+          "joins_to_line_id": null
+        }
+      ],
+      "spans": [
+        {
+          "span_id": "span-page-0002-1",
+          "line_id": "line-page-0002-1",
+          "text_diplomatic": "\u00fe\u00e6r",
+          "text_normalized": "\u00fe\u00e6r",
+          "typography": {
+            "font_families": [],
+            "font_size_points": null,
+            "font_size_confidence": null,
+            "weight": "regular",
+            "slant": "italic",
+            "baseline_shift": "baseline",
+            "small_caps": null,
+            "letter_spaced": null
+          },
+          "roles": [
+            "text"
+          ],
+          "bounding_box": {
+            "x0": 10.0,
+            "y0": 20.0,
+            "x1": 1100.0,
+            "y1": 800.0,
+            "coordinate_space_id": "prepared-page-0002"
+          },
+          "trust_state": "reviewed",
+          "provenance": {
+            "source_page_id": "page-0002",
+            "witness_ids": [
+              "wit-page-0002"
+            ],
+            "runner_ids": [
+              "olmocr"
+            ],
+            "machine_confidence": 0.91,
+            "merge_confidence": 0.84,
+            "disagreement_note": null,
+            "alternate_candidates": []
+          },
+          "review": {
+            "reviewed_dimensions": [
+              "text",
+              "typography"
+            ],
+            "corrected_dimensions": [],
+            "last_event_id": "evt-page-0002-1",
+            "event_ids": [
+              "evt-page-0002-1"
+            ]
+          }
+        }
+      ],
+      "notes": [],
+      "evaluation_summary": {
+        "text": {
+          "metrics": [],
+          "flags": []
+        },
+        "structure": {
+          "metrics": [],
+          "flags": []
+        },
+        "style": {
+          "typography": {
+            "metrics": [],
+            "flags": []
+          },
+          "note_linkage": {
+            "metrics": [],
+            "flags": []
+          }
+        }
+      },
+      "review_event_ids": [
+        "evt-page-0002-1"
+      ]
+    }
+  ],
+  "evaluation_summary": {
+    "text": {
+      "metrics": [],
+      "flags": []
+    },
+    "structure": {
+      "metrics": [],
+      "flags": []
+    },
+    "style": {
+      "typography": {
+        "metrics": [],
+        "flags": []
+      },
+      "note_linkage": {
+        "metrics": [],
+        "flags": []
+      }
+    }
+  },
+  "exports": {
+    "bundle_json_path": "exports/bundle.json",
+    "rag_jsonl_path": "exports/rag.jsonl",
+    "stitched_chunks_jsonl_path": "exports/stitched_chunks.jsonl",
+    "document_markdown_path": "exports/document.md"
+  }
+}

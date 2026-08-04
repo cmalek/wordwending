@@ -1,0 +1,428 @@
+{
+  "$defs": {
+    "BaselineShift": {
+      "description": "Vertical placement of a span relative to the local baseline.",
+      "enum": [
+        "baseline",
+        "superscript",
+        "subscript",
+        "unknown"
+      ],
+      "title": "BaselineShift",
+      "type": "string"
+    },
+    "ChunkType": {
+      "description": "Retrieval chunk families.",
+      "enum": [
+        "region_chunk",
+        "footnote_chunk",
+        "table_chunk"
+      ],
+      "title": "ChunkType",
+      "type": "string"
+    },
+    "FontFamilyCandidate": {
+      "additionalProperties": false,
+      "description": "One possible font-family label with evidence confidence.",
+      "properties": {
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "confidence"
+      ],
+      "title": "FontFamilyCandidate",
+      "type": "object"
+    },
+    "FontSlant": {
+      "description": "Visual font-slant classification independent of weight and role.",
+      "enum": [
+        "upright",
+        "italic",
+        "unknown"
+      ],
+      "title": "FontSlant",
+      "type": "string"
+    },
+    "FontWeight": {
+      "description": "Visual font-weight classification independent of other typography.",
+      "enum": [
+        "regular",
+        "bold",
+        "unknown"
+      ],
+      "title": "FontWeight",
+      "type": "string"
+    },
+    "RagChunk": {
+      "additionalProperties": false,
+      "description": "Page-local retrieval chunk.",
+      "properties": {
+        "chunk_id": {
+          "title": "Chunk Id",
+          "type": "string"
+        },
+        "chunk_type": {
+          "$ref": "#/$defs/ChunkType"
+        },
+        "document_id": {
+          "title": "Document Id",
+          "type": "string"
+        },
+        "note_summary": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Note Summary",
+          "type": "array"
+        },
+        "page_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Page Ids",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/RetrievalProvenance"
+        },
+        "retrieval_metadata": {
+          "$ref": "#/$defs/RetrievalMetadata"
+        },
+        "source_object_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Object Ids",
+          "type": "array"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "trust_state": {
+          "$ref": "#/$defs/TrustState"
+        },
+        "typography_summary": {
+          "items": {
+            "$ref": "#/$defs/Typography"
+          },
+          "title": "Typography Summary",
+          "type": "array"
+        }
+      },
+      "required": [
+        "chunk_id",
+        "chunk_type",
+        "document_id",
+        "page_ids",
+        "text",
+        "trust_state",
+        "source_object_ids",
+        "provenance"
+      ],
+      "title": "RagChunk",
+      "type": "object"
+    },
+    "RegionKind": {
+      "description": "Accepted region classes for the page graph.",
+      "enum": [
+        "body",
+        "footnote",
+        "marginalia",
+        "header",
+        "footer",
+        "table",
+        "paratext",
+        "unknown"
+      ],
+      "title": "RegionKind",
+      "type": "string"
+    },
+    "RetrievalMetadata": {
+      "additionalProperties": false,
+      "description": "Extra retrieval facets for a flattened chunk.",
+      "properties": {
+        "contains_corrected_content": {
+          "default": false,
+          "title": "Contains Corrected Content",
+          "type": "boolean"
+        },
+        "contains_reviewed_content": {
+          "default": false,
+          "title": "Contains Reviewed Content",
+          "type": "boolean"
+        },
+        "page_number": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Page Number"
+        },
+        "reading_order_index": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reading Order Index"
+        },
+        "region_kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RegionKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "typography_signals": {
+          "items": {
+            "$ref": "#/$defs/Typography"
+          },
+          "title": "Typography Signals",
+          "type": "array"
+        }
+      },
+      "title": "RetrievalMetadata",
+      "type": "object"
+    },
+    "RetrievalProvenance": {
+      "additionalProperties": false,
+      "description": "Multi-page provenance retained by retrieval exports.",
+      "properties": {
+        "runner_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Runner Ids",
+          "type": "array"
+        },
+        "source_page_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Source Page Ids",
+          "type": "array"
+        },
+        "witness_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Witness Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source_page_ids"
+      ],
+      "title": "RetrievalProvenance",
+      "type": "object"
+    },
+    "StitchedChunk": {
+      "additionalProperties": false,
+      "description": "Cross-page retrieval chunk stitched from accepted page-local chunks.",
+      "properties": {
+        "component_chunk_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Component Chunk Ids",
+          "type": "array"
+        },
+        "document_id": {
+          "title": "Document Id",
+          "type": "string"
+        },
+        "page_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Page Ids",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/RetrievalProvenance"
+        },
+        "source_object_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Object Ids",
+          "type": "array"
+        },
+        "stitched_chunk_id": {
+          "title": "Stitched Chunk Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "trust_state": {
+          "$ref": "#/$defs/TrustState"
+        }
+      },
+      "required": [
+        "stitched_chunk_id",
+        "document_id",
+        "component_chunk_ids",
+        "page_ids",
+        "text",
+        "trust_state",
+        "source_object_ids",
+        "provenance"
+      ],
+      "title": "StitchedChunk",
+      "type": "object"
+    },
+    "TrustState": {
+      "description": "Human-review trust level for accepted graph content.",
+      "enum": [
+        "machine",
+        "reviewed",
+        "corrected"
+      ],
+      "title": "TrustState",
+      "type": "string"
+    },
+    "Typography": {
+      "additionalProperties": false,
+      "description": "Orthogonal visual typography facets for one text span.",
+      "properties": {
+        "baseline_shift": {
+          "$ref": "#/$defs/BaselineShift",
+          "default": "unknown"
+        },
+        "font_families": {
+          "items": {
+            "$ref": "#/$defs/FontFamilyCandidate"
+          },
+          "title": "Font Families",
+          "type": "array"
+        },
+        "font_size_confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Font Size Confidence"
+        },
+        "font_size_points": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Font Size Points"
+        },
+        "letter_spaced": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Letter Spaced"
+        },
+        "slant": {
+          "$ref": "#/$defs/FontSlant",
+          "default": "unknown"
+        },
+        "small_caps": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Small Caps"
+        },
+        "weight": {
+          "$ref": "#/$defs/FontWeight",
+          "default": "unknown"
+        }
+      },
+      "title": "Typography",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Document-level retrieval export.",
+  "properties": {
+    "chunking_recipe_id": {
+      "title": "Chunking Recipe Id",
+      "type": "string"
+    },
+    "chunks": {
+      "items": {
+        "$ref": "#/$defs/RagChunk"
+      },
+      "title": "Chunks",
+      "type": "array"
+    },
+    "document_id": {
+      "title": "Document Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "stitched_chunks": {
+      "items": {
+        "$ref": "#/$defs/StitchedChunk"
+      },
+      "title": "Stitched Chunks",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "chunking_recipe_id",
+    "document_id",
+    "chunks"
+  ],
+  "title": "RagDocument",
+  "type": "object"
+}

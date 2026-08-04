@@ -1,0 +1,1807 @@
+{
+  "$defs": {
+    "AcquisitionProvenance": {
+      "additionalProperties": false,
+      "description": "How the source files were obtained.",
+      "properties": {
+        "acquired_at_utc": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Acquired At Utc"
+        },
+        "acquired_from": {
+          "title": "Acquired From",
+          "type": "string"
+        },
+        "acquisition_kind": {
+          "title": "Acquisition Kind",
+          "type": "string"
+        },
+        "rights_note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Note"
+        },
+        "source_uri": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Uri"
+        }
+      },
+      "required": [
+        "acquisition_kind",
+        "acquired_from"
+      ],
+      "title": "AcquisitionProvenance",
+      "type": "object"
+    },
+    "AlternateCandidate": {
+      "additionalProperties": false,
+      "description": "One rejected or alternate merge interpretation kept in provenance.",
+      "properties": {
+        "machine_confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Machine Confidence"
+        },
+        "runner_id": {
+          "title": "Runner Id",
+          "type": "string"
+        },
+        "value": {
+          "additionalProperties": true,
+          "title": "Value",
+          "type": "object"
+        },
+        "value_kind": {
+          "title": "Value Kind",
+          "type": "string"
+        },
+        "witness_id": {
+          "title": "Witness Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "witness_id",
+        "runner_id",
+        "value_kind",
+        "value"
+      ],
+      "title": "AlternateCandidate",
+      "type": "object"
+    },
+    "BaselineShift": {
+      "description": "Vertical placement of a span relative to the local baseline.",
+      "enum": [
+        "baseline",
+        "superscript",
+        "subscript",
+        "unknown"
+      ],
+      "title": "BaselineShift",
+      "type": "string"
+    },
+    "BibliographicProvenance": {
+      "additionalProperties": false,
+      "description": "Stable descriptive metadata for the source work.",
+      "properties": {
+        "authors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Authors",
+          "type": "array"
+        },
+        "bibliographic_note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bibliographic Note"
+        },
+        "edition": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Edition"
+        },
+        "publication_year": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Publication Year"
+        },
+        "publisher": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Publisher"
+        },
+        "shelfmark": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shelfmark"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "authors"
+      ],
+      "title": "BibliographicProvenance",
+      "type": "object"
+    },
+    "BoundingBox": {
+      "additionalProperties": false,
+      "description": "Axis-aligned rectangle for page-relative geometry.",
+      "properties": {
+        "coordinate_space_id": {
+          "default": "prepared-page",
+          "title": "Coordinate Space Id",
+          "type": "string"
+        },
+        "x0": {
+          "title": "X0",
+          "type": "number"
+        },
+        "x1": {
+          "title": "X1",
+          "type": "number"
+        },
+        "y0": {
+          "title": "Y0",
+          "type": "number"
+        },
+        "y1": {
+          "title": "Y1",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x0",
+        "y0",
+        "x1",
+        "y1"
+      ],
+      "title": "BoundingBox",
+      "type": "object"
+    },
+    "BundlePage": {
+      "additionalProperties": false,
+      "description": "Canonical exported page object.",
+      "properties": {
+        "evaluation_summary": {
+          "$ref": "#/$defs/PageEvaluationSummary"
+        },
+        "lines": {
+          "items": {
+            "$ref": "#/$defs/LineRecord"
+          },
+          "title": "Lines",
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "$ref": "#/$defs/NoteRecord"
+          },
+          "title": "Notes",
+          "type": "array"
+        },
+        "page_id": {
+          "title": "Page Id",
+          "type": "string"
+        },
+        "page_number": {
+          "title": "Page Number",
+          "type": "integer"
+        },
+        "prepared_page": {
+          "$ref": "#/$defs/PreparedPage"
+        },
+        "regions": {
+          "items": {
+            "$ref": "#/$defs/RegionRecord"
+          },
+          "title": "Regions",
+          "type": "array"
+        },
+        "review_event_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Review Event Ids",
+          "type": "array"
+        },
+        "source_page_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Page Label"
+        },
+        "spans": {
+          "items": {
+            "$ref": "#/$defs/SpanRecord"
+          },
+          "title": "Spans",
+          "type": "array"
+        },
+        "witnesses": {
+          "items": {
+            "$ref": "#/$defs/WitnessReference"
+          },
+          "title": "Witnesses",
+          "type": "array"
+        }
+      },
+      "required": [
+        "page_id",
+        "page_number",
+        "prepared_page"
+      ],
+      "title": "BundlePage",
+      "type": "object"
+    },
+    "CoordinateSpace": {
+      "additionalProperties": false,
+      "description": "Identity and dimensions for a source or prepared image space.",
+      "properties": {
+        "dpi": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dpi"
+        },
+        "height_px": {
+          "exclusiveMinimum": 0,
+          "title": "Height Px",
+          "type": "integer"
+        },
+        "parent_space_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Space Id"
+        },
+        "space_id": {
+          "title": "Space Id",
+          "type": "string"
+        },
+        "width_px": {
+          "exclusiveMinimum": 0,
+          "title": "Width Px",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "space_id",
+        "width_px",
+        "height_px"
+      ],
+      "title": "CoordinateSpace",
+      "type": "object"
+    },
+    "CoordinateTransform": {
+      "additionalProperties": false,
+      "description": "Replayable mapping between two recorded coordinate spaces.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/TransformKind"
+        },
+        "mapping_artifact_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mapping Artifact Path"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Parameters",
+          "type": "object"
+        },
+        "source_space_id": {
+          "title": "Source Space Id",
+          "type": "string"
+        },
+        "target_space_id": {
+          "title": "Target Space Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "source_space_id",
+        "target_space_id"
+      ],
+      "title": "CoordinateTransform",
+      "type": "object"
+    },
+    "DocumentEvaluationSummary": {
+      "additionalProperties": false,
+      "description": "Document-level grouped evaluation output.",
+      "properties": {
+        "structure": {
+          "$ref": "#/$defs/EvaluationFamilySummary"
+        },
+        "style": {
+          "$ref": "#/$defs/StyleEvaluationSummary"
+        },
+        "text": {
+          "$ref": "#/$defs/EvaluationFamilySummary"
+        }
+      },
+      "title": "DocumentEvaluationSummary",
+      "type": "object"
+    },
+    "EvaluationFamilySummary": {
+      "additionalProperties": false,
+      "description": "Scores and flags for one evaluation family.",
+      "properties": {
+        "flags": {
+          "items": {
+            "$ref": "#/$defs/EvaluationFlag"
+          },
+          "title": "Flags",
+          "type": "array"
+        },
+        "metrics": {
+          "items": {
+            "$ref": "#/$defs/MetricScore"
+          },
+          "title": "Metrics",
+          "type": "array"
+        }
+      },
+      "title": "EvaluationFamilySummary",
+      "type": "object"
+    },
+    "EvaluationFlag": {
+      "additionalProperties": false,
+      "description": "One review-driving evaluation flag.",
+      "properties": {
+        "flag_id": {
+          "title": "Flag Id",
+          "type": "string"
+        },
+        "flag_type": {
+          "title": "Flag Type",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/FlagSeverity"
+        },
+        "target_object_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Target Object Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "flag_id",
+        "flag_type",
+        "severity",
+        "message"
+      ],
+      "title": "EvaluationFlag",
+      "type": "object"
+    },
+    "ExportSummary": {
+      "additionalProperties": false,
+      "description": "Pointers to derived export artifacts.",
+      "properties": {
+        "bundle_json_path": {
+          "title": "Bundle Json Path",
+          "type": "string"
+        },
+        "document_markdown_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Document Markdown Path"
+        },
+        "rag_jsonl_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rag Jsonl Path"
+        },
+        "stitched_chunks_jsonl_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stitched Chunks Jsonl Path"
+        }
+      },
+      "required": [
+        "bundle_json_path"
+      ],
+      "title": "ExportSummary",
+      "type": "object"
+    },
+    "FlagSeverity": {
+      "description": "Severity levels for review and evaluation flags.",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "FlagSeverity",
+      "type": "string"
+    },
+    "FontFamilyCandidate": {
+      "additionalProperties": false,
+      "description": "One possible font-family label with evidence confidence.",
+      "properties": {
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "confidence"
+      ],
+      "title": "FontFamilyCandidate",
+      "type": "object"
+    },
+    "FontSlant": {
+      "description": "Visual font-slant classification independent of weight and role.",
+      "enum": [
+        "upright",
+        "italic",
+        "unknown"
+      ],
+      "title": "FontSlant",
+      "type": "string"
+    },
+    "FontWeight": {
+      "description": "Visual font-weight classification independent of other typography.",
+      "enum": [
+        "regular",
+        "bold",
+        "unknown"
+      ],
+      "title": "FontWeight",
+      "type": "string"
+    },
+    "InputKind": {
+      "description": "Runner input artifact categories.",
+      "enum": [
+        "image",
+        "prepared-unit",
+        "pdf"
+      ],
+      "title": "InputKind",
+      "type": "string"
+    },
+    "LineRecord": {
+      "additionalProperties": false,
+      "description": "Accepted line node in the page graph.",
+      "properties": {
+        "baseline": {
+          "items": {
+            "$ref": "#/$defs/Point"
+          },
+          "title": "Baseline",
+          "type": "array"
+        },
+        "baseline_coordinate_space_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baseline Coordinate Space Id"
+        },
+        "bounding_box": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BoundingBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "joins_to_line_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Joins To Line Id"
+        },
+        "line_id": {
+          "title": "Line Id",
+          "type": "string"
+        },
+        "line_order": {
+          "title": "Line Order",
+          "type": "integer"
+        },
+        "polygon": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Polygon"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "provenance": {
+          "$ref": "#/$defs/ObjectProvenance"
+        },
+        "region_id": {
+          "title": "Region Id",
+          "type": "string"
+        },
+        "review": {
+          "$ref": "#/$defs/ReviewSummary"
+        },
+        "span_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Span Ids",
+          "type": "array"
+        },
+        "trust_state": {
+          "$ref": "#/$defs/TrustState",
+          "default": "machine"
+        }
+      },
+      "required": [
+        "line_id",
+        "region_id",
+        "line_order",
+        "span_ids",
+        "provenance"
+      ],
+      "title": "LineRecord",
+      "type": "object"
+    },
+    "MetricScore": {
+      "additionalProperties": false,
+      "description": "One numeric evaluation metric.",
+      "properties": {
+        "denominator": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator"
+        },
+        "metric_id": {
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "numerator": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Numerator"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "metric_id",
+        "value"
+      ],
+      "title": "MetricScore",
+      "type": "object"
+    },
+    "NoteKind": {
+      "description": "Accepted note classes for v1.",
+      "enum": [
+        "footnote-block",
+        "endnote-block",
+        "side-note",
+        "unknown"
+      ],
+      "title": "NoteKind",
+      "type": "string"
+    },
+    "NoteRecord": {
+      "additionalProperties": false,
+      "description": "Accepted note object in the page graph.",
+      "properties": {
+        "bounding_box": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BoundingBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "linked_marker_span_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Linked Marker Span Ids",
+          "type": "array"
+        },
+        "note_id": {
+          "title": "Note Id",
+          "type": "string"
+        },
+        "note_kind": {
+          "$ref": "#/$defs/NoteKind"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ObjectProvenance"
+        },
+        "region_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Region Id"
+        },
+        "review": {
+          "$ref": "#/$defs/ReviewSummary"
+        },
+        "text_diplomatic": {
+          "title": "Text Diplomatic",
+          "type": "string"
+        },
+        "text_normalized": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text Normalized"
+        },
+        "trust_state": {
+          "$ref": "#/$defs/TrustState",
+          "default": "machine"
+        }
+      },
+      "required": [
+        "note_id",
+        "note_kind",
+        "text_diplomatic",
+        "provenance"
+      ],
+      "title": "NoteRecord",
+      "type": "object"
+    },
+    "ObjectProvenance": {
+      "additionalProperties": false,
+      "description": "Accepted-object provenance pointers.",
+      "properties": {
+        "alternate_candidates": {
+          "items": {
+            "$ref": "#/$defs/AlternateCandidate"
+          },
+          "title": "Alternate Candidates",
+          "type": "array"
+        },
+        "disagreement_note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Disagreement Note"
+        },
+        "machine_confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Machine Confidence"
+        },
+        "merge_confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Merge Confidence"
+        },
+        "runner_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Runner Ids",
+          "type": "array"
+        },
+        "source_page_id": {
+          "title": "Source Page Id",
+          "type": "string"
+        },
+        "witness_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Witness Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source_page_id",
+        "witness_ids",
+        "runner_ids"
+      ],
+      "title": "ObjectProvenance",
+      "type": "object"
+    },
+    "PageClass": {
+      "description": "Page-level layout cohorts used by preparation and evaluation.",
+      "enum": [
+        "ordinary-prose",
+        "dense-dictionary",
+        "note-heavy",
+        "table-heavy",
+        "mixed-complex"
+      ],
+      "title": "PageClass",
+      "type": "string"
+    },
+    "PageEvaluationSummary": {
+      "additionalProperties": false,
+      "description": "Per-page grouped evaluation output.",
+      "properties": {
+        "structure": {
+          "$ref": "#/$defs/EvaluationFamilySummary"
+        },
+        "style": {
+          "$ref": "#/$defs/StyleEvaluationSummary"
+        },
+        "text": {
+          "$ref": "#/$defs/EvaluationFamilySummary"
+        }
+      },
+      "title": "PageEvaluationSummary",
+      "type": "object"
+    },
+    "Point": {
+      "additionalProperties": false,
+      "description": "One point in an identified image coordinate space.",
+      "properties": {
+        "x": {
+          "minimum": 0,
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "minimum": 0,
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "title": "Point",
+      "type": "object"
+    },
+    "Polygon": {
+      "additionalProperties": false,
+      "description": "Polygon geometry for non-rectangular regions and curved text lines.",
+      "properties": {
+        "coordinate_space_id": {
+          "title": "Coordinate Space Id",
+          "type": "string"
+        },
+        "points": {
+          "items": {
+            "$ref": "#/$defs/Point"
+          },
+          "minItems": 3,
+          "title": "Points",
+          "type": "array"
+        }
+      },
+      "required": [
+        "coordinate_space_id",
+        "points"
+      ],
+      "title": "Polygon",
+      "type": "object"
+    },
+    "PreparationMode": {
+      "description": "Prepared-page subdivision modes.",
+      "enum": [
+        "full-page",
+        "columns",
+        "fixed-tiles"
+      ],
+      "title": "PreparationMode",
+      "type": "string"
+    },
+    "PreparedArtifactRef": {
+      "additionalProperties": false,
+      "description": "Prepared image or packaged artifact ready for runner execution.",
+      "properties": {
+        "artifact_id": {
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "artifact_path": {
+          "title": "Artifact Path",
+          "type": "string"
+        },
+        "bounding_box": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BoundingBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "checksum": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checksum"
+        },
+        "kind": {
+          "$ref": "#/$defs/InputKind"
+        },
+        "order": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Order"
+        },
+        "page_id": {
+          "title": "Page Id",
+          "type": "string"
+        },
+        "parent_prepared_page_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Prepared Page Id"
+        },
+        "prepared_unit_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prepared Unit Id"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "kind",
+        "page_id",
+        "artifact_path"
+      ],
+      "title": "PreparedArtifactRef",
+      "type": "object"
+    },
+    "PreparedPage": {
+      "additionalProperties": false,
+      "description": "Preparation outcome for one page.",
+      "properties": {
+        "coordinate_space": {
+          "$ref": "#/$defs/CoordinateSpace"
+        },
+        "image_checksum": {
+          "title": "Image Checksum",
+          "type": "string"
+        },
+        "image_path": {
+          "title": "Image Path",
+          "type": "string"
+        },
+        "page_class": {
+          "$ref": "#/$defs/PageClass"
+        },
+        "preparation_mode": {
+          "$ref": "#/$defs/PreparationMode"
+        },
+        "preparation_recipe_digest": {
+          "title": "Preparation Recipe Digest",
+          "type": "string"
+        },
+        "preparation_recipe_id": {
+          "title": "Preparation Recipe Id",
+          "type": "string"
+        },
+        "prepared_page_id": {
+          "title": "Prepared Page Id",
+          "type": "string"
+        },
+        "prepared_units": {
+          "items": {
+            "$ref": "#/$defs/PreparedArtifactRef"
+          },
+          "title": "Prepared Units",
+          "type": "array"
+        },
+        "source_artifact_id": {
+          "title": "Source Artifact Id",
+          "type": "string"
+        },
+        "transforms": {
+          "items": {
+            "$ref": "#/$defs/CoordinateTransform"
+          },
+          "title": "Transforms",
+          "type": "array"
+        }
+      },
+      "required": [
+        "prepared_page_id",
+        "preparation_mode",
+        "page_class",
+        "image_path",
+        "source_artifact_id",
+        "image_checksum",
+        "preparation_recipe_id",
+        "preparation_recipe_digest",
+        "coordinate_space"
+      ],
+      "title": "PreparedPage",
+      "type": "object"
+    },
+    "RegionKind": {
+      "description": "Accepted region classes for the page graph.",
+      "enum": [
+        "body",
+        "footnote",
+        "marginalia",
+        "header",
+        "footer",
+        "table",
+        "paratext",
+        "unknown"
+      ],
+      "title": "RegionKind",
+      "type": "string"
+    },
+    "RegionRecord": {
+      "additionalProperties": false,
+      "description": "Accepted region node in the page graph.",
+      "properties": {
+        "bounding_box": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BoundingBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "line_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Line Ids",
+          "type": "array"
+        },
+        "note_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Note Ids",
+          "type": "array"
+        },
+        "polygon": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Polygon"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "provenance": {
+          "$ref": "#/$defs/ObjectProvenance"
+        },
+        "reading_order_index": {
+          "title": "Reading Order Index",
+          "type": "integer"
+        },
+        "region_id": {
+          "title": "Region Id",
+          "type": "string"
+        },
+        "region_kind": {
+          "$ref": "#/$defs/RegionKind"
+        },
+        "review": {
+          "$ref": "#/$defs/ReviewSummary"
+        },
+        "trust_state": {
+          "$ref": "#/$defs/TrustState",
+          "default": "machine"
+        }
+      },
+      "required": [
+        "region_id",
+        "region_kind",
+        "reading_order_index",
+        "line_ids",
+        "provenance"
+      ],
+      "title": "RegionRecord",
+      "type": "object"
+    },
+    "ReviewDimension": {
+      "description": "Independent evidence dimensions a human may inspect and certify.",
+      "enum": [
+        "source-quality",
+        "preparation",
+        "structure",
+        "text",
+        "typography",
+        "note-linkage"
+      ],
+      "title": "ReviewDimension",
+      "type": "string"
+    },
+    "ReviewSummary": {
+      "additionalProperties": false,
+      "description": "Compact review state attached to accepted graph objects.",
+      "properties": {
+        "corrected_dimensions": {
+          "items": {
+            "$ref": "#/$defs/ReviewDimension"
+          },
+          "title": "Corrected Dimensions",
+          "type": "array"
+        },
+        "event_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Event Ids",
+          "type": "array"
+        },
+        "last_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Event Id"
+        },
+        "reviewed_dimensions": {
+          "items": {
+            "$ref": "#/$defs/ReviewDimension"
+          },
+          "title": "Reviewed Dimensions",
+          "type": "array"
+        }
+      },
+      "title": "ReviewSummary",
+      "type": "object"
+    },
+    "RunMetadata": {
+      "additionalProperties": false,
+      "description": "Top-level run metadata for one bundle export.",
+      "properties": {
+        "bundle_schema_version": {
+          "title": "Bundle Schema Version",
+          "type": "string"
+        },
+        "config_digest": {
+          "title": "Config Digest",
+          "type": "string"
+        },
+        "preparation_recipe_id": {
+          "title": "Preparation Recipe Id",
+          "type": "string"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "run_timestamp_utc": {
+          "format": "date-time",
+          "title": "Run Timestamp Utc",
+          "type": "string"
+        },
+        "runner_set": {
+          "items": {
+            "$ref": "#/$defs/RunnerReference"
+          },
+          "title": "Runner Set",
+          "type": "array"
+        }
+      },
+      "required": [
+        "run_id",
+        "run_timestamp_utc",
+        "preparation_recipe_id",
+        "config_digest",
+        "runner_set",
+        "bundle_schema_version"
+      ],
+      "title": "RunMetadata",
+      "type": "object"
+    },
+    "RunnerReference": {
+      "additionalProperties": false,
+      "description": "Identity for one runner implementation and model revision.",
+      "properties": {
+        "config_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Config Digest"
+        },
+        "hardware_class": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hardware Class"
+        },
+        "model_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Name"
+        },
+        "model_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Revision"
+        },
+        "prompt_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Digest"
+        },
+        "runner_id": {
+          "title": "Runner Id",
+          "type": "string"
+        },
+        "runner_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runner Version"
+        },
+        "runtime_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runtime Name"
+        },
+        "runtime_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runtime Revision"
+        }
+      },
+      "required": [
+        "runner_id"
+      ],
+      "title": "RunnerReference",
+      "type": "object"
+    },
+    "SourceDescriptor": {
+      "additionalProperties": false,
+      "description": "Top-level input identity for one OCR document.",
+      "properties": {
+        "checksum": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checksum"
+        },
+        "original_path": {
+          "title": "Original Path",
+          "type": "string"
+        },
+        "page_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Page Count"
+        },
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "source_label": {
+          "title": "Source Label",
+          "type": "string"
+        },
+        "source_type": {
+          "$ref": "#/$defs/SourceType"
+        }
+      },
+      "required": [
+        "source_id",
+        "source_type",
+        "source_label",
+        "original_path"
+      ],
+      "title": "SourceDescriptor",
+      "type": "object"
+    },
+    "SourceType": {
+      "description": "Supported top-level source kinds.",
+      "enum": [
+        "pdf",
+        "image-set",
+        "single-image"
+      ],
+      "title": "SourceType",
+      "type": "string"
+    },
+    "SpanRecord": {
+      "additionalProperties": false,
+      "description": "Accepted text span in the page graph.",
+      "properties": {
+        "bounding_box": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BoundingBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "line_id": {
+          "title": "Line Id",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ObjectProvenance"
+        },
+        "review": {
+          "$ref": "#/$defs/ReviewSummary"
+        },
+        "roles": {
+          "items": {
+            "$ref": "#/$defs/TextRole"
+          },
+          "title": "Roles",
+          "type": "array"
+        },
+        "span_id": {
+          "title": "Span Id",
+          "type": "string"
+        },
+        "text_diplomatic": {
+          "title": "Text Diplomatic",
+          "type": "string"
+        },
+        "text_normalized": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text Normalized"
+        },
+        "trust_state": {
+          "$ref": "#/$defs/TrustState",
+          "default": "machine"
+        },
+        "typography": {
+          "$ref": "#/$defs/Typography"
+        }
+      },
+      "required": [
+        "span_id",
+        "line_id",
+        "text_diplomatic",
+        "provenance"
+      ],
+      "title": "SpanRecord",
+      "type": "object"
+    },
+    "StyleEvaluationSummary": {
+      "additionalProperties": false,
+      "description": "Typography and note-linkage scores grouped under the style family.",
+      "properties": {
+        "note_linkage": {
+          "$ref": "#/$defs/EvaluationFamilySummary"
+        },
+        "typography": {
+          "$ref": "#/$defs/EvaluationFamilySummary"
+        }
+      },
+      "title": "StyleEvaluationSummary",
+      "type": "object"
+    },
+    "TextRole": {
+      "description": "Semantic role kept separate from visual typography.",
+      "enum": [
+        "text",
+        "footnote-marker",
+        "unknown"
+      ],
+      "title": "TextRole",
+      "type": "string"
+    },
+    "TransformKind": {
+      "description": "Preparation transform families recorded between image spaces.",
+      "enum": [
+        "crop",
+        "scale",
+        "rotate",
+        "deskew",
+        "dewarp"
+      ],
+      "title": "TransformKind",
+      "type": "string"
+    },
+    "TrustState": {
+      "description": "Human-review trust level for accepted graph content.",
+      "enum": [
+        "machine",
+        "reviewed",
+        "corrected"
+      ],
+      "title": "TrustState",
+      "type": "string"
+    },
+    "Typography": {
+      "additionalProperties": false,
+      "description": "Orthogonal visual typography facets for one text span.",
+      "properties": {
+        "baseline_shift": {
+          "$ref": "#/$defs/BaselineShift",
+          "default": "unknown"
+        },
+        "font_families": {
+          "items": {
+            "$ref": "#/$defs/FontFamilyCandidate"
+          },
+          "title": "Font Families",
+          "type": "array"
+        },
+        "font_size_confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Font Size Confidence"
+        },
+        "font_size_points": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Font Size Points"
+        },
+        "letter_spaced": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Letter Spaced"
+        },
+        "slant": {
+          "$ref": "#/$defs/FontSlant",
+          "default": "unknown"
+        },
+        "small_caps": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Small Caps"
+        },
+        "weight": {
+          "$ref": "#/$defs/FontWeight",
+          "default": "unknown"
+        }
+      },
+      "title": "Typography",
+      "type": "object"
+    },
+    "WitnessReference": {
+      "additionalProperties": false,
+      "description": "Pointer from accepted graph content back to raw machine evidence.",
+      "properties": {
+        "artifact_path": {
+          "title": "Artifact Path",
+          "type": "string"
+        },
+        "page_id": {
+          "title": "Page Id",
+          "type": "string"
+        },
+        "prepared_unit_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prepared Unit Id"
+        },
+        "runner_id": {
+          "title": "Runner Id",
+          "type": "string"
+        },
+        "witness_id": {
+          "title": "Witness Id",
+          "type": "string"
+        },
+        "witness_kind": {
+          "title": "Witness Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "witness_id",
+        "witness_kind",
+        "artifact_path",
+        "runner_id",
+        "page_id"
+      ],
+      "title": "WitnessReference",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Canonical software-facing document export.",
+  "properties": {
+    "acquisition_provenance": {
+      "$ref": "#/$defs/AcquisitionProvenance"
+    },
+    "bibliographic_provenance": {
+      "$ref": "#/$defs/BibliographicProvenance"
+    },
+    "bundle_schema_version": {
+      "title": "Bundle Schema Version",
+      "type": "string"
+    },
+    "document_id": {
+      "title": "Document Id",
+      "type": "string"
+    },
+    "evaluation_summary": {
+      "$ref": "#/$defs/DocumentEvaluationSummary"
+    },
+    "exports": {
+      "$ref": "#/$defs/ExportSummary"
+    },
+    "pages": {
+      "items": {
+        "$ref": "#/$defs/BundlePage"
+      },
+      "title": "Pages",
+      "type": "array"
+    },
+    "run": {
+      "$ref": "#/$defs/RunMetadata"
+    },
+    "source": {
+      "$ref": "#/$defs/SourceDescriptor"
+    }
+  },
+  "required": [
+    "document_id",
+    "bundle_schema_version",
+    "source",
+    "bibliographic_provenance",
+    "acquisition_provenance",
+    "run",
+    "pages",
+    "evaluation_summary",
+    "exports"
+  ],
+  "title": "DocumentBundle",
+  "type": "object"
+}

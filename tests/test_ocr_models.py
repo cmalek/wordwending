@@ -104,6 +104,11 @@ FIXTURES = Path(__file__).parent / "fixtures" / "runner"
 OVERLAY_V1_FIXTURE = (
     Path(__file__).parent / "fixtures" / "review_overlay" / "page-overlay-v1.json"
 )
+EXPORT_MODELS_FIXTURES = Path(__file__).parent / "fixtures" / "export_models"
+DOCUMENT_BUNDLE_V1_FIXTURE = EXPORT_MODELS_FIXTURES / "document-bundle-v1.json"
+RAG_DOCUMENT_V1_FIXTURE = EXPORT_MODELS_FIXTURES / "rag-document-v1.json"
+DOCUMENT_BUNDLE_V1_SCHEMA = EXPORT_MODELS_FIXTURES / "document-bundle-v1.schema.json"
+RAG_DOCUMENT_V1_SCHEMA = EXPORT_MODELS_FIXTURES / "rag-document-v1.schema.json"
 
 
 def _provenance(*, source_page_id: str = "page-1") -> ObjectProvenance:
@@ -2236,3 +2241,76 @@ def test_rag_document_accepts_region_footnote_and_stitched_chunk_round_trip() ->
     assert restored.chunks[0].chunk_type is ChunkType.REGION
     assert restored.chunks[1].chunk_type is ChunkType.FOOTNOTE
     assert restored.stitched_chunks[0].page_ids == ["page-0001", "page-0002"]
+
+
+def _stable_json_schema(model_cls: type[DocumentBundle | RagDocument]) -> dict:
+    """
+    Return Pydantic-generated JSON Schema with stable key ordering.
+
+    Args:
+        model_cls: Model whose ``model_json_schema()`` output is normalized.
+
+    Returns:
+        Schema dict suitable for exact snapshot comparison.
+
+    """
+    schema = model_cls.model_json_schema()
+    return json.loads(json.dumps(schema, sort_keys=True))
+
+
+def test_export_model_fixture_document_bundle_v1_round_trips() -> None:
+    """Frozen document-bundle-v1.json must validate and dump identically."""
+    raw_text = DOCUMENT_BUNDLE_V1_FIXTURE.read_text(encoding="utf-8")
+    raw = json.loads(raw_text)
+    bundle = DocumentBundle.model_validate_json(raw_text)
+    assert bundle.model_dump(mode="json") == raw
+    assert "source" in raw
+    assert "bibliographic_provenance" in raw
+    assert "acquisition_provenance" in raw
+    assert "run" in raw
+    assert raw["run"]["run_id"]
+    assert raw["run"]["config_digest"]
+    assert raw["exports"]["bundle_json_path"]
+    assert raw["exports"]["rag_jsonl_path"]
+    page = raw["pages"][0]
+    prepared = page["prepared_page"]
+    assert prepared["coordinate_space"]["space_id"]
+    assert prepared["transforms"]
+    assert page["witnesses"]
+    assert page["regions"]
+    assert page["lines"]
+    assert page["spans"]
+    assert page["notes"]
+    reviewed = [
+        obj
+        for family in ("regions", "lines", "spans", "notes")
+        for obj in page[family]
+        if obj.get("review", {}).get("event_ids")
+    ]
+    assert reviewed, "fixture must include review summaries on graph objects"
+
+
+def test_export_model_fixture_rag_document_v1_round_trips() -> None:
+    """Frozen rag-document-v1.json must validate and dump identically."""
+    raw_text = RAG_DOCUMENT_V1_FIXTURE.read_text(encoding="utf-8")
+    raw = json.loads(raw_text)
+    rag = RagDocument.model_validate_json(raw_text)
+    assert rag.model_dump(mode="json") == raw
+    chunk_types = {chunk["chunk_type"] for chunk in raw["chunks"]}
+    assert "region_chunk" in chunk_types
+    assert "footnote_chunk" in chunk_types
+    assert raw["stitched_chunks"], "fixture must include a multi-page stitched chunk"
+    stitched = raw["stitched_chunks"][0]
+    assert len(stitched["page_ids"]) >= 2
+
+
+def test_generated_schema_document_bundle_v1_matches_snapshot() -> None:
+    """DocumentBundle JSON Schema must match the checked-in generated snapshot."""
+    expected = json.loads(DOCUMENT_BUNDLE_V1_SCHEMA.read_text(encoding="utf-8"))
+    assert _stable_json_schema(DocumentBundle) == expected
+
+
+def test_generated_schema_rag_document_v1_matches_snapshot() -> None:
+    """RagDocument JSON Schema must match the checked-in generated snapshot."""
+    expected = json.loads(RAG_DOCUMENT_V1_SCHEMA.read_text(encoding="utf-8"))
+    assert _stable_json_schema(RagDocument) == expected

@@ -1,0 +1,169 @@
+{
+  "schema_version": "1.0.0",
+  "chunking_recipe_id": "page-regions-v1",
+  "document_id": "bosworth-toller-demo",
+  "chunks": [
+    {
+      "chunk_id": "chunk-region-page-0001",
+      "chunk_type": "region_chunk",
+      "document_id": "bosworth-toller-demo",
+      "page_ids": [
+        "page-0001"
+      ],
+      "text": "andgit",
+      "trust_state": "reviewed",
+      "source_object_ids": [
+        "region-page-0001-body",
+        "span-page-0001-1"
+      ],
+      "provenance": {
+        "source_page_ids": [
+          "page-0001"
+        ],
+        "witness_ids": [
+          "wit-page-0001"
+        ],
+        "runner_ids": [
+          "olmocr"
+        ]
+      },
+      "typography_summary": [
+        {
+          "font_families": [],
+          "font_size_points": null,
+          "font_size_confidence": null,
+          "weight": "unknown",
+          "slant": "italic",
+          "baseline_shift": "unknown",
+          "small_caps": null,
+          "letter_spaced": null
+        }
+      ],
+      "note_summary": [],
+      "retrieval_metadata": {
+        "reading_order_index": null,
+        "page_number": null,
+        "region_kind": null,
+        "contains_reviewed_content": false,
+        "contains_corrected_content": false,
+        "typography_signals": []
+      }
+    },
+    {
+      "chunk_id": "chunk-footnote-page-0001",
+      "chunk_type": "footnote_chunk",
+      "document_id": "bosworth-toller-demo",
+      "page_ids": [
+        "page-0001"
+      ],
+      "text": "see Bosworth",
+      "trust_state": "reviewed",
+      "source_object_ids": [
+        "note-page-0001-1",
+        "span-page-0001-marker"
+      ],
+      "provenance": {
+        "source_page_ids": [
+          "page-0001"
+        ],
+        "witness_ids": [
+          "wit-page-0001"
+        ],
+        "runner_ids": [
+          "olmocr"
+        ]
+      },
+      "typography_summary": [],
+      "note_summary": [],
+      "retrieval_metadata": {
+        "reading_order_index": null,
+        "page_number": null,
+        "region_kind": null,
+        "contains_reviewed_content": false,
+        "contains_corrected_content": false,
+        "typography_signals": []
+      }
+    },
+    {
+      "chunk_id": "chunk-region-page-0002",
+      "chunk_type": "region_chunk",
+      "document_id": "bosworth-toller-demo",
+      "page_ids": [
+        "page-0002"
+      ],
+      "text": "\u00fe\u00e6r",
+      "trust_state": "reviewed",
+      "source_object_ids": [
+        "region-page-0002-body",
+        "span-page-0002-1"
+      ],
+      "provenance": {
+        "source_page_ids": [
+          "page-0002"
+        ],
+        "witness_ids": [
+          "wit-page-0002"
+        ],
+        "runner_ids": [
+          "olmocr"
+        ]
+      },
+      "typography_summary": [
+        {
+          "font_families": [],
+          "font_size_points": null,
+          "font_size_confidence": null,
+          "weight": "unknown",
+          "slant": "italic",
+          "baseline_shift": "unknown",
+          "small_caps": null,
+          "letter_spaced": null
+        }
+      ],
+      "note_summary": [],
+      "retrieval_metadata": {
+        "reading_order_index": null,
+        "page_number": null,
+        "region_kind": null,
+        "contains_reviewed_content": false,
+        "contains_corrected_content": false,
+        "typography_signals": []
+      }
+    }
+  ],
+  "stitched_chunks": [
+    {
+      "stitched_chunk_id": "stitched-region-page-0001-0002",
+      "document_id": "bosworth-toller-demo",
+      "component_chunk_ids": [
+        "chunk-region-page-0001",
+        "chunk-region-page-0002"
+      ],
+      "page_ids": [
+        "page-0001",
+        "page-0002"
+      ],
+      "text": "andgit \u00fe\u00e6r",
+      "trust_state": "reviewed",
+      "source_object_ids": [
+        "region-page-0001-body",
+        "span-page-0001-1",
+        "region-page-0002-body",
+        "span-page-0002-1"
+      ],
+      "provenance": {
+        "source_page_ids": [
+          "page-0001",
+          "page-0002"
+        ],
+        "witness_ids": [
+          "wit-page-0001",
+          "wit-page-0002"
+        ],
+        "runner_ids": [
+          "olmocr"
+        ]
+      }
+    }
+  ]
+}
