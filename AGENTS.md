@@ -8,6 +8,7 @@
 - use `uv add --group=test <package>` to add a test package
 - use `uv add --group=docs <package>` to add a docs package
 - use `uv add --group=dev <package>` to add a dev-only package
+- always use `/usr/bin/cd` to change directories; bare `cd` is a bash function and breaks agent shells
 
 ## Tooling Preflight (Required)
 
