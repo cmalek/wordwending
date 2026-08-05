@@ -89,6 +89,8 @@
           "items": {
             "type": "string"
           },
+          "maxItems": 1,
+          "minItems": 1,
           "title": "Page Ids",
           "type": "array"
         },
@@ -102,6 +104,7 @@
           "items": {
             "type": "string"
           },
+          "minItems": 1,
           "title": "Source Object Ids",
           "type": "array"
         },
@@ -249,6 +252,7 @@
           "items": {
             "type": "string"
           },
+          "minItems": 1,
           "title": "Component Chunk Ids",
           "type": "array"
         },
@@ -260,6 +264,7 @@
           "items": {
             "type": "string"
           },
+          "minItems": 2,
           "title": "Page Ids",
           "type": "array"
         },
