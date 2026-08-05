@@ -2096,42 +2096,103 @@ def test_rag_document_rejects_stitched_document_id_mismatch() -> None:
         )
 
 
-def test_rag_document_rejects_page_local_chunk_without_exactly_one_page() -> None:
-    """Each RagChunk must represent exactly one page."""
-    with pytest.raises(ValidationError, match="exactly one page"):
-        _minimal_rag_document(chunks=[_rag_chunk(page_ids=[])])
-    with pytest.raises(ValidationError, match="exactly one page"):
-        _minimal_rag_document(
-            chunks=[
-                _rag_chunk(
-                    page_ids=["page-0001", "page-0002"],
-                    provenance=_retrieval_provenance(
-                        source_page_ids=["page-0001", "page-0002"]
-                    ),
-                )
-            ]
+def test_rag_chunk_rejects_zero_pages() -> None:
+    """Page-local chunks must declare exactly one page."""
+    with pytest.raises(ValidationError):
+        _rag_chunk(page_ids=[])
+
+
+def test_rag_chunk_rejects_multi_page() -> None:
+    """Page-local chunks must not span multiple pages."""
+    with pytest.raises(ValidationError):
+        _rag_chunk(
+            page_ids=["page-0001", "page-0002"],
+            provenance=_retrieval_provenance(
+                source_page_ids=["page-0001", "page-0002"]
+            ),
         )
 
 
-def test_rag_document_rejects_empty_source_object_ids() -> None:
+def test_rag_chunk_json_line_rejects_multi_page_provenance() -> None:
+    """JSONL page-local lines reject multi-page provenance at parse time."""
+    payload = _rag_chunk().model_dump(mode="json")
+    payload["page_ids"] = ["page-0001", "page-0002"]
+    payload["provenance"]["source_page_ids"] = [
+        "page-0001",
+        "page-0002",
+    ]
+    with pytest.raises(ValidationError):
+        RagChunk.model_validate_json(json.dumps(payload))
+
+
+def test_rag_chunk_rejects_empty_source_object_ids() -> None:
     """Page-local chunks must retain at least one accepted source object."""
     with pytest.raises(ValidationError, match="source_object_ids"):
-        _minimal_rag_document(chunks=[_rag_chunk(source_object_ids=[])])
+        _rag_chunk(source_object_ids=[])
 
 
-def test_rag_document_rejects_chunk_page_provenance_mismatch() -> None:
+def test_rag_chunk_rejects_page_provenance_mismatch() -> None:
     """Page-local page_ids must equal provenance.source_page_ids."""
     with pytest.raises(ValidationError, match="provenance"):
-        _minimal_rag_document(
-            chunks=[
-                _rag_chunk(
-                    page_ids=["page-0001"],
-                    provenance=_retrieval_provenance(
-                        source_page_ids=["page-0002"]
-                    ),
-                )
-            ]
+        _rag_chunk(
+            page_ids=["page-0001"],
+            provenance=_retrieval_provenance(source_page_ids=["page-0002"]),
         )
+
+
+def test_stitched_chunk_rejects_single_page() -> None:
+    """Stitched chunks must span at least two distinct pages."""
+    with pytest.raises(ValidationError):
+        _stitched_chunk(
+            page_ids=["page-0001"],
+            provenance=_retrieval_provenance(source_page_ids=["page-0001"]),
+        )
+
+
+def test_stitched_chunk_json_line_rejects_single_page_provenance() -> None:
+    """JSONL stitched lines reject single-page provenance at parse time."""
+    payload = _stitched_chunk().model_dump(mode="json")
+    payload["page_ids"] = ["page-0001"]
+    payload["provenance"]["source_page_ids"] = ["page-0001"]
+    with pytest.raises(ValidationError):
+        StitchedChunk.model_validate_json(json.dumps(payload))
+
+
+def test_stitched_chunk_rejects_duplicate_page_ids() -> None:
+    """Stitched page_ids must stay distinct in first-seen order."""
+    with pytest.raises(ValidationError, match="distinct"):
+        _stitched_chunk(
+            page_ids=["page-0001", "page-0001"],
+            provenance=_retrieval_provenance(
+                source_page_ids=["page-0001", "page-0001"]
+            ),
+        )
+
+
+def test_stitched_chunk_rejects_provenance_page_count_mismatch() -> None:
+    """Stitched provenance must list every declared page."""
+    with pytest.raises(ValidationError, match="provenance"):
+        _stitched_chunk(
+            page_ids=["page-0001", "page-0002"],
+            provenance=_retrieval_provenance(source_page_ids=["page-0001"]),
+        )
+
+
+def test_stitched_chunk_rejects_provenance_page_order_mismatch() -> None:
+    """Stitched provenance page order must match page_ids."""
+    with pytest.raises(ValidationError, match="provenance"):
+        _stitched_chunk(
+            page_ids=["page-0001", "page-0002"],
+            provenance=_retrieval_provenance(
+                source_page_ids=["page-0002", "page-0001"]
+            ),
+        )
+
+
+def test_stitched_chunk_rejects_empty_component_chunk_ids() -> None:
+    """Stitched chunks must reference at least one page-local component."""
+    with pytest.raises(ValidationError, match="component_chunk_ids"):
+        _stitched_chunk(component_chunk_ids=[])
 
 
 def test_rag_document_rejects_missing_stitched_component_chunk_ids() -> None:
@@ -2147,8 +2208,8 @@ def test_rag_document_rejects_missing_stitched_component_chunk_ids() -> None:
         )
 
 
-def test_stitched_chunk_rejects_fewer_than_two_distinct_pages() -> None:
-    """Stitched chunks must span at least two distinct ordered pages."""
+def test_rag_document_rejects_stitched_component_span_fewer_than_two_pages() -> None:
+    """Stitched components must contribute at least two distinct pages."""
     chunks = [
         _rag_chunk(chunk_id="chunk-1", page_ids=["page-0001"]),
         _rag_chunk(
@@ -2162,9 +2223,9 @@ def test_stitched_chunk_rejects_fewer_than_two_distinct_pages() -> None:
             chunks=chunks,
             stitched_chunks=[
                 _stitched_chunk(
-                    page_ids=["page-0001"],
+                    page_ids=["page-0001", "page-0002"],
                     provenance=_retrieval_provenance(
-                        source_page_ids=["page-0001"]
+                        source_page_ids=["page-0001", "page-0002"]
                     ),
                 )
             ],

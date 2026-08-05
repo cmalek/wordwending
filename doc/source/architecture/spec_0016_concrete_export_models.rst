@@ -35,9 +35,14 @@ RAG Contract
 
 ``RagDocument`` records schema version and chunking recipe. Page-local
 ``RagChunk`` and cross-page ``StitchedChunk`` carry ordered page ids, source
-object ids, text, trust, and ``RetrievalProvenance`` with multiple source pages,
-witnesses, and runners. Stitched chunks must never pretend to derive from one
-page.
+object ids, text, trust, and ``RetrievalProvenance`` with source pages,
+witnesses, and runners. Page-local chunks declare exactly one page id and
+``RetrievalProvenance.source_page_ids`` must be that same singleton in the same
+order. Stitched chunks declare two or more distinct page ids in first-seen order
+and ``RetrievalProvenance.source_page_ids`` must list those same ids in that
+same order. ``RagDocument`` additionally requires each stitched chunk's
+``page_ids`` to equal the ordered distinct union of its component chunks'
+provenance page ids.
 
 V1 retrieval chunks are provisional region, note, and table views. Dictionary
 entries, grammar sections, parallel Old English/translation records, and

@@ -1574,13 +1574,13 @@ class RagChunk(SchemaModel):
     #: Owning document identifier.
     document_id: str
     #: Page identifiers contributing to this chunk.
-    page_ids: list[str]
+    page_ids: list[str] = Field(min_length=1, max_length=1)
     #: Retrieval text emitted for this chunk.
     text: str
     #: Aggregate trust state for this chunk.
     trust_state: TrustState
     #: Accepted graph object ids feeding this chunk.
-    source_object_ids: list[str]
+    source_object_ids: list[str] = Field(min_length=1)
     #: Provenance pointers retained for audit and joins.
     provenance: RetrievalProvenance
     #: Typography hints retained for retrieval consumers.
@@ -1589,6 +1589,26 @@ class RagChunk(SchemaModel):
     note_summary: list[str] = Field(default_factory=list)
     #: Retrieval metadata for filtering and ranking.
     retrieval_metadata: RetrievalMetadata = Field(default_factory=RetrievalMetadata)
+
+    @model_validator(mode="after")
+    def validate_page_provenance(self) -> RagChunk:
+        """
+        Keep page-local page ids aligned with provenance.
+
+        Returns:
+            The validated page-local retrieval chunk.
+
+        Raises:
+            ValueError: If page ids and provenance source pages diverge.
+
+        """
+        if self.page_ids != self.provenance.source_page_ids:
+            msg = (
+                "page-local RagChunk page_ids must match "
+                "provenance.source_page_ids"
+            )
+            raise ValueError(msg)
+        return self
 
 
 class StitchedChunk(SchemaModel):
@@ -1599,9 +1619,9 @@ class StitchedChunk(SchemaModel):
     #: Owning document identifier.
     document_id: str
     #: Ordered component page-local chunk identifiers.
-    component_chunk_ids: list[str]
+    component_chunk_ids: list[str] = Field(min_length=1)
     #: Ordered page identifiers represented in the stitched text.
-    page_ids: list[str]
+    page_ids: list[str] = Field(min_length=2)
     #: Stitched retrieval text.
     text: str
     #: Aggregate trust state for the stitched text.
@@ -1610,6 +1630,28 @@ class StitchedChunk(SchemaModel):
     source_object_ids: list[str]
     #: Provenance pointers retained for audit and joins.
     provenance: RetrievalProvenance
+
+    @model_validator(mode="after")
+    def validate_page_provenance(self) -> StitchedChunk:
+        """
+        Keep stitched page ids distinct and aligned with provenance.
+
+        Returns:
+            The validated stitched retrieval chunk.
+
+        Raises:
+            ValueError: If page ids repeat or diverge from provenance.
+
+        """
+        if len(set(self.page_ids)) != len(self.page_ids):
+            msg = "StitchedChunk page_ids must be distinct"
+            raise ValueError(msg)
+        if self.page_ids != self.provenance.source_page_ids:
+            msg = (
+                "StitchedChunk page_ids must match provenance.source_page_ids"
+            )
+            raise ValueError(msg)
+        return self
 
 
 class RagDocument(SchemaModel):
@@ -1627,7 +1669,7 @@ class RagDocument(SchemaModel):
     stitched_chunks: list[StitchedChunk] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_references(self) -> RagDocument:  # noqa: PLR0912
+    def validate_references(self) -> RagDocument:
         """
         Keep page-local and stitched retrieval references coherent.
 
@@ -1653,18 +1695,6 @@ class RagDocument(SchemaModel):
         for chunk in self.chunks:
             if chunk.document_id != self.document_id:
                 msg = "chunk document_id must match RagDocument.document_id"
-                raise ValueError(msg)
-            if len(chunk.page_ids) != 1:
-                msg = "page-local RagChunk page_ids must be exactly one page"
-                raise ValueError(msg)
-            if not chunk.source_object_ids:
-                msg = "page-local RagChunk source_object_ids must be non-empty"
-                raise ValueError(msg)
-            if chunk.page_ids != chunk.provenance.source_page_ids:
-                msg = (
-                    "page-local RagChunk page_ids must match "
-                    "provenance.source_page_ids"
-                )
                 raise ValueError(msg)
         min_stitched_pages = 2
         for stitched in self.stitched_chunks:
