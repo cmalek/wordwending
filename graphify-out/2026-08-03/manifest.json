@@ -200,8 +200,8 @@
     "semantic_hash": "126c8c90aa3a38af615b0227e0bf1bc1"
   },
   "tests/test_ocr_models.py": {
-    "mtime": 1785817980.1426287,
-    "ast_hash": "c2f494d11e07bca4e80893853f94cfe9",
+    "mtime": 1785817604.172799,
+    "ast_hash": "1432f7b1327dabf670bc379d627ed247",
     "semantic_hash": ""
   },
   "tests/test_page_interchange.py": {
@@ -893,25 +893,5 @@
     "mtime": 1785778870.8068056,
     "ast_hash": "98e9fa7b1d73bf11c5afaf80a2596a19",
     "semantic_hash": "98e9fa7b1d73bf11c5afaf80a2596a19"
-  },
-  "tests/fixtures/export_models/document-bundle-v1.json": {
-    "mtime": 1785817973.201613,
-    "ast_hash": "d97f519431d784ffbf9fe1757379321e",
-    "semantic_hash": ""
-  },
-  "tests/fixtures/export_models/document-bundle-v1.schema.json": {
-    "mtime": 1785817973.213724,
-    "ast_hash": "485ce2790fd789d4059fa6315d6b9c19",
-    "semantic_hash": ""
-  },
-  "tests/fixtures/export_models/rag-document-v1.json": {
-    "mtime": 1785817973.2021718,
-    "ast_hash": "0df317f4b7574aefb030041574c02d1f",
-    "semantic_hash": ""
-  },
-  "tests/fixtures/export_models/rag-document-v1.schema.json": {
-    "mtime": 1785817973.2162507,
-    "ast_hash": "6c37c3d1d31291bbbb73f89a9a204cde",
-    "semantic_hash": ""
   }
 }

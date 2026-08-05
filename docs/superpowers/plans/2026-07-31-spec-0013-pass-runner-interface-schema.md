@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13, Pydantic 2, pytest, stdlib `json`/`datetime`.
 
-**Sequence:** 1 of 4 in this series. Finish before Spec 0008.
+**Sequence:** 1 of 5 in this series. Finish before Spec 0008.
 
 **Governing ADR:** ADR 0006 (pass-runner interfaces). Extraction timing bound by ADR 0007.
 
@@ -25,14 +25,14 @@
 
 ## Subagent Model Policy
 
-- Implementation tasks may use only **Cursor Grok** (`cursor-grok-4.5-medium`) or **Composer 2.5 Fast** (`composer-2.5-fast`). No other implementer models.
-- Prefer Composer 2.5 Fast for mechanical TDD; use Cursor Grok when stuck or judgment is required.
+- Implementation tasks may use only **Cursor Grok 4.5** (`cursor-grok-4.5`) or **Composer 2.5 Fast** (`composer-2.5-fast`). No other implementer models.
+- Prefer Composer 2.5 Fast for mechanical TDD; use Cursor Grok 4.5 when stuck or judgment is required.
 - Review steps (spec compliance, code quality, final whole-plan) may use any appropriate model.
 - Give each implementer only the generated task brief, prior-task interface decisions, and listed files.
 
 For every task, use this serial Superpowers loop:
 
-1. Implementer (Composer 2.5 Fast or Cursor Grok) implements, runs listed checks, self-reviews, and commits.
+1. Implementer (Composer 2.5 Fast or Cursor Grok 4.5) implements, runs listed checks, self-reviews, and commits.
 2. Spec-compliance reviewer (any appropriate model) reviews without editing.
 3. Same implementer fixes; re-review until approved.
 4. Fresh code-quality reviewer (any appropriate model) reviews without editing.
