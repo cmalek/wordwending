@@ -3,504 +3,504 @@
   "violation_count": 63,
   "violations": [
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/cli/cli.py:30:DOC202:cli",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/cli/cli.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/cli/cli.py:30:DOC202:cli",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/cli/cli.py",
       "line": 30,
       "code": "DOC202",
       "symbol": "cli",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/cli/cli.py:80:DOC202:show_settings",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/cli/cli.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/cli/cli.py:80:DOC202:show_settings",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/cli/cli.py",
       "line": 80,
       "code": "DOC202",
       "symbol": "show_settings",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/cli/utils.py:7:DOC302:console",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/cli/utils.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/cli/utils.py:7:DOC302:console",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/cli/utils.py",
       "line": 7,
       "code": "DOC302",
       "symbol": "console",
       "message": "Module-level global variable missing '#:' documentation."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/cli/utils.py:8:DOC302:stderr_console",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/cli/utils.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/cli/utils.py:8:DOC302:stderr_console",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/cli/utils.py",
       "line": 8,
       "code": "DOC302",
       "symbol": "stderr_console",
       "message": "Module-level global variable missing '#:' documentation."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/main.py:4:DOC200:main",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/main.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/main.py:4:DOC200:main",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/main.py",
       "line": 4,
       "code": "DOC200",
       "symbol": "main",
       "message": "Missing docstring on function/method."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:94:DOC202:PageXmlInterchangeService._write_page_xml",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:94:DOC202:PageXmlInterchangeService._write_page_xml",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 94,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._write_page_xml",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:143:DOC202:PageXmlInterchangeService._merge_page",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:143:DOC202:PageXmlInterchangeService._merge_page",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 143,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._merge_page",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:143:DOC205:PageXmlInterchangeService._merge_page",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:143:DOC205:PageXmlInterchangeService._merge_page",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 143,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._merge_page",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:165:DOC202:PageXmlInterchangeService._page_element",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:165:DOC202:PageXmlInterchangeService._page_element",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 165,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._page_element",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:165:DOC205:PageXmlInterchangeService._page_element",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:165:DOC205:PageXmlInterchangeService._page_element",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 165,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._page_element",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:173:DOC202:PageXmlInterchangeService._validate_page_identity",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:173:DOC202:PageXmlInterchangeService._validate_page_identity",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 173,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._validate_page_identity",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:199:DOC202:PageXmlInterchangeService._collect_line_and_word_elements",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:199:DOC202:PageXmlInterchangeService._collect_line_and_word_elements",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 199,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._collect_line_and_word_elements",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:199:DOC205:PageXmlInterchangeService._collect_line_and_word_elements",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:199:DOC205:PageXmlInterchangeService._collect_line_and_word_elements",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 199,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._collect_line_and_word_elements",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:227:DOC202:PageXmlInterchangeService._merge_regions",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:227:DOC202:PageXmlInterchangeService._merge_regions",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 227,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._merge_regions",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:227:DOC205:PageXmlInterchangeService._merge_regions",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:227:DOC205:PageXmlInterchangeService._merge_regions",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 227,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._merge_regions",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:253:DOC202:PageXmlInterchangeService._merge_lines",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:253:DOC202:PageXmlInterchangeService._merge_lines",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 253,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._merge_lines",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:253:DOC205:PageXmlInterchangeService._merge_lines",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:253:DOC205:PageXmlInterchangeService._merge_lines",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 253,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._merge_lines",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:273:DOC202:PageXmlInterchangeService._merge_spans",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:273:DOC202:PageXmlInterchangeService._merge_spans",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 273,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._merge_spans",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:273:DOC205:PageXmlInterchangeService._merge_spans",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:273:DOC205:PageXmlInterchangeService._merge_spans",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 273,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._merge_spans",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:293:DOC202:PageXmlInterchangeService._region_element",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:293:DOC202:PageXmlInterchangeService._region_element",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 293,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._region_element",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:293:DOC205:PageXmlInterchangeService._region_element",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:293:DOC205:PageXmlInterchangeService._region_element",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 293,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._region_element",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:306:DOC202:PageXmlInterchangeService._line_element",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:306:DOC202:PageXmlInterchangeService._line_element",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 306,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._line_element",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:306:DOC205:PageXmlInterchangeService._line_element",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:306:DOC205:PageXmlInterchangeService._line_element",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 306,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._line_element",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:317:DOC202:PageXmlInterchangeService._word_element",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:317:DOC202:PageXmlInterchangeService._word_element",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 317,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._word_element",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:317:DOC205:PageXmlInterchangeService._word_element",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:317:DOC205:PageXmlInterchangeService._word_element",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 317,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._word_element",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:330:DOC202:PageXmlInterchangeService._coords",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:330:DOC202:PageXmlInterchangeService._coords",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 330,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._coords",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:330:DOC205:PageXmlInterchangeService._coords",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:330:DOC205:PageXmlInterchangeService._coords",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 330,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._coords",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:344:DOC202:PageXmlInterchangeService._coords_from_polygon",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:344:DOC202:PageXmlInterchangeService._coords_from_polygon",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 344,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._coords_from_polygon",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:344:DOC205:PageXmlInterchangeService._coords_from_polygon",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:344:DOC205:PageXmlInterchangeService._coords_from_polygon",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 344,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._coords_from_polygon",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:352:DOC202:PageXmlInterchangeService._baseline_element",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:352:DOC202:PageXmlInterchangeService._baseline_element",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 352,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._baseline_element",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:352:DOC205:PageXmlInterchangeService._baseline_element",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:352:DOC205:PageXmlInterchangeService._baseline_element",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 352,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._baseline_element",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:360:DOC202:PageXmlInterchangeService._text_style",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:360:DOC202:PageXmlInterchangeService._text_style",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 360,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._text_style",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:360:DOC205:PageXmlInterchangeService._text_style",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:360:DOC205:PageXmlInterchangeService._text_style",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 360,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._text_style",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:371:DOC202:PageXmlInterchangeService._indexed_children",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:371:DOC202:PageXmlInterchangeService._indexed_children",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 371,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._indexed_children",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:371:DOC205:PageXmlInterchangeService._indexed_children",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:371:DOC205:PageXmlInterchangeService._indexed_children",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 371,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._indexed_children",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:389:DOC202:PageXmlInterchangeService._reading_order_indices",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:389:DOC202:PageXmlInterchangeService._reading_order_indices",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 389,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._reading_order_indices",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:389:DOC205:PageXmlInterchangeService._reading_order_indices",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:389:DOC205:PageXmlInterchangeService._reading_order_indices",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 389,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._reading_order_indices",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:402:DOC202:PageXmlInterchangeService._merge_region",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:402:DOC202:PageXmlInterchangeService._merge_region",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 402,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._merge_region",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:402:DOC205:PageXmlInterchangeService._merge_region",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:402:DOC205:PageXmlInterchangeService._merge_region",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 402,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._merge_region",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:421:DOC202:PageXmlInterchangeService._merge_line",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:421:DOC202:PageXmlInterchangeService._merge_line",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 421,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._merge_line",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:421:DOC205:PageXmlInterchangeService._merge_line",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:421:DOC205:PageXmlInterchangeService._merge_line",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 421,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._merge_line",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:441:DOC202:PageXmlInterchangeService._merge_span",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:441:DOC202:PageXmlInterchangeService._merge_span",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 441,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._merge_span",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:441:DOC205:PageXmlInterchangeService._merge_span",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:441:DOC205:PageXmlInterchangeService._merge_span",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 441,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._merge_span",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:466:DOC202:PageXmlInterchangeService._typography_from_text_style",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:466:DOC202:PageXmlInterchangeService._typography_from_text_style",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 466,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._typography_from_text_style",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:466:DOC205:PageXmlInterchangeService._typography_from_text_style",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:466:DOC205:PageXmlInterchangeService._typography_from_text_style",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 466,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._typography_from_text_style",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:487:DOC202:PageXmlInterchangeService._parse_points",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:487:DOC202:PageXmlInterchangeService._parse_points",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 487,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._parse_points",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:487:DOC205:PageXmlInterchangeService._parse_points",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:487:DOC205:PageXmlInterchangeService._parse_points",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 487,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._parse_points",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:497:DOC202:PageXmlInterchangeService._bbox_from_coords",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:497:DOC202:PageXmlInterchangeService._bbox_from_coords",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 497,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._bbox_from_coords",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:497:DOC205:PageXmlInterchangeService._bbox_from_coords",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:497:DOC205:PageXmlInterchangeService._bbox_from_coords",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 497,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._bbox_from_coords",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:518:DOC202:PageXmlInterchangeService._polygon_from_coords",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:518:DOC202:PageXmlInterchangeService._polygon_from_coords",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 518,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._polygon_from_coords",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:518:DOC205:PageXmlInterchangeService._polygon_from_coords",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:518:DOC205:PageXmlInterchangeService._polygon_from_coords",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 518,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._polygon_from_coords",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:534:DOC202:PageXmlInterchangeService._points_from_coords",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:534:DOC202:PageXmlInterchangeService._points_from_coords",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 534,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._points_from_coords",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:534:DOC205:PageXmlInterchangeService._points_from_coords",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:534:DOC205:PageXmlInterchangeService._points_from_coords",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 534,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._points_from_coords",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:543:DOC202:PageXmlInterchangeService._point_value",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:543:DOC202:PageXmlInterchangeService._point_value",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 543,
       "code": "DOC202",
       "symbol": "PageXmlInterchangeService._point_value",
       "message": "Missing required Napoleon section 'Args:'."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py:543:DOC205:PageXmlInterchangeService._point_value",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/services/page_interchange.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py:543:DOC205:PageXmlInterchangeService._point_value",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/services/page_interchange.py",
       "line": 543,
       "code": "DOC205",
       "symbol": "PageXmlInterchangeService._point_value",
       "message": "Missing required Napoleon section 'Returns:' or 'Yields:' for function with yielded/returned value."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/settings.py:33:DOC300:Settings.model_config",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/settings.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/settings.py:33:DOC300:Settings.model_config",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/settings.py",
       "line": 33,
       "code": "DOC300",
       "symbol": "Settings.model_config",
       "message": "Class attribute missing '#:' documentation."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/settings.py:39:DOC300:Settings.app_name",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/settings.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/settings.py:39:DOC300:Settings.app_name",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/settings.py",
       "line": 39,
       "code": "DOC300",
       "symbol": "Settings.app_name",
       "message": "Class attribute missing '#:' documentation."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/settings.py:44:DOC300:Settings.app_version",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/settings.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/settings.py:44:DOC300:Settings.app_version",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/settings.py",
       "line": 44,
       "code": "DOC300",
       "symbol": "Settings.app_version",
       "message": "Class attribute missing '#:' documentation."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/settings.py:51:DOC300:Settings.default_output_format",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/settings.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/settings.py:51:DOC300:Settings.default_output_format",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/settings.py",
       "line": 51,
       "code": "DOC300",
       "symbol": "Settings.default_output_format",
       "message": "Class attribute missing '#:' documentation."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/settings.py:54:DOC300:Settings.enable_colors",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/settings.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/settings.py:54:DOC300:Settings.enable_colors",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/settings.py",
       "line": 54,
       "code": "DOC300",
       "symbol": "Settings.enable_colors",
       "message": "Class attribute missing '#:' documentation."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/settings.py:55:DOC300:Settings.quiet_mode",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/settings.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/settings.py:55:DOC300:Settings.quiet_mode",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/settings.py",
       "line": 55,
       "code": "DOC300",
       "symbol": "Settings.quiet_mode",
       "message": "Class attribute missing '#:' documentation."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/settings.py:58:DOC300:Settings.log_level",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/settings.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/settings.py:58:DOC300:Settings.log_level",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/settings.py",
       "line": 58,
       "code": "DOC300",
       "symbol": "Settings.log_level",
       "message": "Class attribute missing '#:' documentation."
     },
     {
-      "key": "/Users/cmalek/src/workspace/bochord/wordwending/settings.py:61:DOC300:Settings.log_file",
-      "path": "/Users/cmalek/src/workspace/bochord/wordwending/settings.py",
+      "key": "/Users/cmalek/src/workspace/wordwending/wordwending/settings.py:61:DOC300:Settings.log_file",
+      "path": "/Users/cmalek/src/workspace/wordwending/wordwending/settings.py",
       "line": 61,
       "code": "DOC300",
       "symbol": "Settings.log_file",
