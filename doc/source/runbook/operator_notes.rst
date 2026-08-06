@@ -8,6 +8,9 @@ Purpose
 This page is the short practical runbook for humans operating ``bochord`` on
 difficult documents.
 
+For the end-to-end source-to-Markdown operator path, see
+:doc:`/runbook/from_source_to_markdown`.
+
 Non-Negotiable Rules
 ====================
 

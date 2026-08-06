@@ -8,6 +8,9 @@ Purpose
 This document explains the intended ``bochord`` process end to end in operator
 and engineering terms.
 
+For a practical start-to-Markdown walkthrough (including current CLI gaps), see
+:doc:`/runbook/from_source_to_markdown`.
+
 The core rule is simple:
 
 OCR produces evidence. ``bochord`` preserves that evidence, compares competing

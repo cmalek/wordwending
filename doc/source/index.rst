@@ -9,6 +9,7 @@ bochord
 
    overview/installation
    overview/quickstart
+   runbook/from_source_to_markdown
    overview/domain_language
    runbook/huggingface_setup
 
