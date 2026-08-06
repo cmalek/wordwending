@@ -51,7 +51,6 @@ Published docs: <https://bochord.readthedocs.io>
 End-to-end operator walkthrough (prepare → run → provisional export, plus what
 is still missing):
 [From source to Markdown](https://bochord.readthedocs.io/en/latest/runbook/from_source_to_markdown.html)
-(once published on Read the Docs).
 
 ## Requirements
 
@@ -71,7 +70,7 @@ Install from source. This project is early; the documented path is clone +
 
 ```bash
 git clone https://github.com/cmalek/bochord.git
-/usr/bin/cd bochord
+cd bochord
 # Install uv if needed: https://docs.astral.sh/uv/getting-started/installation/
 uv sync
 source .venv/bin/activate
