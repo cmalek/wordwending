@@ -5,28 +5,41 @@ Configuration
 variables. Operators running ``bochord run`` must supply a Hugging Face API
 token and named endpoint URLs.
 
-Configuration methods
----------------------
+Settings field precedence
+-------------------------
 
-Highest priority wins:
+``Settings.settings_customise_sources`` returns sources in **highest-first**
+order. When a TOML file is selected, field values resolve as:
 
-1. Command-line options (``--config-file``, ``--output``, ``--verbose``, ``--quiet``)
+1. Selected TOML file (wins over environment)
 2. Environment variables (``BOCHORD_*``)
-3. TOML configuration files (most specific file among those found)
-4. Built-in defaults
+3. Built-in field defaults
 
-File locations
---------------
+If no TOML file is found, environment variables win over defaults.
 
-Paths operators can rely on today:
+Important: only **one** TOML file is loaded (not a merge of several). Among
+candidate paths that exist, the highest wins and the rest are ignored:
 
-1. User: ``~/.bochord.toml``
+1. Explicit: ``--config-file`` (sets ``BOCHORD_CONFIG_FILE`` before load) or
+   ``BOCHORD_CONFIG_FILE`` already in the environment
 2. Local: ``./.bochord.toml`` (current working directory)
-3. Explicit: ``--config-file`` or ``BOCHORD_CONFIG_FILE``
+3. User: ``~/.bochord.toml``
 
-When more than one of these exists, the more specific / explicit source wins.
 System-wide global config (for example under ``/etc``) is **not** currently a
 supported operator path—do not depend on it.
+
+Runtime CLI flags (not Settings sources)
+----------------------------------------
+
+These affect the current invocation; they do **not** override TOML/env field
+values inside ``Settings``:
+
+- ``--output`` — format for commands that print results (for example ``settings``)
+- ``--verbose`` / ``--quiet`` — console verbosity for that run
+
+``--config-file`` is different: it selects which TOML file ``Settings`` loads
+(via ``BOCHORD_CONFIG_FILE``), and that TOML still beats ``BOCHORD_*`` field
+env vars.
 
 Inspect what the process actually loaded:
 
