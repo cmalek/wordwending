@@ -63,6 +63,7 @@ Target outcome:
 ## Out of Scope
 
 - `docs/superpowers/plans/*` (historical archives; leave as-is)
+- Rewriting other `docs/superpowers/specs/*` for the old name (this rename spec itself keeps historical `bochord` references; see `rg` allowlist)
 - Publishing to PyPI (separate later task)
 - Compatibility / migration layer for old name
 - Rewriting or deleting `graphify-out/` by hand (regenerate with `graphify update`)
@@ -81,14 +82,25 @@ Target outcome:
    - `pyproject.toml`, `.bumpversion.cfg`, `Makefile`, `doc/source/conf.py`
    - README branding / install / CLI examples
 5. Reinstall editable package (`uv sync` or equivalent) so CLI and imports resolve.
-6. Verification gate:
-   - `rg` for leftover `bochord` / `BOCHORD` outside excluded paths
+6. Verification gate (after reinstall, before `graphify update`):
+   - `rg` for leftover `bochord` / `BOCHORD_` with the allowlist below
    - `wordwending --help`
    - rename-sensitive tests (CLI, settings/config, main) via project pytest
-7. `graphify update .`
+7. `graphify update .` (graph artifacts may temporarily still mention old paths until update; not part of step-6 gate)
 8. Commit in-repo rename.
 9. `gh repo rename wordwending`, push, fix any remaining GitHub URLs.
 10. Operator checklist: rename RTD project; rename local workspace folder; reopen IDE root if needed.
+
+## `rg` Allowlist (verification exclusions)
+
+Matches of `bochord` / `BOCHORD_` are **allowed** only under:
+
+- `docs/superpowers/plans/**` — frozen historical plans
+- `docs/superpowers/specs/**` — design specs that document the rename (including this file)
+- `graphify-out/**` — generated; refreshed by `graphify update .`
+- `.venv/**`, `*.egg-info/**`, `.mypy_cache/**`, `.pytest_cache/**`, `.ruff_cache/**` — local/generated
+
+Everything else in the repo must be clean. Search case-sensitive for `bochord` and `BOCHORD_`; title-case `Bochord` is not expected and is not a separate requirement.
 
 ## Risks
 
@@ -104,7 +116,7 @@ Target outcome:
 
 - `import wordwending` succeeds
 - `wordwending --help` succeeds
-- No `bochord` / `BOCHORD_` in in-scope tree (exclusions: frozen plans, generated caches)
+- No `bochord` / `BOCHORD_` outside the `rg` allowlist above
 - Rename-sensitive tests pass
 - GitHub repository is `cmalek/wordwending`
 - Open operator items: RTD rename, local folder rename
