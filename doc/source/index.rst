@@ -39,20 +39,42 @@ bochord
    :caption: Reference
    :hidden:
 
-   api/models
    changelog
 
 Current version is |release|.
 
-``bochord`` (from *bōchord*, "book treasure-hoard") is a Python command-line tool which provides a high-fidelity OCR framework for Old English/Anglo-Saxon texts.
+``bochord`` (from *bōchord*, “book treasure-hoard”) is an early, evolving Python
+CLI for high-fidelity OCR of Old English / Anglo-Saxon source material. It is
+built for scholars first: preserve philological signal in the page image, keep
+rebuildable witnesses, then derive structured and Markdown views. Agent-ready
+RAG exports are a payoff of that fidelity, not a substitute for it.
+
+Problem
+-------
+
+OCR that “works” still fails twice: it drops typography, notes, and layout that
+philologists need, and it leaves agents without citable evidence of what the
+page actually showed.
+
+How
+---
+
+Multi-pass, image-first OCR → witness-preserving bundles → structured JSON, RAG
+chunks, and evidence-preserving Markdown. Hosted runners do inference; the
+laptop prepares, validates, stores, evaluates, and exports.
+
+Why
+---
+
+Fidelity before cleverness. Raw pass artifacts stay intact so derived graphs and
+exports remain rebuildable. Humans correct via overlays and review tasks—not by
+silently editing OCR text into a new “truth.”
 
 Core Features
 -------------
 
-bochord provides the following key features:
-
 **Image-first OCR orchestration**
-    - Multi-pass workflows for difficult historical PDFs
+    - Multi-pass workflows for difficult historical PDFs and page images
     - Separate text, structure, typography, note-linkage, and evaluation concerns
 
 **Witness-preserving bundle outputs**
@@ -63,26 +85,27 @@ bochord provides the following key features:
     - Full-fidelity JSON for deterministic software
     - Evidence-preserving Markdown and RAG-oriented JSON for agents
 
-
 Getting Started
 ---------------
 
-To get started with bochord:
+1. **Installation**: :doc:`/overview/installation` (source + ``uv``; Python 3.13+)
+2. **Quick Start**: :doc:`/overview/quickstart`
+3. **From source to Markdown**: :doc:`/runbook/from_source_to_markdown` (end-to-end)
+4. **Usage**: :doc:`/overview/usage`
+5. **Configuration**: :doc:`/overview/configuration`
+6. **Domain language**: :doc:`/overview/domain_language`
+7. **Hugging Face setup**: :doc:`/runbook/huggingface_setup`
+8. **FAQ**: :doc:`/overview/faq`
 
-1. **Installation**: Follow the :doc:`/overview/installation` guide
-2. **Quick Start**: See the :doc:`/overview/quickstart` guide for basic usage
-3. **Usage Guide**: Learn about commands and options in :doc:`/overview/usage`
-4. **Configuration**: Learn about configuration options in :doc:`/overview/configuration`
-5. **Domain Language**: Use the shared vocabulary in :doc:`/overview/domain_language`
-6. **Hugging Face Setup**: Prepare model access in :doc:`/runbook/huggingface_setup`
-7. **FAQ**: Check the :doc:`/overview/faq` section for common questions and troubleshooting
+Published docs: https://bochord.readthedocs.io
 
-For developers, see the :doc:`/runbook/contributing` and :doc:`/runbook/coding_standards` guides.
+For developers, see :doc:`/runbook/contributing` and
+:doc:`/runbook/coding_standards`.
 
 Requirements
 ------------
 
-- Python 3.11 or later
+- Python **3.13** or later
 
 Common Use Cases
 ----------------
@@ -94,3 +117,7 @@ Common Use Cases
 **Produce reviewable bundle artifacts**
     - Preserve footnotes, italic, bold, and superscript signals
     - Hand off evidence-rich outputs to downstream Old English tooling
+
+**Export provisional Markdown and RAG views**
+    - When a ``DocumentBundle`` exists, ``bochord export`` writes derived
+      ``document.md`` and retrieval artifacts (Markdown is not the SoT)

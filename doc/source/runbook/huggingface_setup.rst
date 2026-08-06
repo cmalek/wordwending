@@ -14,6 +14,10 @@ a local GPU fallback.
 1. Activate the Project Environment
 ====================================
 
+Install ``bochord`` from source with ``uv sync`` (see
+:doc:`/overview/installation`). Do not ``pip install bochord`` from PyPI for
+this tool—the PyPI name may refer to an unrelated project.
+
 From the ``bochord`` repository root, always activate its environment before
 Python work:
 
@@ -21,9 +25,7 @@ Python work:
 
    source .venv/bin/activate
 
-Install the official client as a declared project dependency when endpoint code
-is implemented; do not rely on an undeclared global installation. Confirm the
-active CLI and login:
+Confirm the active CLI and Hugging Face login:
 
 .. code-block:: bash
 

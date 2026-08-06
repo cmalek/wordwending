@@ -1,303 +1,149 @@
 Using the Command Line Interface
 ================================
 
-The ``bochord`` command-line interface provides
-supporting functionality for working with __FILL_ME_IN__. This guide covers all
-available commands and options.
+The ``bochord`` CLI prepares source pages, runs hosted OCR, evaluates
+predictions, and exports derived views from an accepted ``DocumentBundle``.
+Deep workflow narrative lives in :doc:`/runbook/from_source_to_markdown`.
 
-Getting Help
+Getting help
 ------------
 
-Basic Help
-^^^^^^^^^^
-
 .. code-block:: bash
 
-    # Show main help
-    bochord --help
+   bochord --help
+   bochord prepare --help
+   bochord run --help
+   bochord export --help
 
-    # Show help for specific command groups
-    bochord group1 --help
-
-Command Structure
+Command structure
 -----------------
 
-The CLI follows a hierarchical command structure:
-
 .. code-block:: bash
 
-    bochord [global-options] <command-group> <subcommand> [options]
+   bochord [global-options] <command> [options] [args]
 
-Global Options
+Global options
 --------------
 
-Common options available for all commands:
+``-v`` / ``--verbose``
+    Extra diagnostic output.
+
+``-q`` / ``--quiet``
+    Suppress non-error output.
+
+``--config-file PATH``
+    Load a specific TOML settings file (highest file precedence).
+
+``--output {json,table,text}``
+    Format for commands that print structured results (for example
+    ``settings``). Default comes from settings (``table``).
+
+Commands
+--------
+
+version
+^^^^^^^
+
+Print package and dependency versions.
 
 .. code-block:: bash
 
-    # Enable verbose output
-    bochord --verbose command
+   bochord version
 
-    # Suppress all output except errors
-    bochord --quiet command
+settings
+^^^^^^^^
 
-    # Specify custom configuration file
-    bochord --config-file /path/to/config.yaml command
-
-    # Choose output format (json, table, text)
-    bochord --output json command
-    bochord --output table command
-    bochord --output text command
-
-Group1 Commands
----------------
-
-The ``group1`` command group provides tools for __FILL_ME_IN__.
-
-Feature 1 Usage
-^^^^^^^^^^^^^^^
-
-Analyze __FILL_ME_IN__ to understand the setup:
+Print effective settings (not a subcommand group).
 
 .. code-block:: bash
 
-    # Description of feature 1
-    bochord group1 feature1
+   bochord settings
+   bochord --output json settings
 
-    # Use arguments
-    bochord group1 feature1 --arg "foo" --arg "bar"
+prepare
+^^^^^^^
 
-    # Use JSON output
-    bochord --output json group1 feature1
-
-Example output:
-
-.. code-block:: json
-
-    {
-      "arg1": "foo",
-      "arg2": "bar",
-    }
-
-
-Group2 Commands
----------------
-
-The ``group2`` command group provides tools for __FILL_ME_IN__.
-
-Feature 2 Usage
-^^^^^^^^^^^^^^^
-
-List all available AWS services from botocore definitions:
+Acquire and prepare source pages (PDF, image, image folder, or ZIP of images)
+into a reproducible output bundle.
 
 .. code-block:: bash
 
-    # Basic usage
-    bochord group2 feature2
+   bochord prepare SOURCE \
+     --recipe recipe.json \
+     --output-dir ./out \
+     [--mode full-page|columns|fixed-tiles] \
+     [--page-class ordinary-prose|dense-dictionary|note-heavy|table-heavy|mixed-complex] \
+     [--override-reason "..."] \
+     [--overrides overrides.json]
 
-    # Use arguments
-    bochord group2 feature2 --arg "foo" --arg "bar"
+``--recipe`` and ``--output-dir`` are required. Operator overrides for
+``--mode`` / ``--page-class`` require ``--override-reason``.
 
-    # Use JSON output
-    bochord --output json group2 feature2
+run
+^^^
 
-Example output:
-
-.. code-block:: json
-
-    [
-      {
-        "arg1": "foo",
-        "arg2": "bar",
-      },
-      {
-        "arg1": "foo",
-        "arg2": "bar",
-      }
-    ]
-
-
-Show Settings
-^^^^^^^^^^^^^
-
-    # Use JSON output
-    bochord --output json settings show
-
-Example output:
-
-.. code-block:: json
-
-    {
-      "app_name": "bochord",
-      "app_version": "1.2.3",
-      "default_output_format": "table",
-      "enable_colors": true,
-      "quiet_mode": false,
-      "log_level": "INFO",
-      "log_file": null
-    }
-
-Output Formats
---------------
-
-JSON Format
-^^^^^^^^^^^
+Execute prepared artifacts against one hosted olmOCR runner. Requires
+``huggingface_api_key`` and a matching entry in
+``huggingface_model_endpoints`` (see :doc:`/overview/configuration`).
 
 .. code-block:: bash
 
-    # JSON output for scripting and automation
-    bochord --output json group1 feature1 > config.json
+   bochord run PREPARED_INPUTS.json \
+     --policy policy.json \
+     --runner runner.json \
+     --bundle-root ./bundle \
+     --output-dir ./run-out \
+     --run-id RUN_ID \
+     --document-id DOC_ID
 
-    # JSON output for settings
-    bochord --output json settings show > settings.json
+eval
+^^^^
 
-Table Format (Default)
-^^^^^^^^^^^^^^^^^^^^^^
-
-.. code-block:: bash
-
-    # Table output for better readability
-    bochord group1 feature1
-
-    # Table output for AWS services
-    bochord group2 feature2
-
-    # Table output for settings
-    bochord settings show
-
-Text Format
-^^^^^^^^^^^
+Score one predicted page against gold annotations; writes a
+``PageEvaluationSummary`` JSON.
 
 .. code-block:: bash
 
-    # Simple text output
-    bochord --output text group1 feature1
+   bochord eval \
+     --prediction page.json \
+     --gold gold.json \
+     --profile profile.json \
+     --output-json summary.json
 
-    # Text output for settings
-    bochord --output text settings show
+eval-cohorts
+^^^^^^^^^^^^
+
+Summarize a JSON array of page evaluation records into fixed cohort views.
+
+.. code-block:: bash
+
+   bochord eval-cohorts records.json --output-json cohorts.json
+
+export
+^^^^^^
+
+Write derived exports from a ``DocumentBundle`` JSON into
+``<bundle-root>/exports/``.
+
+.. code-block:: bash
+
+   bochord export document-bundle.json --bundle-root ./bundle-root
+
+Artifacts include ``exports/document.md``, ``exports/bundle.json``,
+``exports/rag.jsonl``, and ``exports/stitched_chunks.jsonl``.
+
+What is not a CLI yet
+---------------------
+
+- Assembling / merging prepare+run outputs into a ``DocumentBundle``
+- Review / overlay acceptance workflows
+
+Those gaps are documented in :doc:`/runbook/from_source_to_markdown`. Do not
+invent assemble or review commands; use fixtures or manual assembly when you
+need ``export`` today.
 
 Configuration
 -------------
 
-See :doc:`/overview/configuration` for details on how to configure
-``bochord`` for your specific environment.
-
-Examples
---------
-
-Basic Usage Examples
-^^^^^^^^^^^^^^^^^^^^
-
-.. code-block:: bash
-
-    # Sample usage 1
-    bochord group1 feature1 --arg1 "foo" --arg2 "bar"
-
-    # Sample usage 2
-    bochord group2 feature2 --arg1 "foo" --arg2 "bar"
-
-    # Show current settings
-    bochord settings show
-
-Advanced Usage Examples
-^^^^^^^^^^^^^^^^^^^^^^^
-
-.. code-block:: bash
-
-    # Advanced usage 1
-    bochord group1 feature1 --arg1 "foo" --arg2 "bar"
-
-    # Advanced usage 2
-    bochord group2 feature2 --arg1 "foo" --arg2 "bar"
-
-Scripting Examples
-^^^^^^^^^^^^^^^^^^
-
-.. code-block:: bash
-
-    #!/bin/bash
-
-    echo "Doing something..."
-
-    # Analyze something
-    echo "Analysis:"
-    bochord --output table group1 feature1
-
-    echo "Analysis complete."
-
-Error Handling
---------------
-
-Common Error Scenarios
-^^^^^^^^^^^^^^^^^^^^^^
-
-**Error 1**
-
-    .. code-block:: bash
-
-        # Error: No __FILL_ME_IN__ found
-        bochord group1 feature1
-        # Error: No __FILL_ME_IN__ found
-
-        # Solution: Ensure you're in the right directory
-        ls *.tf
-
-Troubleshooting
----------------
-
-Debugging Commands
-^^^^^^^^^^^^^^^^^^
-
-.. code-block:: bash
-
-    # Enable verbose output for debugging
-    bochord --verbose group1 feature1
-
-    # Do something to check if it's working
-    bash command here
-
-Common Issues
-~~~~~~~~~~~~~
-
-**__FILL_ME_IN__**
-    - Ensure that ..
-    - Verify file permissions
-
-**Output Format Issues**
-    - Use `--output json` for machine-readable output
-    - Use `--output table` for human-readable output
-    - Use `--output text` for simple text output
-
-
-Best Practices
---------------
-
-Output Format Selection
-^^^^^^^^^^^^^^^^^^^^^^^
-
-Choose appropriate output formats:
-
-.. code-block:: bash
-
-    # Use JSON for scripting and automation
-    bochord --output json group1 feature1 > config.json
-
-    # Use table for human reading
-    bochord --output table group1 feature1
-
-    # Use text for simple lists
-    bochord --output text group1 feature1 --names-only
-
-Configuration Management
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-Use configuration files when necessary:
-
-.. code-block:: bash
-
-    # Use custom configuration file
-    bochord --config-file ./bochord.toml group1 feature1
-
-    # Set environment variables
-    export bochord_CONFIG_FILE=./bochord.toml
-    bochord group1 feature1
+See :doc:`/overview/configuration`. For hosted endpoints, also
+:doc:`/runbook/huggingface_setup`.

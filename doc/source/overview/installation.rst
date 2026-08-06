@@ -1,82 +1,52 @@
 Installation
 ============
 
-This guide covers how to install the ``bochord`` package and its dependencies.
+Install ``bochord`` from source. This project is early and evolving; the
+documented path is clone + ``uv``, not a published package for this tool.
 
 Prerequisites
 -------------
 
-Before installing ``bochord``, ensure you have:
+- Python **3.13** or later (matches ``requires-python`` in ``pyproject.toml``)
+- `uv <https://docs.astral.sh/uv/>`_
+- ``git``
 
-- Python 3.10 or higher
-- `uv <https://docs.astral.sh/uv/>`_, `pip <https://pip.pypa.io/en/stable/>`_, or `pipx <https://pipx.pypa.io/stable/>`_
+.. warning::
 
-Installation Methods
---------------------
+   The PyPI project name ``bochord`` may refer to an **unrelated** Books-backup
+   package. Do **not** ``pip install bochord`` (or ``uv tool install bochord`` /
+   ``pipx install bochord``) expecting this OCR tool until this project's own
+   packaging story changes. Install from source as below.
 
-From PyPI with ``pip``
-^^^^^^^^^^^^^^^^^^^^^^
-
-.. code-block:: bash
-
-    pip install bochord
-    bochord --help
-
-
-From PyPI with ``uv``
-^^^^^^^^^^^^^^^^^^^^^
+From Source with ``uv``
+-----------------------
 
 .. code-block:: bash
 
-    sh -c "$(curl -fsSL https://astral.sh/uv/install)"
-    uv tool install bochord
-    # Ensure you have ./local/bin in your PATH, since that's where uv puts the
-    # executable
-    bochord --help
+   git clone https://github.com/cmalek/bochord.git
+   /usr/bin/cd bochord
+   # Install uv if needed: https://docs.astral.sh/uv/getting-started/installation/
+   uv sync
+   source .venv/bin/activate
+   bochord --help
 
-From PyPI with ``pipx``
-^^^^^^^^^^^^^^^^^^^^^^^
-
-.. code-block:: bash
-
-    pipx install bochord
-    bochord --help
-
-
-From Source
-^^^^^^^^^^^
-
-If you want to install from the latest development version:
-
-.. code-block:: bash
-
-    git clone https://github.com/cmalek/bochord.git
-    sh -c "$(curl -fsSL https://astral.sh/uv/install)"
-    cd bochord
-    uv tool install .
+``uv sync`` creates ``.venv`` and installs the project in editable form with
+declared dependencies. Always activate that environment before Python or docs
+work in this repository.
 
 Verification
 ------------
 
-After installation, verify that ``bochord`` is properly installed:
+.. code-block:: bash
 
-.. code-block:: shell
+   source .venv/bin/activate
+   bochord version
+   bochord --help
 
-    bochord --help
+Next steps
+----------
 
-
-Configuration
--------------
-
-After installation, you may want to configure ``bochord`` for your specific
-environment.  See :doc:`configuration` for detailed configuration options.
-
-Getting Help
-------------
-
-If you encounter issues during installation:
-
-1. Check the `GitHub issues <https://github.com/cmalek/bochord/issues>`_
-2. Review the troubleshooting section above
-3. Ensure your Python environment meets the prerequisites
-4. Try installing in a virtual environment to isolate dependencies
+- :doc:`/overview/quickstart` — minimal CLI smoke check
+- :doc:`/runbook/from_source_to_markdown` — end-to-end operator walkthrough
+- :doc:`/overview/configuration` — Hugging Face and other settings
+- :doc:`/runbook/huggingface_setup` — hosted endpoint operations

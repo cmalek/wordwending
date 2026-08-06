@@ -1,205 +1,117 @@
 Frequently Asked Questions
 ==========================
 
-This section answers common questions about tfmate and provides solutions to frequently encountered issues.
-
-General Questions
------------------
+General
+-------
 
 What is bochord?
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^
 
-bochord is a Python command-line tool designed for __FILL_ME_IN__. It provides capabilities for:
+``bochord`` (from *bōchord*, “book treasure-hoard”) is an early, evolving
+Python CLI for high-fidelity, image-first OCR of Old English / Anglo-Saxon
+source material. It preserves raw witnesses, then derives structured, RAG, and
+Markdown exports for scholars—with agent-usable evidence as a payoff, not the
+starting point.
 
-- Feature 1
-- Feature 2
+Is this production-ready?
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Installation Issues
--------------------
+No. Treat it as research software: commands and bundle-assembly paths change.
+Gaps (especially assemble/merge and review) are documented rather than hidden.
+See :doc:`/runbook/from_source_to_markdown`.
 
-How do I install bochord?
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Installation
+------------
 
-See the :doc:`installation` guide for detailed installation instructions. The recommended methods are:
+How should I install it?
+^^^^^^^^^^^^^^^^^^^^^^^^
 
-- Using ``uv tool``: ``uv tool install bochord``
-- Using ``pipx``: ``pipx install bochord``
-- Using ``pip``: ``pip install bochord``
-- From source: Clone the repository and run ``uv sync``
+From source with ``uv sync``. See :doc:`installation`.
 
-I get a "command not found" error after installation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Can I ``pip install bochord``?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This usually means the installation directory is not in your PATH. Try:
+**Not for this tool.** The PyPI name ``bochord`` may belong to an unrelated
+Books-backup project. Until this repository publishes under a clear package
+story, install only from the git source.
 
-1. Restart your terminal session
-2. Check if the installation directory is in your PATH
-3. For ``pipx`` installations, ensure ``pipx`` is in your PATH
-4. For ``uv tool`` installations, ensure ``uv`` is properly configured
+Usage
+-----
 
-Usage Questions
----------------
+What commands exist?
+^^^^^^^^^^^^^^^^^^^^
 
-How do I use feature 1?
-^^^^^^^^^^^^^^^^^^^^^^^
+``version``, ``settings``, ``prepare``, ``run``, ``eval``, ``eval-cohorts``,
+and ``export``. Details: :doc:`usage`.
 
-.. code-block:: bash
+Where is the end-to-end guide?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    # List all features
-    bochord group1 feature1
+:doc:`/runbook/from_source_to_markdown`.
 
-    # Filter services by pattern
-    bochord group1 feature1 --arg "foo" --arg "bar"
+Is there an assemble / merge / review CLI?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Output and Formatting Issues
-----------------------------
+Not yet. Assembling a ``DocumentBundle`` from prepare/run outputs and accepting
+overlays remains deferred. Do not expect ``bochord assemble`` or similar today.
+``export`` assumes you already have a valid ``DocumentBundle`` JSON.
 
-How do I change the output format?
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Is Markdown the source of truth?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Use the ``--output`` option:
+No. Markdown under ``exports/document.md`` is a **derived reading view**.
+Structured bundle JSON and witness artifacts remain authoritative for
+rebuildability and evidence.
 
-.. code-block:: bash
+How do I configure Hugging Face for ``run``?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    # JSON output
-    bochord --output json group1 feature1
+Set ``huggingface_api_key`` and ``huggingface_model_endpoints`` in TOML or
+``BOCHORD_*`` env vars. See :doc:`configuration` and
+:doc:`/runbook/huggingface_setup`.
 
-    # Table output (default)
-    bochord --output table group1 feature1
-
-    # Text output
-    bochord --output text group1 feature1
-
-The output format applies to all commands in the session.
-
-How do I enable verbose output?
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Use the ``--verbose`` option:
+How do I change output format?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: bash
 
-    # Enable verbose output
-    bochord --verbose group1 feature1
-
-    # Verbose output with specific command
-    bochord --verbose group1 feature1
-
-Verbose output shows additional details about:
-
-- Details 1
-- Details 2
-
-How do I suppress output except errors?
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Use the ``--quiet`` option:
-
-.. code-block:: bash
-
-    # Suppress all output except errors
-    bochord --quiet group1 feature1
-
-This is useful in scripts where you only want to see error messages.
-
-Configuration Issues
---------------------
-
-How do I use a custom configuration file?
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Use the ``--config-file`` option:
-
-.. code-block:: bash
-
-    # Use custom configuration file
-    bochord --config-file /path/to/config.toml group1 feature1
-
-The configuration file should be in TOML format. See the :doc:`configuration` guide for details.
-
-What configuration options are available?
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-tfmate supports configuration for:
-
-- Configuration thing 1
-- Configuration thing 2
-
-See the :doc:`configuration` guide for a complete list of options.
+   bochord --output json settings
+   bochord --output table settings
+   bochord --output text settings
 
 Troubleshooting
 ---------------
 
-Problem 1
-^^^^^^^^^
+``command not found: bochord``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This can happen due to:
-
-1. **Network latency**: Feature 1 depends on network speed
-3. **Cold Feature 1 requests**: First access to Feature 1 objects may be slower
-
-Solutions:
+Activate the project venv after ``uv sync``:
 
 .. code-block:: bash
 
-    # Use verbose mode to see timing information
-    bochord --verbose group1 feature1
+   source .venv/bin/activate
+   command -v bochord
+   bochord version
 
-Performance and Limitations
----------------------------
+``run`` says missing ``huggingface_api_key`` or endpoint
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-What are the performance characteristics?
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Configure settings, then verify:
 
-- **Feature 1**: Feature 1 depends on network speed
-- **Feature 2**: Feature 2 depends on # sloths in Africa
+.. code-block:: bash
 
-Are there any limitations?
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+   bochord settings
 
-- Limitation 1
-- Limitation 2
+The endpoint key in your runner policy must match a key in
+``huggingface_model_endpoints``, and every URL must be ``https``.
 
-Can I use bochord in CI/CD pipelines?
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Yes, bochord is designed to work in CI/CD environments:
-
-.. code-block:: yaml
-
-    # Example configuration for various CI/CD providers
-
-
-Getting Help
+Getting help
 ------------
 
-Where can I get more help?
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+1. ``bochord --help`` / ``bochord <command> --help``
+2. Docs at https://bochord.readthedocs.io
+3. GitHub issues on the project repository
 
-1. **Documentation**: Check the other sections of this documentation
-2. **Command help**: Use ``bochord --help`` or ``bochord <command> --help``
-3. **Verbose mode**: Use ``--verbose`` for detailed error information
-4. **GitHub issues**: Report bugs or request features on the project repository
-
-How do I report a bug?
-^^^^^^^^^^^^^^^^^^^^^^
-
-When reporting a bug, please include:
-
-1. **Command used**: The exact command that failed
-2. **Error message**: The complete error output
-3. **Environment**: OS, Python version, bochord version
-4. **Verbose output**: Use ``--verbose`` and include the output
-
-Example bug report:
-
-.. code-block:: text
-
-    Command: bochord group1 feature1 --arg "foo" --arg "bar"
-    Error: Feature 1 error
-    OS: macOS 14.0
-    Python: 3.11.9
-    bochord: 0.1.0
-
-    Verbose output:
-    [Include verbose output here]
+When reporting bugs, include the exact command, full error text, OS, Python
+version (3.13+), ``bochord version`` output, and ``--verbose`` logs when safe
+(scrub tokens).

@@ -1,406 +1,102 @@
-Configuration: Command Line Tool
-================================
+Configuration
+=============
 
-This guide covers all configuration options for the
-``bochord`` command line tool, including
-configuration files, environment variables, and command-line options.
+``bochord`` loads cascading TOML settings plus ``BOCHORD_*`` environment
+variables. Operators running ``bochord run`` must supply a Hugging Face API
+token and named endpoint URLs.
 
-``bochord`` is a __FILL_ME_IN__.  The default
-configuration should work for most use cases, but you can customise behavior
-through various configuration methods.
-
-Configuration Methods
+Configuration methods
 ---------------------
 
-The ``bochord`` command line tool supports multiple configuration methods,
-loaded in order of priority:
+Highest priority wins:
 
-1. **Command-line options** (highest priority)
-2. **Environment variables** in the shell environment
-3. **Configuration files**: a cascade of TOML files, most specific wins.
-4. **Default values** (lowest priority)
+1. Command-line options (``--config-file``, ``--output``, ``--verbose``, ``--quiet``)
+2. Environment variables (``BOCHORD_*``)
+3. TOML configuration files (most specific file among those found)
+4. Built-in defaults
 
-Configuration Files
--------------------
-
-File Locations
-^^^^^^^^^^^^^^
-
-Configuration files are searched in this order:
-
-1. **Global configuration**: ``/etc/bochord.toml`` (Unix/Linux) or ``C:/ProgramData/bochord.toml`` (Windows)
-2. **User configuration**: ``~/.cookiecutter.project_python_name}}/config.toml``
-3. **Local configuration**: ``./bochord.toml`` (current directory)
-4. **Environment variables**: via the ``BOCHORD_CONFIG_FILE`` environment variable
-5. **Explicit configuration**: Path specified with ``--config-file`` option
-
-File Format
-^^^^^^^^^^^
-
-Configuration files use TOML format:
-
-.. code-block:: toml
-
-    # Output settings
-    default_output_format = "table"
-    enable_colors = true
-    quiet_mode = false
-
-    # Logging settings
-    log_level = "INFO"
-    log_file = "/var/log/tfmate.log"
-
-Configuration Options
-^^^^^^^^^^^^^^^^^^^^^
-
-**Application Settings**
-    - **app_name**: Application name (default: ``bochord``)
-    - **app_version**: Application version (default: ``0.1.0``)
-
-**Output Settings**
-    - **default_output_format**: Default output format - ``table``, ``json``, or ``text`` (default: ``table``)
-    - **enable_colors**: Enable colored output (default: ``true``)
-    - **quiet_mode**: Enable quiet mode (default: ``false``)
-
-**Logging Settings**
-    - **log_level**: Logging level - ``DEBUG``, ``INFO``, ``WARNING``, ``ERROR`` (default: ``INFO``)
-    - **log_file**: Log file path (default: ``None``)
-
-Environment Variables
----------------------
-
-You can set configuration using environment variables. Environment variables
-follow the pattern ``BOCHORD_<SETTING_NAME>``:
-
-.. code-block:: bash
-
-    # Set output format
-    export BOCHORD_DEFAULT_OUTPUT_FORMAT="json"
-
-    # Set log level
-    export BOCHORD_LOG_LEVEL="DEBUG"
-
-Environment Variable Mapping
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-- ``BOCHORD_DEFAULT_OUTPUT_FORMAT`` → ``default_output_format``
-- ``BOCHORD_ENABLE_COLORS`` → ``enable_colors``
-- ``BOCHORD_QUIET_MODE`` → ``quiet_mode``
-- ``BOCHORD_LOG_LEVEL`` → ``log_level``
-- ``BOCHORD_LOG_FILE`` → ``log_file``
-
-Command-Line Options
---------------------
-
-Global Options
-^^^^^^^^^^^^^^
-
-All commands support these global options:
-
-.. code-block:: bash
-
-    # Enable verbose output
-    bochord --verbose command
-
-    # Suppress all output except errors
-    bochord --quiet command
-
-    # Specify custom configuration file
-    bochord --config-file /path/to/config.toml command
-
-    # Choose output format
-    bochord --output json command
-    bochord --output table command
-    bochord --output text command
-
-Option Reference
-^^^^^^^^^^^^^^^^
-
-**--verbose, -v**
-    Enable verbose output with detailed logging.
-
-    Example:
-    .. code-block:: bash
-
-        bochord --verbose group command
-
-**--quiet, -q**
-    Suppress all output except errors.
-
-    Example:
-    .. code-block:: bash
-
-        bochord --quiet group command
-
-**--config-file**
-    Specify a custom configuration file path.
-
-    Example:
-    .. code-block:: bash
-
-        bochord --config-file ./custom-config.toml group command
-
-**--output**
-    Choose output format: ``json``, ``table``, or ``text``.
-
-    Default: ``table``
-
-    Example:
-    .. code-block:: bash
-
-        bochord --output json group command
-
-Configuration Examples
-----------------------
-
-Basic Setup
-^^^^^^^^^^^
-
-For basic usage with defaults:
-
-.. code-block:: toml
-
-    # ~/.bochord.toml
-    # No configuration file needed - defaults work for most cases
-
-Development Environment
-^^^^^^^^^^^^^^^^^^^^^^^
-
-For development and testing:
-
-.. code-block:: toml
-
-    # ~/.bochord.toml
-    default_output_format = "json"
-    enable_colors = true
-    log_level = "DEBUG"
-
-Production Environment
-^^^^^^^^^^^^^^^^^^^^^^
-
-For production systems:
-
-.. code-block:: toml
-
-    # /etc/bochord.toml
-    default_output_format = "table"
-    enable_colors = false
-    log_level = "WARNING"
-    log_file = "/var/log/bochord.log"
-
-AWS-Specific Configuration
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-For AWS-focused workflows:
-
-.. code-block:: toml
-
-    # ~/.config/tfmate/config.toml
-    aws_default_region = "us-west-2"
-    aws_default_profile = "production"
-    terraform_timeout = 45
-    terraform_max_retries = 3
-
-Scripting Configuration
-^^^^^^^^^^^^^^^^^^^^^^^
-
-For automation and scripting:
-
-.. code-block:: toml
-
-    # ~/.bochord.toml
-    default_output_format = "json"
-    enable_colors = false
-    quiet_mode = true
-    log_level = "ERROR"
-
-Security Considerations
------------------------
-
-Configuration File Security
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Protect your configuration files:
-
-.. code-block:: bash
-
-    # Set proper permissions for user configuration
-    chmod 600 ~/.bochord.toml
-
-    # For system-wide configuration
-    chmod 640 /etc/bochord.toml
-    chown root:root /etc/bochord.toml
-
-Environment Variable Security
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Secure environment variable usage:
-
-.. code-block:: bash
-
-    from bochord.settings import Settings
-
-    # Load and display configuration
-    settings = Settings()
-    print(f"Output format: {settings.default_output_format}")
-    print(f"Timeout: {settings.terraform_timeout}")
-    print(f"AWS region: {settings.aws_default_region}")
-
-Common Issues
-^^^^^^^^^^^^^
-
-**Configuration Not Loaded**
-    - Check file permissions
-    - Verify file format (TOML syntax)
-    - Ensure file is in correct location
-    - Check for syntax errors in TOML file
-
-**Configuration Not Valid**
-    - Verify TOML syntax is correct
-    - Check that setting names match expected values
-    - Ensure boolean values are ``true``/``false``, not ``True``/``False``
-
-**Environment Variables Not Recognized**
-    - Check variable names (must start with ``BOCHORD_``)
-    - Restart terminal session
-    - Verify variable values
-
-**Command-Line Options Override**
-    - Command-line options take highest priority
-    - Check for conflicting options
-    - Use ``--help`` to see current options
-
-Configuration Validation
-------------------------
-
-Validation Rules
-^^^^^^^^^^^^^^^^
-
-The library validates configuration:
-
-- **default_output_format**: Must be one of ``table``, ``json``, or ``text``
-- **log_level**: Must be one of ``DEBUG``, ``INFO``, ``WARNING``, or ``ERROR``
-- **enable_colors**: Must be a boolean value
-- **quiet_mode**: Must be a boolean value
-
-Error Messages
-^^^^^^^^^^^^^^
-
-Common validation errors:
-
-.. code-block:: bash
-
-    # Invalid output format
-    Error: Invalid default_output_format value
-
-    # Invalid log level
-    Error: log_level must be one of DEBUG, INFO, WARNING, ERROR
-
-Best Practices
+File locations
 --------------
 
-Configuration Management
-^^^^^^^^^^^^^^^^^^^^^^^^^
+Settings search (later / more specific wins when multiple exist; an explicit
+``--config-file`` or ``BOCHORD_CONFIG_FILE`` path is preferred when set):
 
-1. **Use configuration files for defaults**
+1. Global: ``/etc/bochord.toml`` (Unix) or ``C:/ProgramData/bochord.toml`` (Windows)
+2. User: ``~/.bochord.toml``
+3. Local: ``./.bochord.toml`` (current working directory)
+4. Explicit: ``BOCHORD_CONFIG_FILE`` or ``--config-file``
 
-   - Set common settings in ``~/.bochord.toml``
-   - Use environment variables for overrides
-   - Use command-line options for one-time changes
+Inspect what the process actually loaded:
 
-2. **Separate environments**
+.. code-block:: bash
 
-   - Use different config files for different environments
-   - Use environment variables for sensitive data
-   - Document configuration requirements
+   bochord settings
+   bochord --output json settings
 
-3. **Version control**
-
-   - Don't commit sensitive configuration
-   - Use templates for configuration files
-   - Document configuration changes
-
-4. **Security**
-
-   - Protect configuration files with proper permissions
-   - Use environment variables for credentials
-   - Clear sensitive environment variables
-
-5. **Testing**
-
-   - Test timeout settings for your environment
-   - Verify output formats work for your use case
-   - Test logging configuration
-
-Configuration Templates
+Settings operators need
 -----------------------
 
-Basic Template
-^^^^^^^^^^^^^^
+Values mirror ``bochord.settings.Settings``:
+
+**Identity (read-only)**
+
+- ``app_name`` — always ``bochord``
+- ``app_version`` — package version string
+
+**CLI / logging**
+
+- ``default_output_format`` — ``table`` | ``json`` | ``text`` (default ``table``)
+- ``enable_colors`` — boolean (default ``true``)
+- ``quiet_mode`` — boolean (default ``false``)
+- ``log_level`` — ``DEBUG`` | ``INFO`` | ``WARNING`` | ``ERROR`` (default ``INFO``)
+- ``log_file`` — optional path, or omit / ``null``
+
+**Hugging Face (required for ``bochord run``)**
+
+- ``huggingface_api_key`` — API token (secret). Missing or empty → ``run`` fails.
+- ``huggingface_model_endpoints`` — map of endpoint key → **HTTPS** URL.
+  ``run`` resolves ``execution_policy.endpoint.endpoint_key`` against this map.
+
+Example ``~/.bochord.toml``:
 
 .. code-block:: toml
 
-    # config.toml.template
-    # Application settings
-    [bochord]
-    # Output settings
-    default_output_format = "table"
-    enable_colors = true
-    quiet_mode = false
+   default_output_format = "table"
+   enable_colors = true
+   log_level = "INFO"
 
-    # Logging settings
-    log_level = "INFO"
-    log_file = ""
+   huggingface_api_key = "hf_..."
 
-Production Template
-^^^^^^^^^^^^^^^^^^^
+   [huggingface_model_endpoints]
+   olmocr-primary = "https://xxxxxxxx.us-east-1.aws.endpoints.huggingface.cloud"
 
-.. code-block:: toml
+Environment variables use the ``BOCHORD_`` prefix, for example:
 
-    # production.toml
-    # Application settings
-    [bochord]
+.. code-block:: bash
 
-    # Output settings
-    default_output_format = "table"
-    enable_colors = false
-    quiet_mode = false
+   export BOCHORD_HUGGINGFACE_API_KEY="hf_..."
+   export BOCHORD_LOG_LEVEL="DEBUG"
+   export BOCHORD_DEFAULT_OUTPUT_FORMAT="json"
 
-    # Logging settings
-    log_level = "WARNING"
-    log_file = "/var/log/bochord.log"
+Prefer environment variables or a mode-``600`` user TOML for secrets. Do not
+commit tokens or put them in bundle provenance.
 
-Development Template
-^^^^^^^^^^^^^^^^^^^^
+Endpoint URLs must use ``https``. Non-HTTPS values are rejected at settings
+validation.
 
-.. code-block:: toml
+Global CLI options
+------------------
 
-    # development.toml
-    # Application settings
-    [tfmate]
-    # Output settings
-    default_output_format = "json"
-    enable_colors = true
-    quiet_mode = false
+.. code-block:: bash
 
-    # Logging settings
-    log_level = "DEBUG"
-    log_file = ""
+   bochord --verbose settings
+   bochord --quiet version
+   bochord --config-file ./my-bochord.toml settings
+   bochord --output json settings
 
-Scripting Template
-^^^^^^^^^^^^^^^^^^
+See also
+--------
 
-.. code-block:: toml
-
-    # scripting.toml
-    # Application settings
-    [bochord]
-
-    # Output settings
-    default_output_format = "json"
-    enable_colors = false
-    quiet_mode = true
-
-    # Logging settings
-    log_level = "ERROR"
-    log_file = "/dev/stdout"
+- :doc:`/runbook/huggingface_setup` — endpoint provisioning and laptop boundary
+- :doc:`/overview/usage` — command reference
+- :doc:`/runbook/from_source_to_markdown` — end-to-end operator path

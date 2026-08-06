@@ -1,96 +1,67 @@
 Quickstart Guide
 ================
 
-This guide will get you up and running with ``bochord`` quickly, showing both
-the Python client and command-line interface.
+Confirm the CLI, inspect settings, then follow the operator walkthrough for
+real preparation, OCR, and export work.
 
 Prerequisites
 -------------
 
-- Python 3.10 or higher
-- Follow the :doc:`/overview/installation` instructions to install ``bochord``
-- Other prerequisites here
+- Python **3.13+**
+- :doc:`/overview/installation` completed (source + ``uv sync``)
+- For hosted OCR: Hugging Face credentials and endpoints
+  (:doc:`/overview/configuration`, :doc:`/runbook/huggingface_setup`)
 
-Configuration
--------------
-
-Typically the defaults that ship with ``bochord``
-will work. If you need to change those defaults, you can create a configuration
-file at ``~/.bochord.conf``:
-
-You can configure ``bochord`` using configuration
-files or environment variables. See :doc:`/overview/configuration` for more
-details.
-
-Basic Usage
+Smoke check
 -----------
 
-Get Help
-^^^^^^^^
+.. code-block:: bash
+
+   source .venv/bin/activate
+   bochord --help
+   bochord version
+   bochord settings
+
+Commands available today
+------------------------
+
+=================  ===========================================================
+Command            Role
+=================  ===========================================================
+``version``        Installed package and dependency versions
+``settings``       Effective configuration (table / json / text)
+``prepare``        Acquire and prepare source pages into a bundle layout
+``run``            Execute prepared artifacts against one hosted olmOCR runner
+``eval``           Score one predicted page against gold annotations
+``eval-cohorts``   Summarize page evaluations into fixed cohort views
+``export``         Derive bundle / RAG / Markdown exports from a DocumentBundle
+=================  ===========================================================
+
+There is no assemble/merge or review CLI yet. Building a ``DocumentBundle`` from
+prepare/run outputs remains manual or deferred; see the e2e guide.
+
+Minimal export (when you already have a DocumentBundle)
+-------------------------------------------------------
 
 .. code-block:: bash
 
-    # Show main help
-    bochord --help
+   bochord export path/to/document-bundle.json --bundle-root path/to/bundle-root
 
-    # Show help for specific command groups
-    bochord group1 --help
-    bochord group2 --help
-    bochord group3 --help
-    bochord settings --help
+Writes under ``bundle-root/exports/`` at least ``document.md``, ``bundle.json``,
+``rag.jsonl``, and ``stitched_chunks.jsonl``. Markdown is a **derived reading
+view**, not the source of truth.
 
-Feature 1 Usage
-^^^^^^^^^^^^^^^
+Deep walkthrough
+----------------
 
-.. code-block:: bash
+For the full spine (prepare → run → provisional export, plus what is still
+missing), use:
 
-    # List all features
-    bochord group1 feature1
+:doc:`/runbook/from_source_to_markdown`
 
-    # Filter services by pattern
-    bochord group1 feature1 --arg "foo" --arg "bar"
-
-
-Feature 2 Usage
-^^^^^^^^^^^^^^^
-
-.. code-block:: bash
-
-    # List all features
-    bochord group2 feature2
-
-    # Filter services by pattern
-    bochord group2 feature2 --arg "foo" --arg "bar"
-
-Output Formats
-^^^^^^^^^^^^^^
-
-.. code-block:: bash
-
-    # Use table format (default) for human reading
-    bochord group1 feature1 --output table
-
-    # Use JSON format for scripting
-    bochord group1 feature1 --output json
-
-    # Use text format for simple output
-    bochord group1 feature1 --output text
-
-    # Use text format for settings
-    bochord group1 feature1 --output text settings
-
-Next Steps
+Next steps
 ----------
 
-Now that you have the basics working:
-
-1. **Usage**: See :doc:`/overview/usage` for more advanced features and detailed examples.
-2. **Configuration**: See :doc:`/overview/configuration` for configuration options.
-3. **Troubleshooting**: See the troubleshooting sections in each guide for common issues.
-
-Getting Help
-------------
-
-- Check the full documentation for detailed examples
-- Review the troubleshooting sections in each guide
-- Report issues on the GitHub repository
+1. :doc:`/overview/usage` — command reference and global options
+2. :doc:`/overview/configuration` — ``huggingface_api_key`` and endpoints
+3. :doc:`/overview/faq` — early status, PyPI collision, known gaps
