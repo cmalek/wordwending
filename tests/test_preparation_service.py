@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import pytest
 from PIL import Image, ImageDraw
 
-from bochord.models import (
+from wordwending.models import (
     CoordinateSpace,
     DewarpMode,
     FlagSeverity,
@@ -25,14 +25,14 @@ from bochord.models import (
     SourcePageArtifact,
     SourceType,
 )
-from bochord.services.preparation import (
+from wordwending.services.preparation import (
     PageClassifier,
     PagePreparationService,
     PageQualityAssessor,
     PreparationBundleService,
     _recipe_digest,
 )
-from bochord.services.source_acquisition import SourceAcquisitionService
+from wordwending.services.source_acquisition import SourceAcquisitionService
 
 if TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -105,7 +105,7 @@ def source_image() -> Path:
         Path to a temporary PNG source image.
 
     """
-    path = Path(tempfile.mkdtemp(prefix="bochord-bundle-")) / "page.png"
+    path = Path(tempfile.mkdtemp(prefix="wordwending-bundle-")) / "page.png"
     Image.new("L", (600, 800), "white").save(path)
     return path
 
@@ -118,7 +118,7 @@ def two_page_source() -> Path:
         Path to a temporary folder with two ordered page images.
 
     """
-    folder = Path(tempfile.mkdtemp(prefix="bochord-two-page-"))
+    folder = Path(tempfile.mkdtemp(prefix="wordwending-two-page-"))
     Image.new("L", (600, 800), "white").save(folder / "page-1.png")
     dense_two_column_image(text_height=12).save(folder / "page-2.png")
     return folder
@@ -173,7 +173,7 @@ def source_page(
     raster = (
         image if image is not None else Image.new("RGB", (1000, 1400), (255, 255, 255))
     )
-    path = Path(tempfile.mkdtemp(prefix="bochord-prep-")) / "0001.png"
+    path = Path(tempfile.mkdtemp(prefix="wordwending-prep-")) / "0001.png"
     checksum = _write_source_png(raster, path)
     width, height = raster.size
     return SourcePageArtifact(
@@ -487,7 +487,7 @@ def test_auto_columns_without_valleys_falls_back_to_full_page(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "bochord.services.preparation._column_valley_centers",
+        "wordwending.services.preparation._column_valley_centers",
         lambda _gray: [],
     )
     result = PagePreparationService(

@@ -5,7 +5,7 @@ Spec 0009: Merge and Alignment
 Purpose
 =======
 
-Define how ``bochord`` resolves competing pass outputs into one accepted derived
+Define how ``wordwending`` resolves competing pass outputs into one accepted derived
 page graph.
 
 Why This Matters

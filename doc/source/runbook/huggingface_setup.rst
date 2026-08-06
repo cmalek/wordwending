@@ -14,11 +14,11 @@ a local GPU fallback.
 1. Activate the Project Environment
 ====================================
 
-Install ``bochord`` from source with ``uv sync`` (see
-:doc:`/overview/installation`). Do not ``pip install bochord`` from PyPI for
-this tool—the PyPI name may refer to an unrelated project.
+Install ``wordwending`` from source with ``uv sync`` (see
+:doc:`/overview/installation`). Do not ``pip install wordwending`` for this OCR
+tool; use the repository source checkout instead.
 
-From the ``bochord`` repository root, always activate its environment before
+From the ``wordwending`` repository root, always activate its environment before
 Python work:
 
 .. code-block:: bash
@@ -129,7 +129,7 @@ Readiness is necessary but not sufficient:
 
 Scale-to-zero saves cost but introduces cold starts. Hugging Face may return a
 temporary gateway error while a replica initializes and does not guarantee that
-incoming OCR work is queued for the application. Therefore ``bochord`` must:
+incoming OCR work is queued for the application. Therefore ``wordwending`` must:
 
 - use a durable client-side job queue
 - give each batch an idempotency identity

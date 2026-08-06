@@ -18,9 +18,9 @@ Smoke check
 .. code-block:: bash
 
    source .venv/bin/activate
-   bochord --help
-   bochord version
-   bochord settings
+   wordwending --help
+   wordwending version
+   wordwending settings
 
 Commands available today
 ------------------------
@@ -45,7 +45,7 @@ Minimal export (when you already have a DocumentBundle)
 
 .. code-block:: bash
 
-   bochord export path/to/document-bundle.json --bundle-root path/to/bundle-root
+   wordwending export path/to/document-bundle.json --bundle-root path/to/bundle-root
 
 Writes under ``bundle-root/exports/`` at least ``document.md``, ``bundle.json``,
 ``rag.jsonl``, and ``stitched_chunks.jsonl``. Markdown is a **derived reading
@@ -64,4 +64,4 @@ Next steps
 
 1. :doc:`/overview/usage` — command reference and global options
 2. :doc:`/overview/configuration` — ``huggingface_api_key`` and endpoints
-3. :doc:`/overview/faq` — early status, PyPI collision, known gaps
+3. :doc:`/overview/faq` — early status and known gaps

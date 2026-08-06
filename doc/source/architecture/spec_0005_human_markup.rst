@@ -5,7 +5,7 @@ Spec 0005: Human Markup and Review
 Purpose
 =======
 
-Define exactly what ``bochord`` asks a human to inspect, how the decision is
+Define exactly what ``wordwending`` asks a human to inspect, how the decision is
 recorded, and what a completed review does and does not certify.
 
 Core Rule

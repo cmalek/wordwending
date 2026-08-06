@@ -5,14 +5,14 @@ Spec 0011: Structured Output Strategy
 Purpose
 =======
 
-Define how ``bochord`` should relate its standard OCR output to
+Define how ``wordwending`` should relate its standard OCR output to
 document-specific downstream structures such as dictionaries, grammars, readers,
 or source texts with translation.
 
 Core Rule
 =========
 
-``bochord`` should standardize first on its own evidence-preserving OCR
+``wordwending`` should standardize first on its own evidence-preserving OCR
 intermediate structure, not on one downstream document ontology.
 
 That standard intermediate structure is:
@@ -52,7 +52,7 @@ Current official TEI guidelines include a dedicated dictionaries chapter:
 - `TEI P5 Guidelines Index <https://www.tei-c.org/release/doc/tei-p5-doc/en/html/index.html>`_
 - `TEI Dictionaries Chapter <https://www.tei-c.org/release/doc/tei-p5-doc/en/html/DI.html>`_
 
-For dictionary-focused downstream work, ``bochord`` should allow a
+For dictionary-focused downstream work, ``wordwending`` should allow a
 TEI-inspired structured target model expressed as Python or Pydantic data, even
 when XML output is not desired.
 
@@ -61,11 +61,11 @@ Recommended Strategy
 
 V1 should distinguish three layers:
 
-1. ``bochord`` standard OCR structure
+1. ``wordwending`` standard OCR structure
 2. optional downstream transformation profiles
 3. target-domain consumer models
 
-Layer 1 belongs in ``bochord``.
+Layer 1 belongs in ``wordwending``.
 Layers 2 and 3 usually belong in downstream packages.
 
 Dictionary Recommendation
@@ -79,7 +79,7 @@ Recommended use:
 - treat TEI P5 as a modeling reference, not as a requirement to emit XML
 - define Python or Pydantic models that mirror useful TEI-like concepts
 - keep those models in a downstream dictionary-focused package unless they are
-  needed broadly across multiple ``bochord`` users
+  needed broadly across multiple ``wordwending`` users
 
 This works well because TEI already distinguishes:
 
@@ -92,13 +92,13 @@ This works well because TEI already distinguishes:
 - related or grouped entries
 - editorial versus lexical view
 
-Why Not Make TEI the Primary bochord Output
+Why Not Make TEI the Primary wordwending Output
 ===========================================
 
 OCR orchestration and evidence preservation happen before many domain-specific
 structural commitments are safe.
 
-If ``bochord`` standardizes too early on one structured document model:
+If ``wordwending`` standardizes too early on one structured document model:
 
 - non-dictionary texts get distorted
 - review becomes biased toward one output ontology
@@ -107,12 +107,12 @@ If ``bochord`` standardizes too early on one structured document model:
 Therefore:
 
 - use TEI-inspired models downstream where they fit
-- keep ``bochord`` itself standardized on evidence-rich OCR structure
+- keep ``wordwending`` itself standardized on evidence-rich OCR structure
 
 Downstream Package Responsibility
 =================================
 
-Yes: downstream packages should generally transform ``bochord`` standard output
+Yes: downstream packages should generally transform ``wordwending`` standard output
 into desired document-specific structures.
 
 Examples:
@@ -124,13 +124,13 @@ Examples:
 - reader package turns page graph plus review outputs into text plus translation
   structures
 
-This keeps ``bochord`` reusable while still enabling strong domain models.
+This keeps ``wordwending`` reusable while still enabling strong domain models.
 
-When bochord May Grow a Shared Target Profile
+When wordwending May Grow a Shared Target Profile
 =============================================
 
 If one downstream structure proves broadly reusable across many OCR tasks,
-``bochord`` may later define a shared optional transformation profile.
+``wordwending`` may later define a shared optional transformation profile.
 
 Examples that might qualify later:
 

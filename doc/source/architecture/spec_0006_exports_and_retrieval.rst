@@ -5,7 +5,7 @@ Spec 0006: Exports and Retrieval Views
 Purpose
 =======
 
-Define the v1 consumer-facing export contracts for ``bochord``.
+Define the v1 consumer-facing export contracts for ``wordwending``.
 
 This spec covers:
 
@@ -19,7 +19,7 @@ This spec covers:
 Export Principles
 =================
 
-``bochord`` has two first-class consumer needs:
+``wordwending`` has two first-class consumer needs:
 
 - human or agent reading
 - deterministic software and retrieval pipelines

@@ -8,7 +8,7 @@ ADR 0002: Top-Level Artifact Is Document Bundle Per Run
 Context
 =======
 
-Plain OCR text is too lossy for these documents. ``bochord`` must preserve
+Plain OCR text is too lossy for these documents. ``wordwending`` must preserve
 multiple evidence layers and allow later recomputation without rerunning every
 model.
 

@@ -6,7 +6,7 @@ Purpose
 =======
 
 Document the deterministic rules implemented by
-``bochord.services.text_normalization.TextNormalizer`` under policy id
+``wordwending.services.text_normalization.TextNormalizer`` under policy id
 ``text-norm-v1``.
 
 Default Policy

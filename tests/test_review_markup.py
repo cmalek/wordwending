@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 
-from bochord.models import (
+from wordwending.models import (
     BundlePage,
     CoordinateSpace,
     EvaluationFamilySummary,
@@ -31,7 +31,7 @@ from bochord.models import (
     StyleEvaluationSummary,
     WitnessReference,
 )
-from bochord.services.review_markup import HumanMarkupService
+from wordwending.services.review_markup import HumanMarkupService
 
 
 def _flag(

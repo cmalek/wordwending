@@ -11,7 +11,7 @@ Context
 
 ADR 0009 requires a bounded spike before committing to OCR-D/PAGE and
 eScriptorium as the human-review boundary. Phase 1 exports two representative
-``bochord`` review packages (dictionary headword page and note-heavy page),
+``wordwending`` review packages (dictionary headword page and note-heavy page),
 imports them into eScriptorium, applies operator text corrections, and records
 the native PAGE XML export without post-processing.
 
@@ -33,7 +33,7 @@ Environment
 Procedure
 =========
 
-1. Export review ZIP + ``*.bochord.json`` sidecar from ``PageXmlInterchangeService``.
+1. Export review ZIP + ``*.wordwending.json`` sidecar from ``PageXmlInterchangeService``.
 2. Export PAGE directly with the canonical prepared-image filename, canonical
    width/height, importer-friendly integer coordinates, and explicit line
    geometry for the representative fixtures.
@@ -55,7 +55,7 @@ Observed directly in recorded exports:
   (``drēorig sorrow``, ``Deletion 10``, footnote body text)
 - **Region/line geometry** — ``Coords`` and ``Baseline`` on imported lines
 - **Region typing** — encoded as eScriptorium ``custom="structure {type:…;}"``
-  rather than bochord's ``type="…"`` attribute
+  rather than wordwending's ``type="…"`` attribute
 
 Fields not preserved
 ====================
@@ -65,7 +65,7 @@ Native export **drops** the ``Word`` subtree entirely:
 - No ``Word`` elements
 - No stable ``span-*`` ids (``span-0100-headword``, ``span-note-marker-10``, etc.)
 - No word-level ``TextStyle`` (italic, superscript) in export
-- No ``ReadingOrder`` block (bochord sidecar retains canonical order)
+- No ``ReadingOrder`` block (wordwending sidecar retains canonical order)
 
 ``import_corrected_page`` correctly raises ``ValueError: missing word ids: …``
 when paired with the canonical sidecar.
@@ -73,7 +73,7 @@ when paired with the canonical sidecar.
 Fields restored only from sidecar
 =================================
 
-The ``*.bochord.json`` sidecar remains the honest source for bochord-only
+The ``*.wordwending.json`` sidecar remains the honest source for wordwending-only
 evidence that PAGE/eScriptorium never carried:
 
 - Preparation provenance, transforms, checksums, coordinate-space ids
@@ -94,7 +94,7 @@ The spike identified a narrow reuse boundary worth keeping:
 - **Reuse directly:** eScriptorium's PAGE import/export workflow for region and
   line review, plus PAGE 2019-07-15 geometry, reading-order, and line-text
   conventions.
-- **Keep bochord-owned:** prepared-image provenance, transform chains,
+- **Keep wordwending-owned:** prepared-image provenance, transform chains,
   checksums, stable span/note ids, note linkage, and span-level typography.
 - **Do not adopt yet:** OCR-D workspace management or ``ocrd-models`` for this
   slice; the bounded stdlib serializer/importer is enough for Phase 1 and
@@ -105,7 +105,7 @@ Unsupported correction actions
 ==============================
 
 - **Word-stable round-trip through eScriptorium PAGE export** — required for
-  bochord span-level gold, typography, and note-marker linkage under ADR 0008.
+  wordwending span-level gold, typography, and note-marker linkage under ADR 0008.
 
 Secondary findings
 ==================
@@ -127,7 +127,7 @@ Decision
 **reject**
 
 eScriptorium native PAGE export preserves region and line structure plus
-line-level corrected text, but it drifts from bochord's canonical prepared-image
+line-level corrected text, but it drifts from wordwending's canonical prepared-image
 identity and does not round-trip the required stable ``Word``/``span-*`` ids.
 The canonical JSON sidecar cannot honestly restore those ids after export
 without forbidden merge logic.

@@ -8,7 +8,7 @@ ADR 0003: Shared Page Graph Is Core Model
 Context
 =======
 
-``bochord`` will run competing or complementary passes on the same page.
+``wordwending`` will run competing or complementary passes on the same page.
 Different engines may be strong at different things:
 
 - text recognition

@@ -12,8 +12,8 @@ import pypdfium2 as pdfium
 import pytest
 from PIL import Image
 
-from bochord.models import PdfPageImageMode, PreparationRecipe, SourceType
-from bochord.services.source_acquisition import (
+from wordwending.models import PdfPageImageMode, PreparationRecipe, SourceType
+from wordwending.services.source_acquisition import (
     SourceAcquisitionService,
     _image_bounds_cover_page,
 )

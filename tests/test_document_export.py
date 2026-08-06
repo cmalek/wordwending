@@ -7,7 +7,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from bochord.models import (
+from wordwending.models import (
     AcquisitionProvenance,
     BaselineShift,
     BibliographicProvenance,
@@ -38,7 +38,7 @@ from bochord.models import (
     Typography,
     WitnessReference,
 )
-from bochord.services.document_export import DocumentExportService
+from wordwending.services.document_export import DocumentExportService
 
 FIXTURES = Path(__file__).parent / "fixtures" / "exports"
 MINIMAL_BUNDLE = FIXTURES / "minimal-bundle.json"

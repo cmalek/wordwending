@@ -7,7 +7,8 @@ from decimal import Decimal
 
 import pytest
 
-from bochord.models.ocr import (
+from tests.test_ocr_models import runner_policy_payload
+from wordwending.models.ocr import (
     BatchUnitKind,
     BoundingBox,
     InputKind,
@@ -15,9 +16,11 @@ from bochord.models.ocr import (
     PreparedArtifactRef,
     RunnerCapability,
 )
-from bochord.models.runner_execution import HostedEndpointPolicy, RunnerExecutionPolicy
-from bochord.services.runner_batching import RunnerBatchPlanner
-from tests.test_ocr_models import runner_policy_payload
+from wordwending.models.runner_execution import (
+    HostedEndpointPolicy,
+    RunnerExecutionPolicy,
+)
+from wordwending.services.runner_batching import RunnerBatchPlanner
 
 
 def capability(**overrides: object) -> RunnerCapability:

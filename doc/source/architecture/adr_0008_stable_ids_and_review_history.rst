@@ -8,7 +8,7 @@ ADR 0008: Stable IDs and Append-Only Review History
 Context
 =======
 
-``bochord`` outputs will be consumed by deterministic software, review
+``wordwending`` outputs will be consumed by deterministic software, review
 workflows, and RAG systems. Human markup must remain auditable over time.
 
 Decision
@@ -17,7 +17,7 @@ Decision
 Every graph object and exportable chunk must have a stable id that survives
 rebuilds when underlying evidence has not materially changed.
 
-Human review history is append-only. ``bochord`` does not collapse review into a
+Human review history is append-only. ``wordwending`` does not collapse review into a
 single mutable latest-state blob.
 
 Trust states are:

@@ -71,7 +71,7 @@ corpus.
 
    .. code-block:: bash
 
-      bochord eval --prediction PAGE.json --gold GOLD.json \
+      wordwending eval --prediction PAGE.json --gold GOLD.json \
         --profile tests/fixtures/evaluation/metric-profile-v1.json \
         --output-json SCORES.json
 
@@ -148,4 +148,4 @@ Before declaring a gold slice ready for benchmark use:
 - [ ] Coverage written before span annotations
 - [ ] Exclusions and illegibility marked explicitly
 - [ ] Second pass retained or adjudication recorded
-- [ ] ``bochord eval`` run twice with byte-identical output
+- [ ] ``wordwending eval`` run twice with byte-identical output

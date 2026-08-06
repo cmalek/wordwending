@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from bochord.models import (
+from wordwending.models import (
     AcquisitionProvenance,
     AssessmentThresholds,
     BaselineShift,
@@ -141,7 +141,7 @@ def test_object_provenance_defaults_empty_alternate_candidates() -> None:
 
 def test_object_provenance_accepts_alternate_candidates() -> None:
     """Alternate merge interpretations live in provenance, not duplicate nodes."""
-    from bochord.models import AlternateCandidate
+    from wordwending.models import AlternateCandidate
 
     alternate = AlternateCandidate(
         witness_id="wit-2",
@@ -1814,7 +1814,7 @@ def test_prepared_unit_rejects_missing_or_empty_lineage_fields(
 
 
 def test_page_override_requires_choice_and_reason() -> None:
-    from bochord.models import PagePreparationOverride
+    from wordwending.models import PagePreparationOverride
 
     with pytest.raises(ValidationError):
         PagePreparationOverride(source_page_id="page-0002", reason=" ")

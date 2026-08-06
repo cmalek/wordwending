@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from bochord.models import (
+from wordwending.models import (
     BoundingBox,
     BundlePage,
     CoordinateSpace,
@@ -34,7 +34,7 @@ from bochord.models import (
     Typography,
     WitnessReference,
 )
-from bochord.services.evaluation import EvaluationService
+from wordwending.services.evaluation import EvaluationService
 
 _PROFILE_PATH = Path(__file__).parent / "fixtures/evaluation/metric-profile-v1.json"
 _PAGE_ID = "page-1"

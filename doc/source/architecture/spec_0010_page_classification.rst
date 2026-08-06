@@ -5,7 +5,7 @@ Spec 0010: Page Classification and Cohorts
 Purpose
 =======
 
-Define how ``bochord`` classifies pages for preparation, evaluation, and
+Define how ``wordwending`` classifies pages for preparation, evaluation, and
 benchmark cohorting.
 
 Why This Matters
@@ -21,7 +21,7 @@ Examples:
 - a table-heavy page may need structural caution even when text OCR looks good
 
 If all pages share one undifferentiated evaluation pool, averages will hide the
-very failures ``bochord`` exists to surface.
+very failures ``wordwending`` exists to surface.
 
 Core Rule
 =========

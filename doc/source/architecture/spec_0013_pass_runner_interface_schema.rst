@@ -11,7 +11,7 @@ runner batch execution records.
 Canonical Models
 ================
 
-The exact v1 Pydantic models live in ``bochord.models.ocr``:
+The exact v1 Pydantic models live in ``wordwending.models.ocr``:
 
 - ``RunnerReference``
 - ``RunnerCapability``

@@ -1,7 +1,7 @@
-# bochord
+# wordwending
 
-`bochord` (from *bōchord*, “book treasure-hoard”) is an early, evolving Python
-CLI for high-fidelity OCR of Old English / Anglo-Saxon source material. It is
+`wordwending` is a Python CLI for high-fidelity OCR of Old English / Anglo-Saxon
+source material. It is
 built for scholars first: preserve philological signal in the page image, keep
 rebuildable witnesses, then derive structured and Markdown views. Agent-ready
 RAG exports are a payoff of that fidelity, not a substitute for it.
@@ -46,11 +46,11 @@ silently editing OCR text into a new “truth.”
 
 ## Documentation
 
-Published docs: <https://bochord.readthedocs.io>
+Published docs: <https://wordwending.readthedocs.io>
 
 End-to-end operator walkthrough (prepare → run → provisional export, plus what
 is still missing):
-[From source to Markdown](https://bochord.readthedocs.io/en/latest/runbook/from_source_to_markdown.html)
+[From source to Markdown](https://wordwending.readthedocs.io/en/latest/runbook/from_source_to_markdown.html)
 
 ## Requirements
 
@@ -63,31 +63,26 @@ is still missing):
 Install from source. This project is early; the documented path is clone +
 `uv`, not a published package for this tool.
 
-> **Warning:** The PyPI project name `bochord` may refer to an **unrelated**
-> Books-backup package. Do **not** `pip install bochord` (or
-> `uv tool install bochord` / `pipx install bochord`) expecting this OCR tool
-> until this project's own packaging story changes.
-
 ```bash
-git clone https://github.com/cmalek/bochord.git
-cd bochord
+git clone https://github.com/cmalek/wordwending.git
+cd wordwending
 # Install uv if needed: https://docs.astral.sh/uv/getting-started/installation/
 uv sync
 source .venv/bin/activate
-bochord --help
+wordwending --help
 ```
 
 ## Quick Start
 
 ```bash
 source .venv/bin/activate
-bochord --help
-bochord version
+wordwending --help
+wordwending version
 ```
 
 For the full spine (inputs, prepare/run, provisional export when you already
 have a `DocumentBundle`, and documented gaps), see the
-[from source to Markdown](https://bochord.readthedocs.io/en/latest/runbook/from_source_to_markdown.html)
+[from source to Markdown](https://wordwending.readthedocs.io/en/latest/runbook/from_source_to_markdown.html)
 guide on Read the Docs.
 
 ## Commands
@@ -118,5 +113,5 @@ There is no assemble/merge or review CLI yet.
 
 **Export provisional Markdown and RAG views**
 
-- When a `DocumentBundle` exists, `bochord export` writes derived
+- When a `DocumentBundle` exists, `wordwending export` writes derived
   `document.md` and retrieval artifacts (Markdown is not the source of truth)

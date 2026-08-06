@@ -8,7 +8,7 @@ ADR 0010: Structured Output Boundary
 Context
 =======
 
-``bochord`` serves many structurally different downstream targets—dictionaries,
+``wordwending`` serves many structurally different downstream targets—dictionaries,
 grammars, readers, and bilingual source texts. OCR orchestration and evidence
 preservation must complete before domain-specific structural commitments are
 safe.
@@ -20,7 +20,7 @@ bibliographic and acquisition provenance.
 Decision
 ========
 
-V1 standardizes on ``bochord``'s own evidence-preserving OCR intermediate
+V1 standardizes on ``wordwending``'s own evidence-preserving OCR intermediate
 structure as layer 1. That canonical output comprises prepared source artifacts,
 raw witness artifacts, accepted page graph, review and evaluation metadata, and
 standard export families.
@@ -37,7 +37,7 @@ Downstream transformations must preserve stable ids (per ADR 0008) and
 bibliographic and acquisition provenance so target-domain models retain source
 identity and citation context.
 
-``bochord`` may later define a shared optional transformation profile only after
+``wordwending`` may later define a shared optional transformation profile only after
 demonstrated repeated use across multiple OCR tasks—not by speculative design.
 
 Rejected Alternative
@@ -49,7 +49,7 @@ one downstream ontology or TEI vocabulary regardless of document genre.
 Consequences
 ============
 
-- ``bochord`` stays reusable across dictionary, grammar, and reader workflows
+- ``wordwending`` stays reusable across dictionary, grammar, and reader workflows
   without distorting non-lexical material.
 - Domain models (entries, senses, grammar sections, translation structures) live
   outside the core package until broad reuse is proven.

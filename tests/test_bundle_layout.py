@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from bochord.models import (
+from wordwending.models import (
     BUNDLE_SCHEMA_VERSION,
     AcceptReviewEvent,
     AcquisitionProvenance,
@@ -32,11 +32,11 @@ from bochord.models import (
     WitnessReference,
     page_dir_name,
 )
-from bochord.services.bundle_layout import (
+from wordwending.services.bundle_layout import (
     BundleLayoutService,
     _resolve_source_image_path,
 )
-from bochord.services.document_export import DocumentExportService
+from wordwending.services.document_export import DocumentExportService
 
 FIXTURE_PATH = (
     Path(__file__).parent / "fixtures" / "bundle_layout" / "minimal_document.json"
@@ -792,9 +792,9 @@ def test_write_document_bundle_uses_prepared_image_path_fallback(tmp_path) -> No
     service.write_document_bundle(bundle, root)
 
     page_manifest = service.read_page_manifest(root, 1)
-    assert page_manifest.source_image_path == "/opt/bochord-work/prepared_0001.tif"
+    assert page_manifest.source_image_path == "/opt/wordwending-work/prepared_0001.tif"
     graph = service.read_page_graph(root, 1)
-    assert graph.prepared_page.image_path == "/opt/bochord-work/prepared_0001.tif"
+    assert graph.prepared_page.image_path == "/opt/wordwending-work/prepared_0001.tif"
 
 
 def test_write_document_bundle_rejects_missing_source_image_path(tmp_path) -> None:

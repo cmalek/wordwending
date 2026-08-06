@@ -5,7 +5,7 @@ Spec 0012: Runner Execution and Batch Policy
 Purpose
 =======
 
-Define how ``bochord`` executes OCR-related runners with respect to input
+Define how ``wordwending`` executes OCR-related runners with respect to input
 packaging, batching, throughput experiments, and model-specific runtime policy.
 
 Why This Matters
@@ -28,7 +28,7 @@ Core Rules
 - Runner execution policy is explicit, versioned, and recorded in provenance.
 - Input packaging policy is runner-specific, not assumed globally.
 - Batch size is an experimental parameter, not folklore.
-- ``bochord`` may package images into PDFs for a runner when that improves
+- ``wordwending`` may package images into PDFs for a runner when that improves
   compatibility or throughput, but that choice must be explicit and measurable.
 
 Runner Input Contract
@@ -74,17 +74,17 @@ Important current fact:
 - current ``olmocr`` tooling accepts PDF inputs and also image-file inputs via
   its ``--pdfs`` path
 
-V1 ``bochord`` should still support packaging prepared images or prepared units
+V1 ``wordwending`` should still support packaging prepared images or prepared units
 into small batched PDFs for ``olmocr`` when that improves throughput or runtime
 stability.
 
-This is a ``bochord`` execution policy choice, not a false claim that ``olmocr``
+This is a ``wordwending`` execution policy choice, not a false claim that ``olmocr``
 cannot consume images directly.
 
 Image-to-PDF Packaging
 ======================
 
-``bochord`` should support converting prepared images or prepared units into PDF
+``wordwending`` should support converting prepared images or prepared units into PDF
 artifacts before runner execution when a runner benefits from PDF-native flow.
 
 Use cases:
@@ -205,7 +205,7 @@ should leave room for:
 Model Openness
 ==============
 
-``bochord`` is not locked to ``olmocr``.
+``wordwending`` is not locked to ``olmocr``.
 
 Execution policy must stay open to other runners that may:
 

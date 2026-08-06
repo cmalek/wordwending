@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from bochord.models import (
+from wordwending.models import (
     BundlePage,
     CoordinateSpace,
     LineJoinKind,
@@ -30,7 +30,7 @@ from bochord.models import (
     UnicodeNormalizationForm,
     WitnessReference,
 )
-from bochord.services.text_normalization import (
+from wordwending.services.text_normalization import (
     DEFAULT_TEXT_NORMALIZATION_POLICY,
     TextNormalizer,
 )

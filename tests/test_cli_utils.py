@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress
 
-from bochord.cli.utils import (
+from wordwending.cli.utils import (
     console,
     create_progress,
     print_error,

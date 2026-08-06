@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from bochord.models import (
+from wordwending.models import (
     AcceptReviewEvent,
     BaselineShift,
     CorrectGeometryReviewEvent,
@@ -40,7 +40,7 @@ from bochord.models import (
     Typography,
     UnlinkNoteReviewEvent,
 )
-from bochord.services.review_overlay import ReviewOverlayService
+from wordwending.services.review_overlay import ReviewOverlayService
 
 OVERLAY_V1_FIXTURE = (
     Path(__file__).parent / "fixtures" / "review_overlay" / "page-overlay-v1.json"

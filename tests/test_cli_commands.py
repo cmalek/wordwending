@@ -9,10 +9,10 @@ from unittest.mock import patch
 
 from PIL import Image, ImageDraw
 
-from bochord.cli.cli import cli
-from bochord.models import EvaluationCohortReport, PreparationResult
-from bochord.models.runner_execution import RunnerThroughputSummary
-from bochord.settings import Settings
+from wordwending.cli.cli import cli
+from wordwending.models import EvaluationCohortReport, PreparationResult
+from wordwending.models.runner_execution import RunnerThroughputSummary
+from wordwending.settings import Settings
 
 
 def _dense_two_column_image() -> Image.Image:
@@ -88,7 +88,7 @@ class TestCLISettings:
     def test_settings_command_redacts_huggingface_api_key(self, runner, monkeypatch):
         """Settings output must not expose the raw Hugging Face token."""
         secret = "hf_secret_token_xyz"
-        monkeypatch.setenv("BOCHORD_HUGGINGFACE_API_KEY", secret)
+        monkeypatch.setenv("WORDWENDING_HUGGINGFACE_API_KEY", secret)
         for output_format in ("json", "text", "table"):
             result = runner.invoke(cli, ["--output", output_format, "settings"])
             assert result.exit_code == 0
@@ -489,7 +489,7 @@ class TestCLIRun:
     """Test the run command."""
 
     def test_run_rejects_missing_huggingface_api_key(self, runner, tmp_path) -> None:
-        with patch("bochord.cli.cli.Settings") as mock_settings:
+        with patch("wordwending.cli.cli.Settings") as mock_settings:
             mock_settings.return_value = Settings()
             result = runner.invoke(cli, _run_cli_args(tmp_path))
 
@@ -497,14 +497,14 @@ class TestCLIRun:
         assert "huggingface_api_key" in result.output
 
     def test_run_rejects_missing_endpoint_mapping(self, runner, tmp_path) -> None:
-        with patch("bochord.cli.cli.Settings") as mock_settings:
+        with patch("wordwending.cli.cli.Settings") as mock_settings:
             mock_settings.return_value = Settings(huggingface_api_key="hf_test_token")
             result = runner.invoke(cli, _run_cli_args(tmp_path))
 
         assert result.exit_code != 0
         assert "missing Hugging Face endpoint" in result.output
 
-    @patch("bochord.cli.cli.RunnerExecutionService.run")
+    @patch("wordwending.cli.cli.RunnerExecutionService.run")
     def test_run_command_reports_summary(
         self,
         mock_run,
@@ -526,7 +526,7 @@ class TestCLIRun:
                 "olmocr-production": "https://example.endpoints.huggingface.cloud/v1",
             },
         )
-        with patch("bochord.cli.cli.Settings", return_value=configured):
+        with patch("wordwending.cli.cli.Settings", return_value=configured):
             result = runner.invoke(cli, _run_cli_args(tmp_path))
 
         assert result.exit_code == 0
@@ -535,7 +535,7 @@ class TestCLIRun:
         assert "items_per_second: 2.0000" in result.output
         assert "hf_test_token" not in result.output
 
-    @patch("bochord.cli.cli.RunnerExecutionService.run")
+    @patch("wordwending.cli.cli.RunnerExecutionService.run")
     def test_run_command_exits_nonzero_when_items_failed(
         self,
         mock_run,
@@ -557,7 +557,7 @@ class TestCLIRun:
                 "olmocr-production": "https://example.endpoints.huggingface.cloud/v1",
             },
         )
-        with patch("bochord.cli.cli.Settings", return_value=configured):
+        with patch("wordwending.cli.cli.Settings", return_value=configured):
             result = runner.invoke(cli, _run_cli_args(tmp_path))
 
         assert result.exit_code != 0

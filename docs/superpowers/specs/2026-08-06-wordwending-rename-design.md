@@ -98,6 +98,7 @@ Matches of `bochord` / `BOCHORD_` are **allowed** only under:
 - `docs/superpowers/plans/**` — frozen historical plans
 - `docs/superpowers/specs/**` — design specs that document the rename (including this file)
 - `graphify-out/**` — generated; refreshed by `graphify update .`
+- `doc/quality/napoleon_gate_baseline.json` — absolute paths keep the local workspace folder segment (`…/bochord/wordwending/…`) until the operator renames the folder; package segment must already be `wordwending`
 - `.venv/**`, `*.egg-info/**`, `.mypy_cache/**`, `.pytest_cache/**`, `.ruff_cache/**` — local/generated
 
 Everything else in the repo must be clean. Search case-sensitive for `bochord` and `BOCHORD_`; title-case `Bochord` is not expected and is not a separate requirement.

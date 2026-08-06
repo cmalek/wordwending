@@ -3,7 +3,7 @@ Architecture
 ============
 
 This section captures the ordered architecture decisions and build specs for
-``bochord``.
+``wordwending``.
 
 Read in this order:
 

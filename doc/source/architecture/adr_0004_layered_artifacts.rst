@@ -15,7 +15,7 @@ artifacts.
 Decision
 ========
 
-``bochord`` stores four distinct layers:
+``wordwending`` stores four distinct layers:
 
 1. Raw witness layer
 2. Derived graph layer

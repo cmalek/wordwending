@@ -8,7 +8,7 @@ ADR 0001: Package Boundary Is OCR Orchestration
 Context
 =======
 
-``bochord`` exists to support difficult Old English OCR work on image-based
+``wordwending`` exists to support difficult Old English OCR work on image-based
 documents. The core problem is not a single recognizer choice. The core problem
 is orchestrating multiple passes that preserve evidence needed for later
 philological interpretation:
@@ -21,9 +21,9 @@ philological interpretation:
 Decision
 ========
 
-``bochord`` owns image-first OCR orchestration and witness production.
+``wordwending`` owns image-first OCR orchestration and witness production.
 
-``bochord`` does not own downstream philological semantics such as:
+``wordwending`` does not own downstream philological semantics such as:
 
 - Old English morphology
 - dictionary parsing
@@ -37,7 +37,7 @@ The package boundary is the generic workflow:
 Consequences
 ============
 
-- ``bochord`` may be reused by multiple downstream Old English products.
+- ``wordwending`` may be reused by multiple downstream Old English products.
 - OCR output remains evidence, not canonical semantic truth.
 - Architecture should optimize for workflow clarity and rebuildability, not for
   one model-specific happy path.

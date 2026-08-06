@@ -13,18 +13,18 @@ import httpx
 import pytest
 from PIL import Image
 
-from bochord.exc import ConfigurationError, RunnerEndpointUnavailable
-from bochord.models.ocr import (
+from tests.test_runner_packaging import planned_batch as packaging_planned_batch
+from wordwending.exc import ConfigurationError, RunnerEndpointUnavailable
+from wordwending.models.ocr import (
     InputKind,
     RunnerReference,
 )
-from bochord.models.runner_execution import (
+from wordwending.models.runner_execution import (
     PackagedRunnerInput,
     PlannedRunnerBatch,
     RunnerExecutionPolicy,
 )
-from bochord.services.olmocr_runner import HuggingFaceOlmocrRunner
-from tests.test_runner_packaging import planned_batch as packaging_planned_batch
+from wordwending.services.olmocr_runner import HuggingFaceOlmocrRunner
 
 ENDPOINT_URL = "https://example.endpoints.huggingface.cloud/v1"
 TOKEN = "hf_test_token"  # noqa: S105
@@ -161,9 +161,9 @@ def _write_direct_image(output_dir: Path, batch: PlannedRunnerBatch) -> Packaged
 
 
 def _write_pdf_image(output_dir: Path, batch: PlannedRunnerBatch) -> PackagedRunnerInput:
-    from bochord.models.ocr import PackagingStrategy
-    from bochord.services.runner_packaging import RunnerInputPackager
     from tests.test_runner_batching import artifacts as batching_artifacts
+    from wordwending.models.ocr import PackagingStrategy
+    from wordwending.services.runner_packaging import RunnerInputPackager
 
     bundle_root = output_dir / "bundle"
     bundle_root.mkdir()
@@ -384,8 +384,8 @@ def test_runner_exposes_execution_contract() -> None:
 
 
 def test_olmocr_capability_matches_spec() -> None:
-    from bochord.models.ocr import BatchUnitKind, PackagingStrategy
-    from bochord.services.olmocr_runner import OLMOCR_CAPABILITY
+    from wordwending.models.ocr import BatchUnitKind, PackagingStrategy
+    from wordwending.services.olmocr_runner import OLMOCR_CAPABILITY
 
     assert OLMOCR_CAPABILITY.preferred_input_kind is InputKind.PDF
     assert OLMOCR_CAPABILITY.supports_multi_item_batching is True

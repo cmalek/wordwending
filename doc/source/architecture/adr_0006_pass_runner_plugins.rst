@@ -8,7 +8,7 @@ ADR 0006: Engines Integrate Through Pass-Runner Interfaces
 Context
 =======
 
-``bochord`` must compare and combine multiple engines over time. Hard-coding
+``wordwending`` must compare and combine multiple engines over time. Hard-coding
 one engine into the orchestration spine would make later evaluation and
 replacement expensive.
 

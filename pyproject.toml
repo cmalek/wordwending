@@ -1,5 +1,5 @@
 [project]
-name = "bochord"
+name = "wordwending"
 version = "0.1.0"
 authors = [
     {name = "Chris Malek", email = "cmalek@caltech.edu"},
@@ -63,12 +63,12 @@ dev = [
 ]
 
 [project.urls]
-Respository = "https://github.com/cmalek/bochord"
-Documentation = "https://bochord.readthedocs.io"
-Issues = "https://github.com/cmalek/bochord/issues"
+Respository = "https://github.com/cmalek/wordwending"
+Documentation = "https://wordwending.readthedocs.io"
+Issues = "https://github.com/cmalek/wordwending/issues"
 
 [project.scripts]
-bochord = "bochord.main:main"
+wordwending = "wordwending.main:main"
 
 [tool.uv]
 python-preference = "only-system"
@@ -215,7 +215,7 @@ ignore_decorators = [
 ignore_names = [
 ]
 paths = [
-  "bochord",
+  "wordwending",
 ]
 min_confidence = 70
 sort_by_size = true

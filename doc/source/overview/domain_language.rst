@@ -2,7 +2,7 @@
 Domain Language
 ===============
 
-``bochord`` uses a shared glossary so architecture, implementation, review, and
+``wordwending`` uses a shared glossary so architecture, implementation, review, and
 operator workflows all refer to the same concepts.
 
 Primary source:
@@ -26,4 +26,4 @@ Operator guidance:
 
 For the current canonical vocabulary, read:
 
-- `bochord CONTEXT.md <../../../CONTEXT.md>`_
+- `wordwending CONTEXT.md <../../../CONTEXT.md>`_

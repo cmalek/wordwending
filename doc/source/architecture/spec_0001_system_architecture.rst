@@ -37,9 +37,9 @@ Recommended execution flow:
 
 Suggested Python package layout:
 
-- ``bochord.models`` for dataclasses or Pydantic models
-- ``bochord.services`` for orchestration and business logic
-- ``bochord.cli`` for user-facing command surfaces
+- ``wordwending.models`` for dataclasses or Pydantic models
+- ``wordwending.services`` for orchestration and business logic
+- ``wordwending.cli`` for user-facing command surfaces
 
 Service Boundaries
 ==================

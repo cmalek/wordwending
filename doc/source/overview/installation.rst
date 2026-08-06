@@ -1,7 +1,7 @@
 Installation
 ============
 
-Install ``bochord`` from source. This project is early and evolving; the
+Install ``wordwending`` from source. This project is early and evolving; the
 documented path is clone + ``uv``, not a published package for this tool.
 
 Prerequisites
@@ -13,22 +13,22 @@ Prerequisites
 
 .. warning::
 
-   The PyPI project name ``bochord`` may refer to an **unrelated** Books-backup
-   package. Do **not** ``pip install bochord`` (or ``uv tool install bochord`` /
-   ``pipx install bochord``) expecting this OCR tool until this project's own
-   packaging story changes. Install from source as below.
+   ``wordwending`` is not yet published as an installable package for this OCR
+   tool. Do not ``pip install wordwending`` (or ``uv tool install wordwending`` /
+   ``pipx install wordwending``) expecting this repository; install from source
+   as below.
 
 From Source with ``uv``
 -----------------------
 
 .. code-block:: bash
 
-   git clone https://github.com/cmalek/bochord.git
-   /usr/bin/cd bochord
+   git clone https://github.com/cmalek/wordwending.git
+   /usr/bin/cd wordwending
    # Install uv if needed: https://docs.astral.sh/uv/getting-started/installation/
    uv sync
    source .venv/bin/activate
-   bochord --help
+   wordwending --help
 
 ``uv sync`` creates ``.venv`` and installs the project in editable form with
 declared dependencies. Always activate that environment before Python or docs
@@ -40,8 +40,8 @@ Verification
 .. code-block:: bash
 
    source .venv/bin/activate
-   bochord version
-   bochord --help
+   wordwending version
+   wordwending --help
 
 Next steps
 ----------

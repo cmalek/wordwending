@@ -4,11 +4,11 @@ Frequently Asked Questions
 General
 -------
 
-What is bochord?
+What is wordwending?
 ^^^^^^^^^^^^^^^^
 
-``bochord`` (from *bōchord*, “book treasure-hoard”) is an early, evolving
-Python CLI for high-fidelity, image-first OCR of Old English / Anglo-Saxon
+``wordwending`` is an early, evolving Python CLI for high-fidelity, image-first
+OCR of Old English / Anglo-Saxon
 source material. It preserves raw witnesses, then derives structured, RAG, and
 Markdown exports for scholars—with agent-usable evidence as a payoff, not the
 starting point.
@@ -28,13 +28,6 @@ How should I install it?
 
 From source with ``uv sync``. See :doc:`installation`.
 
-Can I ``pip install bochord``?
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-**Not for this tool.** The PyPI name ``bochord`` may belong to an unrelated
-Books-backup project. Until this repository publishes under a clear package
-story, install only from the git source.
-
 Usage
 -----
 
@@ -53,7 +46,7 @@ Is there an assemble / merge / review CLI?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Not yet. Assembling a ``DocumentBundle`` from prepare/run outputs and accepting
-overlays remains deferred. Do not expect ``bochord assemble`` or similar today.
+overlays remains deferred. Do not expect ``wordwending assemble`` or similar today.
 ``export`` assumes you already have a valid ``DocumentBundle`` JSON.
 
 Is Markdown the source of truth?
@@ -67,7 +60,7 @@ How do I configure Hugging Face for ``run``?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Set ``huggingface_api_key`` and ``huggingface_model_endpoints`` in TOML or
-``BOCHORD_*`` env vars. See :doc:`configuration` and
+``WORDWENDING_*`` env vars. See :doc:`configuration` and
 :doc:`/runbook/huggingface_setup`.
 
 How do I change output format?
@@ -75,14 +68,14 @@ How do I change output format?
 
 .. code-block:: bash
 
-   bochord --output json settings
-   bochord --output table settings
-   bochord --output text settings
+   wordwending --output json settings
+   wordwending --output table settings
+   wordwending --output text settings
 
 Troubleshooting
 ---------------
 
-``command not found: bochord``
+``command not found: wordwending``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Activate the project venv after ``uv sync``:
@@ -90,8 +83,8 @@ Activate the project venv after ``uv sync``:
 .. code-block:: bash
 
    source .venv/bin/activate
-   command -v bochord
-   bochord version
+   command -v wordwending
+   wordwending version
 
 ``run`` says missing ``huggingface_api_key`` or endpoint
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -100,7 +93,7 @@ Configure settings, then verify:
 
 .. code-block:: bash
 
-   bochord settings
+   wordwending settings
 
 The endpoint key in your runner policy must match a key in
 ``huggingface_model_endpoints``, and every URL must be ``https``.
@@ -108,10 +101,10 @@ The endpoint key in your runner policy must match a key in
 Getting help
 ------------
 
-1. ``bochord --help`` / ``bochord <command> --help``
-2. Docs at https://bochord.readthedocs.io
+1. ``wordwending --help`` / ``wordwending <command> --help``
+2. Docs at https://wordwending.readthedocs.io
 3. GitHub issues on the project repository
 
 When reporting bugs, include the exact command, full error text, OS, Python
-version (3.13+), ``bochord version`` output, and ``--verbose`` logs when safe
+version (3.13+), ``wordwending version`` output, and ``--verbose`` logs when safe
 (scrub tokens).

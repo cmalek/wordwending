@@ -9,9 +9,9 @@ from zipfile import ZipFile
 
 import pytest
 
-from bochord.models import BaselineShift, BundlePage, FontSlant
-from bochord.services.page_interchange import PAGE_NS, PageXmlInterchangeService
-from bochord.services.text_normalization import (
+from wordwending.models import BaselineShift, BundlePage, FontSlant
+from wordwending.services.page_interchange import PAGE_NS, PageXmlInterchangeService
+from wordwending.services.text_normalization import (
     DEFAULT_TEXT_NORMALIZATION_POLICY,
     TextNormalizer,
 )
@@ -51,7 +51,7 @@ def _export_note_page(tmp_path: Path) -> tuple[PageXmlInterchangeService, Path, 
     image.write_bytes(b"fixture-image")
     service = PageXmlInterchangeService()
     service.export_review_package(base, image, tmp_path)
-    return service, tmp_path / "page-0010.xml", tmp_path / "page-0010.bochord.json"
+    return service, tmp_path / "page-0010.xml", tmp_path / "page-0010.wordwending.json"
 
 
 def test_page_xml_round_trip_keeps_page_contract(tmp_path: Path) -> None:
@@ -64,7 +64,7 @@ def test_page_xml_round_trip_keeps_page_contract(tmp_path: Path) -> None:
     package = service.export_review_package(base, image, tmp_path)
     returned = service.import_corrected_page(
         tmp_path / "page-0010.xml",
-        tmp_path / "page-0010.bochord.json",
+        tmp_path / "page-0010.wordwending.json",
     )
 
     assert package.name == "page-0010.review.zip"
@@ -145,7 +145,7 @@ def test_corrected_page_xml_updates_only_page_fields(tmp_path: Path) -> None:
 
     returned = service.import_corrected_page(
         page_xml,
-        tmp_path / "page-0100.bochord.json",
+        tmp_path / "page-0100.wordwending.json",
     )
 
     assert returned.spans[0].text_diplomatic == "drēorig"
@@ -171,7 +171,7 @@ def test_import_correct_text_regenerates_normalized(tmp_path: Path) -> None:
 
     returned = service.import_corrected_page(
         page_xml,
-        tmp_path / "page-0100.bochord.json",
+        tmp_path / "page-0100.wordwending.json",
     )
 
     assert returned.spans[0].text_diplomatic == corrected

@@ -3,15 +3,15 @@
 
 from __future__ import annotations
 
-from bochord.models import (
+from wordwending.models import (
     EvaluationFamilySummary,
     MetricScore,
     PageClass,
     PageEvaluationSummary,
     PreparationMode,
 )
-from bochord.models.evaluation import PageEvaluationRecord
-from bochord.services.evaluation_cohorts import EvaluationCohortService
+from wordwending.models.evaluation import PageEvaluationRecord
+from wordwending.services.evaluation_cohorts import EvaluationCohortService
 
 
 def metric(family: EvaluationFamilySummary, metric_id: str) -> MetricScore:

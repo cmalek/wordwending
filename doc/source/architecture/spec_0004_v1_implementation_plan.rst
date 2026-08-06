@@ -16,7 +16,7 @@ Phase 1: Interoperability Spike
 - prove source, prepared-image, coordinate-transform, and object-id provenance
 - record which existing processors and interfaces can be reused
 
-Exit: corrected PAGE-compatible evidence can return to a valid ``bochord``
+Exit: corrected PAGE-compatible evidence can return to a valid ``wordwending``
 bundle without losing text, typography, geometry, reading order, or note links.
 
 Phase 2: Gold Protocol and Evaluator
@@ -131,10 +131,10 @@ reproducible and observable.
 Recommended Initial CLI
 =======================
 
-- ``bochord prepare``
-- ``bochord run``
-- ``bochord eval``
-- ``bochord inspect-bundle``
+- ``wordwending prepare``
+- ``wordwending run``
+- ``wordwending eval``
+- ``wordwending inspect-bundle``
 
 Add review or endpoint-management commands only after the corresponding phase
 proves a command-line workflow is the right boundary.

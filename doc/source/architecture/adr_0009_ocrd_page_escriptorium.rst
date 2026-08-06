@@ -8,7 +8,7 @@ ADR 0009: Adapt OCR-D/PAGE and eScriptorium Boundaries
 Context
 =======
 
-``bochord`` needs multi-stage image preparation, coordinate-rich OCR evidence,
+``wordwending`` needs multi-stage image preparation, coordinate-rich OCR evidence,
 evaluation, and human correction. OCR-D already defines reproducible OCR
 workflows and PAGE XML conventions. eScriptorium already provides mature human
 segmentation, transcription, training-data, and import/export workflows.
@@ -21,18 +21,18 @@ Decision
 Before implementing a custom orchestrator or review UI, build one bounded spike
 that round-trips a representative page through:
 
-1. ``bochord`` prepared-image and transform provenance
+1. ``wordwending`` prepared-image and transform provenance
 2. OCR-D workspace conventions and PAGE-compatible regions, lines, baselines,
    reading order, text, and typography
 3. eScriptorium import, operator correction, and export
-4. ``bochord`` Pydantic bundle, overlay, and gold contracts
+4. ``wordwending`` Pydantic bundle, overlay, and gold contracts
 
 PAGE is an internal interchange option, not the public output requirement.
 Public software contracts remain validated JSON and Markdown. XML is not forced
 on downstream users.
 
 Adopt existing OCR-D processors or eScriptorium workflows where they satisfy a
-stage. Write a ``bochord`` adapter only where corpus-specific provenance,
+stage. Write a ``wordwending`` adapter only where corpus-specific provenance,
 evaluation, or model integration is missing.
 
 OCR-D/eScriptorium interoperability does not authorize local OCR-model

@@ -28,7 +28,7 @@ Write all ADRs to the filesystem as restructuredtext and put them in `doc/source
 
 ## Python Environment (Required)
 
-Before any Python work in `bochord`, activate the repo-local virtual
+Before any Python work in `wordwending`, activate the repo-local virtual
 environment:
 
 ```bash
@@ -75,10 +75,10 @@ Implement the correct product code directly. Do not add runtime patching, indire
 
 ## Project Structure (Mandatory)
 
-1. Data models (Pydantic, `@dataclass`) → semantically named files in `bochord.models`; mostly bare models plus validation
-2. Business logic → service classes in `bochord.services`; inject `click`/`rich`/`textual` from CLI when needed
-3. CLI/user interaction/display → `bochord.cli` only; no business logic there
-4. Settings: all user configurable settings should be accessed throurh bochord/settings.py, a pydantic-settings settings object.   If you need a secret or setting that only the user can provide, put it here; never read it from `os.environ`
+1. Data models (Pydantic, `@dataclass`) → semantically named files in `wordwending.models`; mostly bare models plus validation
+2. Business logic → service classes in `wordwending.services`; inject `click`/`rich`/`textual` from CLI when needed
+3. CLI/user interaction/display → `wordwending.cli` only; no business logic there
+4. Settings: all user configurable settings should be accessed throurh wordwending/settings.py, a pydantic-settings settings object.   If you need a secret or setting that only the user can provide, put it here; never read it from `os.environ`
 
 ## AWS Interaction
 
@@ -97,7 +97,7 @@ Prefer cohesive, human-comprehensible classes over loose function collections, e
 - Put per-run orchestration and mutable run state in a dedicated execution/orchestrator class
 - Prefer stateless collaborators; isolate per-run mutable state in one accumulator/orchestrator
 
-Reference: `ExtractionOrchestrator` in `bochord/services/orchestrator.py` (per-run orchestration + `RunStats` accumulator, driving stateless collaborators like `DdlExtractor`).
+Reference: `ExtractionOrchestrator` in `wordwending/services/orchestrator.py` (per-run orchestration + `RunStats` accumulator, driving stateless collaborators like `DdlExtractor`).
 
 ## Documentation Contract (Required)
 

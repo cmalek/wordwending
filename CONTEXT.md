@@ -1,8 +1,8 @@
-# bochord Context
+# wordwending Context
 
 ## Mission
 
-`bochord` is an image-first OCR orchestration toolkit for difficult Old English
+`wordwending` is an image-first OCR orchestration toolkit for difficult Old English
 and Anglo-Saxon source documents.
 
 Its job is to turn scanned PDFs and source images into evidence-preserving OCR
@@ -54,7 +54,7 @@ Out of scope:
 ## Canonical Terms
 
 - source document: immutable scanned PDF, page-image set, or single page image
-  used as input to one `bochord` run
+  used as input to one `wordwending` run
 - source image set: folder of individual page images representing one logical
   source document, such as `.jp2` page files from archive.org or operator-made
   scan folders

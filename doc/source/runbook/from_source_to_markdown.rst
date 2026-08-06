@@ -6,12 +6,12 @@ Purpose
 =======
 
 This guide is the operator walkthrough from scanned source material toward
-evidence-preserving Markdown. It states what ``bochord`` can do today, what
+evidence-preserving Markdown. It states what ``wordwending`` can do today, what
 remains manual or deferred, and where human correction fits.
 
 .. note::
 
-   ``bochord`` is early, evolving software. Commands and bundle assembly paths
+   ``wordwending`` is early, evolving software. Commands and bundle assembly paths
    described here are honest for the current release; gaps are called out
    explicitly rather than papered over.
 
@@ -32,23 +32,23 @@ Stage Map
 
 The intended end-to-end spine:
 
-1. **prepare** (``bochord prepare``) — render stable page images and record
+1. **prepare** (``wordwending prepare``) — render stable page images and record
    preparation recipe
-2. **run** (``bochord run``) — execute OCR runner passes; preserve raw witness
+2. **run** (``wordwending run``) — execute OCR runner passes; preserve raw witness
    artifacts
 3. **merge / assemble** — combine passes into a ``DocumentBundle`` (not yet a
    CLI; see :ref:`what-is-missing`)
-4. **export** (``bochord export``) — derive bundle JSON, RAG JSONL, and Markdown
+4. **export** (``wordwending export``) — derive bundle JSON, RAG JSONL, and Markdown
    from an accepted ``DocumentBundle``
 
 Supporting commands:
 
-- ``bochord prepare`` — stage 1: PDF or page images to prepared page images
-- ``bochord run`` — stage 2: OCR runner passes and raw witness artifacts
-- ``bochord version`` — confirm installed CLI
-- ``bochord settings`` — inspect effective configuration
-- ``bochord eval`` — score one page against gold
-- ``bochord eval-cohorts`` — batch evaluation across held-out slices
+- ``wordwending prepare`` — stage 1: PDF or page images to prepared page images
+- ``wordwending run`` — stage 2: OCR runner passes and raw witness artifacts
+- ``wordwending version`` — confirm installed CLI
+- ``wordwending settings`` — inspect effective configuration
+- ``wordwending eval`` — score one page against gold
+- ``wordwending eval-cohorts`` — batch evaluation across held-out slices
 
 For stage theory and engineering detail, see :doc:`/runbook/ocr_process`.
 
@@ -60,7 +60,7 @@ fixtures, or manual assembly), export derived views with:
 
 .. code-block:: bash
 
-   bochord export path/to/document-bundle.json --bundle-root path/to/bundle-root
+   wordwending export path/to/document-bundle.json --bundle-root path/to/bundle-root
 
 Under ``bundle-root``, ``export`` writes at least:
 
@@ -84,9 +84,9 @@ Conceptual workflow (no dedicated review CLI yet):
 2. Apply review concepts from :doc:`/architecture/spec_0005_human_markup`
    (diplomatic text, typography, note linkage, trust states).
 3. Record accepted changes through overlay services
-   ``bochord.services.review_markup`` and ``bochord.services.review_overlay``.
+   ``wordwending.services.review_markup`` and ``wordwending.services.review_overlay``.
 4. Rebuild the page graph and ``DocumentBundle`` with accepted overlay updates.
-5. Run ``bochord export`` again to regenerate ``exports/document.md``.
+5. Run ``wordwending export`` again to regenerate ``exports/document.md``.
 
 Until review and assemble commands ship, overlay application and bundle
 rebuild may require library-level or manual steps.

@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Chris Malek.
 from __future__ import annotations
 
 import argparse
@@ -411,7 +412,7 @@ def main() -> int:
         default=argparse.SUPPRESS,
         help=(
             "Path to check (can be passed multiple times; "
-            "defaults to bochord if omitted)"
+            "defaults to wordwending if omitted)"
         ),
     )
     parser.add_argument(
@@ -433,7 +434,7 @@ def main() -> int:
 
     raw_targets = getattr(args, "target", None)
     if raw_targets is None:
-        raw_targets = ["bochord"]
+        raw_targets = ["wordwending"]
     targets = [Path(item).resolve() for item in raw_targets]
     baseline_path = Path(args.baseline).resolve()
 

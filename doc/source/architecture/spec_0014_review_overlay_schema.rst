@@ -6,7 +6,7 @@ Purpose
 =======
 
 Define exact self-contained task packets, append-only events, and materialized
-overlay JSON in ``bochord.models.ocr``.
+overlay JSON in ``wordwending.models.ocr``.
 
 Review Task Contract
 ====================

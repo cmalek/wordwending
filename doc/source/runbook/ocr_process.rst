@@ -5,7 +5,7 @@ Detailed OCR Process
 Purpose
 =======
 
-This document explains the intended ``bochord`` process end to end in operator
+This document explains the intended ``wordwending`` process end to end in operator
 and engineering terms.
 
 For a practical start-to-Markdown walkthrough (including current CLI gaps), see
@@ -13,7 +13,7 @@ For a practical start-to-Markdown walkthrough (including current CLI gaps), see
 
 The core rule is simple:
 
-OCR produces evidence. ``bochord`` preserves that evidence, compares competing
+OCR produces evidence. ``wordwending`` preserves that evidence, compares competing
 passes, evaluates them against gold slices, and only then derives normalized
 page graphs and exports.
 
@@ -44,7 +44,7 @@ Operator notes:
 Stage 2: PDF-to-Image Preparation
 =================================
 
-For scanned PDFs, ``bochord`` must prepare page images before any OCR pass runs.
+For scanned PDFs, ``wordwending`` must prepare page images before any OCR pass runs.
 This is a first-class stage, not a disposable helper.
 
 Responsibilities:
@@ -91,7 +91,7 @@ Operator notes:
 Stage 4: Align Evidence
 =======================
 
-Raw pass outputs use different formats and coordinate schemes. ``bochord`` must
+Raw pass outputs use different formats and coordinate schemes. ``wordwending`` must
 normalize them into shared page space before graph construction.
 
 Alignment work includes:

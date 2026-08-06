@@ -38,7 +38,7 @@ def mock_settings():
     """Create a mock settings object for testing."""
     mock = Mock()
     mock.model_dump.return_value = {
-        "app_name": "bochord",
+        "app_name": "wordwending",
         "app_version": "0.1.0",
         "default_output_format": "table",
         "enable_colors": True,

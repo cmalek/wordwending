@@ -5,7 +5,7 @@ Operator Notes
 Purpose
 =======
 
-This page is the short practical runbook for humans operating ``bochord`` on
+This page is the short practical runbook for humans operating ``wordwending`` on
 difficult documents.
 
 For the end-to-end source-to-Markdown operator path, see

@@ -1,7 +1,7 @@
 Using the Command Line Interface
 ================================
 
-The ``bochord`` CLI prepares source pages, runs hosted OCR, evaluates
+The ``wordwending`` CLI prepares source pages, runs hosted OCR, evaluates
 predictions, and exports derived views from an accepted ``DocumentBundle``.
 Deep workflow narrative lives in :doc:`/runbook/from_source_to_markdown`.
 
@@ -10,17 +10,17 @@ Getting help
 
 .. code-block:: bash
 
-   bochord --help
-   bochord prepare --help
-   bochord run --help
-   bochord export --help
+   wordwending --help
+   wordwending prepare --help
+   wordwending run --help
+   wordwending export --help
 
 Command structure
 -----------------
 
 .. code-block:: bash
 
-   bochord [global-options] <command> [options] [args]
+   wordwending [global-options] <command> [options] [args]
 
 Global options
 --------------
@@ -48,7 +48,7 @@ Print package and dependency versions.
 
 .. code-block:: bash
 
-   bochord version
+   wordwending version
 
 settings
 ^^^^^^^^
@@ -57,8 +57,8 @@ Print effective settings (not a subcommand group).
 
 .. code-block:: bash
 
-   bochord settings
-   bochord --output json settings
+   wordwending settings
+   wordwending --output json settings
 
 prepare
 ^^^^^^^
@@ -68,7 +68,7 @@ into a reproducible output bundle.
 
 .. code-block:: bash
 
-   bochord prepare SOURCE \
+   wordwending prepare SOURCE \
      --recipe recipe.json \
      --output-dir ./out \
      [--mode full-page|columns|fixed-tiles] \
@@ -88,7 +88,7 @@ Execute prepared artifacts against one hosted olmOCR runner. Requires
 
 .. code-block:: bash
 
-   bochord run PREPARED_INPUTS.json \
+   wordwending run PREPARED_INPUTS.json \
      --policy policy.json \
      --runner runner.json \
      --bundle-root ./bundle \
@@ -104,7 +104,7 @@ Score one predicted page against gold annotations; writes a
 
 .. code-block:: bash
 
-   bochord eval \
+   wordwending eval \
      --prediction page.json \
      --gold gold.json \
      --profile profile.json \
@@ -117,7 +117,7 @@ Summarize a JSON array of page evaluation records into fixed cohort views.
 
 .. code-block:: bash
 
-   bochord eval-cohorts records.json --output-json cohorts.json
+   wordwending eval-cohorts records.json --output-json cohorts.json
 
 export
 ^^^^^^
@@ -127,7 +127,7 @@ Write derived exports from a ``DocumentBundle`` JSON into
 
 .. code-block:: bash
 
-   bochord export document-bundle.json --bundle-root ./bundle-root
+   wordwending export document-bundle.json --bundle-root ./bundle-root
 
 Artifacts include ``exports/document.md``, ``exports/bundle.json``,
 ``exports/rag.jsonl``, and ``exports/stitched_chunks.jsonl``.

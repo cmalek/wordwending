@@ -1,5 +1,5 @@
 =======
-bochord
+wordwending
 =======
 
 .. toctree::
@@ -43,8 +43,8 @@ bochord
 
 Current version is |release|.
 
-``bochord`` (from *bōchord*, “book treasure-hoard”) is an early, evolving Python
-CLI for high-fidelity OCR of Old English / Anglo-Saxon source material. It is
+``wordwending`` is a Python CLI for high-fidelity OCR of Old English / Anglo-Saxon
+source material. It is
 built for scholars first: preserve philological signal in the page image, keep
 rebuildable witnesses, then derive structured and Markdown views. Agent-ready
 RAG exports are a payoff of that fidelity, not a substitute for it.
@@ -97,7 +97,7 @@ Getting Started
 7. **Hugging Face setup**: :doc:`/runbook/huggingface_setup`
 8. **FAQ**: :doc:`/overview/faq`
 
-Published docs: https://bochord.readthedocs.io
+Published docs: https://wordwending.readthedocs.io
 
 For developers, see :doc:`/runbook/contributing` and
 :doc:`/runbook/coding_standards`.
@@ -119,5 +119,5 @@ Common Use Cases
     - Hand off evidence-rich outputs to downstream Old English tooling
 
 **Export provisional Markdown and RAG views**
-    - When a ``DocumentBundle`` exists, ``bochord export`` writes derived
+    - When a ``DocumentBundle`` exists, ``wordwending export`` writes derived
       ``document.md`` and retrieval artifacts (Markdown is not the SoT)

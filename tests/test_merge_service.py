@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from bochord.models import (
+from wordwending.models import (
     BaselineShift,
     BoundingBox,
     CoordinateSpace,
@@ -32,8 +32,8 @@ from bochord.models import (
     TextRole,
     Typography,
 )
-from bochord.services.merge import AbstainingMergeService
-from bochord.services.text_normalization import (
+from wordwending.services.merge import AbstainingMergeService
+from wordwending.services.text_normalization import (
     DEFAULT_TEXT_NORMALIZATION_POLICY,
     TextNormalizer,
 )
@@ -205,7 +205,7 @@ def _line(  # noqa: PLR0913
     baseline_coordinate_space_id: str | None = None,
 ) -> LineRecord:
     """Build one line record for merge tests."""
-    from bochord.models import Point
+    from wordwending.models import Point
 
     baseline_points = [Point(x=x, y=y) for x, y in (baseline or [])]
     if baseline_points and baseline_coordinate_space_id is None:

@@ -182,7 +182,7 @@ Each source page should therefore record:
 Unusable Input Warnings
 =======================
 
-``bochord`` should warn operators when an input appears unlikely to yield
+``wordwending`` should warn operators when an input appears unlikely to yield
 trustworthy OCR without intervention.
 
 Examples:

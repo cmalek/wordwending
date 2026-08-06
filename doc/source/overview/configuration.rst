@@ -1,8 +1,8 @@
 Configuration
 =============
 
-``bochord`` loads cascading TOML settings plus ``BOCHORD_*`` environment
-variables. Operators running ``bochord run`` must supply a Hugging Face API
+``wordwending`` loads cascading TOML settings plus ``WORDWENDING_*`` environment
+variables. Operators running ``wordwending run`` must supply a Hugging Face API
 token and named endpoint URLs.
 
 Settings field precedence
@@ -12,7 +12,7 @@ Settings field precedence
 order. When a TOML file is selected, field values resolve as:
 
 1. Selected TOML file (wins over environment)
-2. Environment variables (``BOCHORD_*``)
+2. Environment variables (``WORDWENDING_*``)
 3. Built-in field defaults
 
 If no TOML file is found, environment variables win over defaults.
@@ -20,10 +20,10 @@ If no TOML file is found, environment variables win over defaults.
 Important: only **one** TOML file is loaded (not a merge of several). Among
 candidate paths that exist, the highest wins and the rest are ignored:
 
-1. Explicit: ``--config-file`` (sets ``BOCHORD_CONFIG_FILE`` before load) or
-   ``BOCHORD_CONFIG_FILE`` already in the environment
-2. Local: ``./.bochord.toml`` (current working directory)
-3. User: ``~/.bochord.toml``
+1. Explicit: ``--config-file`` (sets ``WORDWENDING_CONFIG_FILE`` before load) or
+   ``WORDWENDING_CONFIG_FILE`` already in the environment
+2. Local: ``./.wordwending.toml`` (current working directory)
+3. User: ``~/.wordwending.toml``
 
 System-wide global config (for example under ``/etc``) is **not** currently a
 supported operator path—do not depend on it.
@@ -38,24 +38,24 @@ values inside ``Settings``:
 - ``--verbose`` / ``--quiet`` — console verbosity for that run
 
 ``--config-file`` is different: it selects which TOML file ``Settings`` loads
-(via ``BOCHORD_CONFIG_FILE``), and that TOML still beats ``BOCHORD_*`` field
+(via ``WORDWENDING_CONFIG_FILE``), and that TOML still beats ``WORDWENDING_*`` field
 env vars.
 
 Inspect what the process actually loaded:
 
 .. code-block:: bash
 
-   bochord settings
-   bochord --output json settings
+   wordwending settings
+   wordwending --output json settings
 
 Settings operators need
 -----------------------
 
-Values mirror ``bochord.settings.Settings``:
+Values mirror ``wordwending.settings.Settings``:
 
 **Identity (read-only)**
 
-- ``app_name`` — always ``bochord``
+- ``app_name`` — always ``wordwending``
 - ``app_version`` — package version string
 
 **CLI / logging**
@@ -66,13 +66,13 @@ Values mirror ``bochord.settings.Settings``:
 - ``log_level`` — ``DEBUG`` | ``INFO`` | ``WARNING`` | ``ERROR`` (default ``INFO``)
 - ``log_file`` — optional path, or omit / ``null``
 
-**Hugging Face (required for ``bochord run``)**
+**Hugging Face (required for ``wordwending run``)**
 
 - ``huggingface_api_key`` — API token (secret). Missing or empty → ``run`` fails.
 - ``huggingface_model_endpoints`` — map of endpoint key → **HTTPS** URL.
   ``run`` resolves ``execution_policy.endpoint.endpoint_key`` against this map.
 
-Example ``~/.bochord.toml``:
+Example ``~/.wordwending.toml``:
 
 .. code-block:: toml
 
@@ -85,13 +85,13 @@ Example ``~/.bochord.toml``:
    [huggingface_model_endpoints]
    olmocr-primary = "https://xxxxxxxx.us-east-1.aws.endpoints.huggingface.cloud"
 
-Environment variables use the ``BOCHORD_`` prefix, for example:
+Environment variables use the ``WORDWENDING_`` prefix, for example:
 
 .. code-block:: bash
 
-   export BOCHORD_HUGGINGFACE_API_KEY="hf_..."
-   export BOCHORD_LOG_LEVEL="DEBUG"
-   export BOCHORD_DEFAULT_OUTPUT_FORMAT="json"
+   export WORDWENDING_HUGGINGFACE_API_KEY="hf_..."
+   export WORDWENDING_LOG_LEVEL="DEBUG"
+   export WORDWENDING_DEFAULT_OUTPUT_FORMAT="json"
 
 Prefer environment variables or a mode-``600`` user TOML for secrets. Do not
 commit tokens or put them in bundle provenance.
@@ -104,10 +104,10 @@ Global CLI options
 
 .. code-block:: bash
 
-   bochord --verbose settings
-   bochord --quiet version
-   bochord --config-file ./my-bochord.toml settings
-   bochord --output json settings
+   wordwending --verbose settings
+   wordwending --quiet version
+   wordwending --config-file ./my-wordwending.toml settings
+   wordwending --output json settings
 
 See also
 --------

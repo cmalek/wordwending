@@ -9,15 +9,15 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from bochord.models.ocr import (
+from tests.test_runner_batching import artifacts as batching_artifacts
+from wordwending.models.ocr import (
     BatchItemRef,
     InputKind,
     PackagingStrategy,
     PreparedArtifactRef,
 )
-from bochord.models.runner_execution import PlannedRunnerBatch
-from bochord.services.runner_packaging import RunnerInputPackager
-from tests.test_runner_batching import artifacts as batching_artifacts
+from wordwending.models.runner_execution import PlannedRunnerBatch
+from wordwending.services.runner_packaging import RunnerInputPackager
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "runner"
 PREPARED_INPUTS_PATH = FIXTURE_ROOT / "prepared-inputs.json"

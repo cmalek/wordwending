@@ -1,72 +1,72 @@
 # Graph Report - bochord  (2026-08-06)
 
 ## Corpus Check
-- 125 files · ~179,444 words
+- 127 files · ~181,981 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2834 nodes · 7349 edges · 145 communities (119 shown, 26 thin omitted)
+- 2859 nodes · 7372 edges · 142 communities (118 shown, 24 thin omitted)
 - Extraction: 92% EXTRACTED · 8% INFERRED · 0% AMBIGUOUS · INFERRED: 564 edges (avg confidence: 0.58)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `485d0274`
+- Built from commit: `b4eb7fde`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- ._emit_result
-- models/__init__.py
-- test_text_normalization.py
-- PlannedRunnerBatch
-- test_bundle_layout.py
-- BundlePage
 - services/preparation.py
-- BundleLayoutService
+- test_document_export.py
+- test_text_normalization.py
+- RagChunk
+- cli.py
+- BundlePage
+- FlagSeverity
+- test_bundle_layout.py
 - test_evaluation_service.py
 - Detailed OCR Process
-- RunnerThroughputSummary
-- TextNormalizer
-- test_document_export.py
-- cli.py
-- test_preparation_service.py
-- BundlePaths
-- HuggingFaceOlmocrRunner
-- ADR 0010 Structured Output Boundary
-- services/evaluation.py
+- MetricProfile
 - _SpanCandidate
+- model_validator
+- prepare_pages
+- Image
+- WitnessReference
+- ._invoke_item
+- ADR 0010 Structured Output Boundary
+- PlannedRunnerBatch
+- RunnerReference
 - check_napoleon_gate.py
-- Path
+- BundlePaths
 - test_olmocr_runner.py
 - BT Witness Preparation Slice
 - TestConfiguration
-- PageEvaluationSummary
-- _try_rebind_event
-- SourcePageArtifact
-- _NoteCandidate
-- MergeOrchestrator
-- GoldPageAnnotation
-- test_page_interchange.py
-- _stable_json_schema
-- DocumentExportService
-- test_runner_execution.py
-- model_validator
-- test_review_overlay.py
-- ._coords
-- model_runner_payload
 - PageXmlInterchangeService
+- ReviewDimension
+- SourcePageArtifact
+- PreparationRecipe
 - _bundle_page_payload
+- SourceAcquisitionService
+- test_page_interchange.py
 - _RateAccumulator
-- RunnerExecutionPolicy
+- ReviewOverlayService
+- test_runner_execution.py
+- PageEvaluationSummary
+- models/__init__.py
+- File map
+- test_ocr_models.py
+- Rename `bochord` → `wordwending` Design
+- RunnerInputPackager
+- ._coords
+- RunnerBatchPlanner
 - cli
-- run_runner
+- PageClass
 - Settings
-- ._score_text_pair
+- Path
 - Machine Assistance Resources
 - TestOcrModels
 - Spec 0004: Ordered V1 Implementation
-- _stitched_chunk
 - _rag_chunk
+- MergeOrchestrator
 - TestCLISettings
 - test_cli_utils.py
 - main
@@ -74,15 +74,15 @@
 - i-mutation / i-umlaut
 - conftest.py
 - print_error
-- .score
+- test_preparation_service.py
 - Preparation Gold Specs
 - Raw OCR witness layer
-- CLI Progress Utils
+- create_progress
 - Spec 0002: V1 Bundle Layout and Data Shape
 - Spec 0005: Human Markup and Review
 - Coding Standards Docs
 - TestCLIGlobalOptions
-- model_validator
+- ReviewTask
 - ADR 0009 OCR-D PAGE eScriptorium
 - Spec 0006: Exports and Retrieval Views
 - README, Operator Docs, and Thin Export CLI Implementation Plan
@@ -91,19 +91,19 @@
 - Configuration: Command Line Tool
 - Anglian dialect group
 - TestCLIVersion
-- .validate_item_page_alignment
+- ._normalize_text
 - Learner lacks stable conceptual map of sound-change order
 - OE Grammar Resources
-- test_merge_service.py
+- MergePolicy
 - ADR 0004 Layered Truth
 - Spec 0003: V1 Evaluation Schema
 - Reference 0006 OCR Output Formats
 - TestCLIErrorHandling
 - Spec 0016 RAG Line Contract Follow-up Implementation Plan
 - TestConsoleQuietMode
-- _review_polygon
-- test_ocr_models.py
-- _apply_span_text_resolution
+- test_merge_service.py
+- valid_bundle_page
+- model_runner_payload
 - Sphinx Docs Index
 - Lesson 0003 Pronouncing Old English Letters
 - MockHttpxClient
@@ -113,9 +113,9 @@
 - RunnerReference
 - TestConsole
 - Chris Malek
-- ._pick_scaffold_witness
-- ._write_page_xml
-- _apply_span_typography_resolution
+- _review_polygon
+- .validate_item_page_alignment
+- _NoteCandidate
 - ADR 0008 Stable IDs and Review History
 - Character Error Rate (CER)
 - Napoleon Documentation Contract
@@ -127,6 +127,7 @@
 - OE tēon walk-back (Grimm + h-loss + contraction)
 - ipa-play.js
 - botocraft AWS Preference
+- _prepared_unit_ref
 - OCR Evidence Not Philological Semantics
 - ADR 0002 Bundle Model
 - Page Bundle as Page-Local Truth Unit
@@ -134,26 +135,22 @@
 - SourceProvenanceService
 - Layered On-Disk Bundle Layout
 - Update Requirements Workflow
-- bochord
+- TestCLIEval
 - Mixed dialect spellings from copying history
 - Reference Sound Terms
 - TestPrintSuccess
-- .create_successor
-- DocumentBundle
-- Typography
-- _known_page_space_ids
-- Point
-- ReviewTaskType
-- _validate_zip_member
-- _page_witnesses
-- TestCLIEval
+- ._resolve_context
+- test_write_document_exports_frozen_contract_jsonl_validates
+- Spec 0009: Merge and Alignment
+- test_write_document_exports_writes_derived_views
+- test_configuration.py
+- wordwending
+- services/merge.py
+- .write_document_exports
 - _PreparedInputsManifest
 - .reject_historical_modernization
-- ._provenance_flags
-- _evidence_with_witness
+- .read_review_events
 - .__init__
-- .__init__
-- _expected_evidence
 
 ## God Nodes (most connected - your core abstractions)
 1. `AlternateCandidate` - 120 edges
@@ -201,95 +198,95 @@
 - **V1 Retrieval Chunk Types** — docs_superpowers_plans_2026_08_02_spec_0006_exports_and_retrieval_region_chunk, docs_superpowers_plans_2026_08_02_spec_0006_exports_and_retrieval_footnote_chunk, docs_superpowers_plans_2026_08_02_spec_0006_exports_and_retrieval_stitched_chunk [EXTRACTED 1.00]
 - **Structured Output Layer Stack** — doc_source_adr_adr_0010_structured_output_boundary_layer_1, doc_source_adr_adr_0010_structured_output_boundary_layer_2_3, doc_source_adr_adr_0010_structured_output_boundary_tei_p5, doc_source_adr_adr_0010_structured_output_boundary_adr_0010 [EXTRACTED 1.00]
 
-## Communities (145 total, 26 thin omitted)
+## Communities (142 total, 24 thin omitted)
 
-### Community 0 - "._emit_result"
-Cohesion: 0.50
-Nodes (3): Build the accepted page graph result for this merge run. Returns: Merge result…, Project merge-input witnesses into page-local WitnessReference records. Args:…, _witness_references_for_page()
+### Community 0 - "services/preparation.py"
+Cohesion: 0.05
+Nodes (98): CoordinateTransform, Replayable mapping between two recorded coordinate spaces., AssessmentThresholds, BaseModel, QualitySignal, One measured image-quality signal from preparation assessment., Calibratable limits for deterministic image-quality heuristics., _adaptive_binary() (+90 more)
 
-### Community 1 - "models/__init__.py"
-Cohesion: 0.03
-Nodes (158): AlternateCandidate, MergeFlag, MergeFlagType, MergePageResult, PassWitnessPage, StrEnum, One material merge disagreement surfaced for human review., Accepted page graph plus merge flags and abstention state. (+150 more)
+### Community 1 - "test_document_export.py"
+Cohesion: 0.06
+Nodes (61): _body_region_page(), _load_frozen_document_bundle_v1(), _load_minimal_bundle(), _markdown_style_page(), _merge_page_regions(), _page_provenance(), _page_witness(), _prepared_page() (+53 more)
 
 ### Community 2 - "test_text_normalization.py"
-Cohesion: 0.14
-Nodes (22): LineJoinKind, LineJoinRecord, NoteMarkerNormalizedForm, StrEnum, Unicode normalization form applied to diplomatic text., How inline note markers appear in normalized text., How superscript characters appear in normalized text., How adjacent lines were joined when building normalized text. (+14 more)
+Cohesion: 0.09
+Nodes (33): _load_cases(), _page_witnesses(), _policy_from_overrides(), _provenance(), Any, parametrize, Return valid single-page object provenance., Return page-local witnesses matching fixture provenance. (+25 more)
 
-### Community 3 - "PlannedRunnerBatch"
-Cohesion: 0.08
-Nodes (56): BatchItemRef, InputKind, PackagingStrategy, PreparedArtifactRef, Runner input artifact categories., Runner packaging policies., Prepared image or packaged artifact ready for runner execution., One source item included in a runner execution batch. (+48 more)
+### Community 3 - "RagChunk"
+Cohesion: 0.16
+Nodes (9): RagChunk, Page-local retrieval chunk., Build cross-page stitched chunks from contiguous BODY region runs. Args:…, Emit one stitched chunk when a BODY run spans multiple pages. Args:…, Collect ordered distinct page ids from component chunks. Args: chunks: Region…, Union source object ids from component region chunks. Args: chunks: Region…, Union provenance pointers from component region chunks. Args: chunks: Region…, Aggregate trust from one or more trust-state values. Args: trust_states: Trust… (+1 more)
 
-### Community 4 - "test_bundle_layout.py"
-Cohesion: 0.14
-Nodes (25): DocumentBundleManifest, page_dir_name(), Return the stable page directory name for one 1-based page number. Args:…, On-disk document manifest for one Spec 0002 bundle., AcquisitionProvenance, BibliographicProvenance, Stable descriptive metadata for the source work., How the source files were obtained. (+17 more)
+### Community 4 - "cli.py"
+Cohesion: 0.05
+Nodes (49): Client, ConfigurationError, FileError, Raised when settings or configuration fails., Raised when file I/O operations fail., Raised when a hosted runner endpoint is not ready for inference., Base exception for all wordwending errors., RunnerEndpointUnavailable (+41 more)
 
 ### Community 5 - "BundlePage"
-Cohesion: 0.08
-Nodes (52): BundlePage, EvaluationFamilySummary, EvaluationFlag, Canonical exported page object., Self-contained instructions and evidence binding for human review., Independent evidence dimensions a human may inspect and certify., Verb vocabulary for append-only review events., One review-driving evaluation flag. (+44 more)
+Cohesion: 0.16
+Nodes (24): _expected_evidence(), _page_witnesses(), parametrize, Return Spec 0005 evidence order with a dimension-specific item 3., Return page-local witnesses matching fixture provenance., test_create_adjudication_flag_task_rejects_empty_dimensions(), test_create_note_linkage_task_rejects_unknown_related_span_ids(), test_create_text_task_rejects_empty_target_object_ids() (+16 more)
 
-### Community 6 - "services/preparation.py"
-Cohesion: 0.05
-Nodes (96): CoordinateTransform, FlagSeverity, Severity levels for review and evaluation flags., Replayable mapping between two recorded coordinate spaces., AssessmentThresholds, BaseModel, QualitySignal, One measured image-quality signal from preparation assessment. (+88 more)
+### Community 6 - "FlagSeverity"
+Cohesion: 0.10
+Nodes (29): FlagSeverity, Supported top-level source kinds., Severity levels for review and evaluation flags., SourceType, BinarizeMode, ColorMode, CropMode, DewarpMode (+21 more)
 
-### Community 7 - "BundleLayoutService"
+### Community 7 - "test_bundle_layout.py"
 Cohesion: 0.06
-Nodes (62): BundleLayoutService, Write and read Spec 0002 document bundle trees., Serialize JSON objects as JSONL with a trailing newline when nonempty. Args:…, _accept_review_event(), load_minimal_bundle(), Path, source_files keys must be bare basenames, not path segments., page_exports basenames must not escape the page exports directory. (+54 more)
+Nodes (69): _accept_review_event(), load_minimal_bundle(), Path, source_files keys must be bare basenames, not path segments., page_exports basenames must not escape the page exports directory., Append inserts a separator when prior JSONL lacks a trailing newline., Heal must not UnicodeDecodeError when prior JSONL ends on multi-byte UTF-8., Corrupt JSONL lines name the file and line number. (+61 more)
 
 ### Community 8 - "test_evaluation_service.py"
-Cohesion: 0.11
-Nodes (49): GoldCoverage, GoldLineJoin, GoldTextSpan, Gold diplomatic and normalized text target., Gold line-join annotation for hyphenation and continuation decisions., Explicit evaluation denominator and exclusion scope for a gold slice., EvaluationService, Score one predicted page against a gold annotation slice. Orchestrates text,… (+41 more)
+Cohesion: 0.06
+Nodes (86): bold_but_not_italic_prediction(), bold_italic_gold(), _box(), note_link_gold(), _page_witnesses(), _prepared_page(), profile(), _provenance() (+78 more)
 
 ### Community 9 - "Detailed OCR Process"
 Cohesion: 0.06
 Nodes (60): bochord eval CLI, Byte-Identical Evaluation Reproducibility, Gold Annotation Protocol, Gold Annotation Protocol, GoldCoverage, GoldDocument, MetricProfile, Note-Heavy Page page-0010 (+52 more)
 
-### Community 10 - "RunnerThroughputSummary"
+### Community 10 - "MetricProfile"
+Cohesion: 0.10
+Nodes (18): MetricProfile, BaseModel, Versioned, deterministic evaluation policy., _edit_distance(), _graphemes(), _is_ligature(), _is_macron_grapheme(), _is_thorn_eth() (+10 more)
+
+### Community 11 - "_SpanCandidate"
 Cohesion: 0.07
-Nodes (40): BochordError, ConfigurationError, FileError, Raised when settings or configuration fails., Raised when file I/O operations fail., Raised when a hosted runner endpoint is not ready for inference., Base exception for all bochord errors., RunnerEndpointUnavailable (+32 more)
+Nodes (42): _apply_span_text_resolution(), _apply_span_typography_resolution(), _first_candidate_by_runner_precedence(), Any, Collect unique witness ids from span candidates in input order. Args:…, Collect unique runner ids from span candidates in input order. Args:…, Apply text agreement or disagreement resolution for one span. Args: span:…, Resolve typography facets from witness span candidates. Args: typography:… (+34 more)
 
-### Community 11 - "TextNormalizer"
-Cohesion: 0.08
-Nodes (22): Return a span flagged for missing witness text evidence. Args: span: Accepted…, Initialize the merge facade. Args: text_normalizer: Optional normalizer;…, _span_with_insufficient_text_evidence(), Initialize interchange with optional text-normalization override. Args:…, Normalize span diplomatic text without note-marker rewriting. Args:…, Normalize note diplomatic text, including note-marker policy. Args:…, Join two line texts and return normalized output plus provenance. Hyphen-at-…, Return a span copy with ``text_normalized`` regenerated. Args: span: Accepted… (+14 more)
-
-### Community 12 - "test_document_export.py"
-Cohesion: 0.08
-Nodes (41): BaselineShift, ChunkType, FontSlant, FontWeight, NoteKind, StrEnum, Accepted note classes for v1., Preparation transform families recorded between image spaces. (+33 more)
-
-### Community 13 - "cli.py"
+### Community 12 - "model_validator"
 Cohesion: 0.05
-Nodes (74): _load_page_overrides(), _load_preparation_recipe(), _prepare_overrides(), prepare_pages(), Path, Acquire and prepare source pages into a reproducible output bundle. Args:…, Load and validate a preparation recipe JSON file. Args: recipe:…, Load and validate a per-page override manifest. Args: overrides: Optional JSON… (+66 more)
+Nodes (24): _known_page_space_ids(), _known_preparation_space_ids(), model_validator, Require baseline_coordinate_space_id exactly when baseline is present. Returns:…, Collect coordinate-space ids declared by preparation context. Args:…, Collect coordinate-space ids usable by page-graph geometry. Args:…, Reject duplicate ids and dangling page-graph references. Returns: The validated…, Keep top-level schema identity, page count, and page ids coherent. Returns: The… (+16 more)
 
-### Community 14 - "test_preparation_service.py"
+### Community 13 - "prepare_pages"
+Cohesion: 0.11
+Nodes (28): argument, command, Context, option, pass_context, eval_cohorts(), eval_page(), export_document() (+20 more)
+
+### Community 14 - "Image"
+Cohesion: 0.15
+Nodes (13): dark_gutter_image(), note_heavy_image(), Image, Build a page of horizontal text-like bars, then rotate it. Keyword Args:…, Build a page with a dark vertical gutter in the center strip. Returns:…, Build a mostly flat page with dense salt-and-pepper noise. Returns: Grayscale…, Build a page with sparse body ink and dense bottom-quarter notes. Returns:…, Build a page dominated by sustained dark table rules. Keyword Args: rule_count:… (+5 more)
+
+### Community 15 - "WitnessReference"
+Cohesion: 0.08
+Nodes (36): test_page_bundle_manifest_round_trip(), PageBundleManifest, On-disk page manifest for one Spec 0002 page bundle., Pointer from accepted graph content back to raw machine evidence., WitnessReference, _atomic_write_json(), _atomic_write_text(), _collect_page_flags() (+28 more)
+
+### Community 16 - "._invoke_item"
 Cohesion: 0.09
-Nodes (66): PageClassifier, PagePreparationService, PageQualityAssessor, Measure cheap, deterministic quality signals for one page raster., Suggest a page-class cohort from measured quality signals., Apply deterministic transforms and subdivision for one source page. Args:…, Bind assessor and classifier collaborators. Args: assessor: Quality-signal…, MockerFixture (+58 more)
-
-### Community 15 - "BundlePaths"
-Cohesion: 0.07
-Nodes (48): BundlePaths, PageBundleManifest, On-disk page manifest for one Spec 0002 page bundle., Relative path helpers for one document bundle root. Args: root: Filesystem root…, OverlayState, Current overlay state for one reviewable object., Pointer from accepted graph content back to raw machine evidence., WitnessReference (+40 more)
-
-### Community 16 - "HuggingFaceOlmocrRunner"
-Cohesion: 0.07
-Nodes (37): BatchUnitKind, Batch grouping units for runner execution., _encode_png_base64(), _failed_item_result(), HuggingFaceOlmocrRunner, _ItemInvokeResult, _load_direct_image(), _load_image_from_pdf() (+29 more)
+Nodes (24): RequestError, _encode_png_base64(), _failed_item_result(), _load_direct_image(), _load_image_from_pdf(), Any, Image, Path (+16 more)
 
 ### Community 17 - "ADR 0010 Structured Output Boundary"
 Cohesion: 0.05
 Nodes (50): Accepted Page Graph, Acquisition Provenance, Bibliographic Provenance, bochord, Bundle JSON, Chunking Recipe, Diplomatic Text, Document Bundle (+42 more)
 
-### Community 18 - "services/evaluation.py"
-Cohesion: 0.13
-Nodes (19): MetricProfile, BaseModel, Versioned, deterministic evaluation policy., _box_iou(), _boxes_intersect(), _coverage_allows(), _has_exhaustive_coverage(), Return intersection-over-union for two axis-aligned boxes. Args: left: First… (+11 more)
+### Community 18 - "PlannedRunnerBatch"
+Cohesion: 0.08
+Nodes (51): Runner, overlay, and gold contracts should fit the planned workflow., TypedDict, BatchItemRef, InputKind, PackagingStrategy, PreparedArtifactRef, Runner input artifact categories., Runner packaging policies. (+43 more)
 
-### Community 19 - "_SpanCandidate"
-Cohesion: 0.15
-Nodes (21): Any, Resolve typography facets from witness span candidates. Args: typography:…, Resolve each typography facet independently from span candidates. Args:…, Resolve font-family labels independently from span candidates. Args:…, Resolve enum-like typography facets from span candidates. Args: typography:…, Resolve optional boolean and float typography facets from span candidates.…, Resolve one enum-like typography facet from candidate values. Args: values:…, Resolve one optional boolean typography facet from candidate values. Args:… (+13 more)
+### Community 19 - "RunnerReference"
+Cohesion: 0.11
+Nodes (28): test_document_bundle_manifest_rejects_non_positive_page_count(), test_document_bundle_manifest_round_trip(), _document_bundle(), _minimal_document_bundle(), Wrap accepted pages in a valid multi-page document bundle., Wrap one accepted page in a valid document bundle., _minimal_document_bundle(), Return a document bundle wrapping the given pages. (+20 more)
 
 ### Community 20 - "check_napoleon_gate.py"
 Cohesion: 0.08
 Nodes (41): AsyncFunctionDef, _check_file(), _check_function_doc(), _constructor_has_args(), _first_doc_line(), _function_has_args(), _function_has_keyword_args(), _function_uses_return_or_yield() (+33 more)
 
-### Community 21 - "Path"
+### Community 21 - "BundlePaths"
 Cohesion: 0.07
-Nodes (19): Path, Return the source page image path for one page number and extension. Args:…, Return the page bundle directory for one page number. Args: page_number:…, Return the page manifest path for one page number. Args: page_number: 1-based…, Return the prepared page image directory for one page number. Args:…, Return the witness artifact directory for one page and family. Args:…, Return the normalized page graph artifact path. Args: page_number: 1-based page…, Return the page evaluation scores artifact path. Args: page_number: 1-based… (+11 more)
+Nodes (26): Multiple source/pages/NNNN.* files must not silently pick one., test_bundle_paths_match_spec_0002_layout(), test_resolve_source_image_path_rejects_ambiguous_extensions(), test_source_page_image_rejects_empty_extension(), BundlePaths, Path, Return the source page image path for one page number and extension. Args:…, Return the page bundle directory for one page number. Args: page_number:… (+18 more)
 
 ### Community 22 - "test_olmocr_runner.py"
 Cohesion: 0.16
@@ -300,96 +297,96 @@ Cohesion: 0.05
 Nodes (42): ExtractionOrchestrator, Project Structure (models/services/cli/settings), Single Responsibility Service Architecture, Dual Text Contract, Historical Character Preservation, LineJoinRecord, text-norm-v1 Policy, TextNormalizer (+34 more)
 
 ### Community 24 - "TestConfiguration"
-Cohesion: 0.07
-Nodes (20): Exception, patch, Test that settings fields have proper descriptions., Test that model_config is properly configured., Test output format validation., Test valid output format validation., Test settings loading from environment variables. This test is a placeholder…, Test that environment variables override defaults. (+12 more)
+Cohesion: 0.09
+Nodes (17): Exception, patch, Test that settings fields have proper descriptions., Test output format validation., Test valid output format validation., Test settings loading from environment variables. This test is a placeholder…, Test that environment variables override defaults., Test that settings are case insensitive. (+9 more)
 
-### Community 25 - "PageEvaluationSummary"
-Cohesion: 0.11
-Nodes (41): EvaluationCohortKey, EvaluationCohortReport, EvaluationCohortSummary, PageEvaluationRecord, One evaluated page with run, preparation, and runner context., Grouping key for one fixed evaluation cohort view., Aggregated evaluation output for one cohort., Fixed cohort views emitted by evaluation aggregation. (+33 more)
+### Community 25 - "PageXmlInterchangeService"
+Cohesion: 0.10
+Nodes (22): PageXmlInterchangeService, Element, Apply PAGE-supported field updates onto the canonical sidecar. Args: root:…, Return the PAGE Page element, raising when it is absent. Args: root: Parsed…, Reject PAGE corrections for a different prepared image identity. Args: page_el:…, Index TextLine and Word elements by stable id. Args: region_elements: PAGE…, Merge PAGE region geometry and reading order. Args: regions: Canonical region…, Round-trip canonical page evidence through PAGE review packages. Exports a… (+14 more)
 
-### Community 26 - "_try_rebind_event"
-Cohesion: 0.11
-Nodes (20): _coordinate_space_ids(), _nested_object_ids(), ReviewEvent, Apply one append-only event onto a mutable overlay state. Args: state:…, Record trust, applied event id, and reviewed/corrected dimensions. Args: state:…, Apply event-specific override fields named by the event contract. Structural…, Rebind one event when every required id resolves; otherwise skip it. Args:…, Collect nested marker/region/line/note ids that must remap. Args: event:… (+12 more)
+### Community 26 - "ReviewDimension"
+Cohesion: 0.10
+Nodes (19): HumanMarkupService task types must certify only their exclusive dimension., Return a review task bound to the shared overlay evidence., _task(), Supported human review targets., Independent evidence dimensions a human may inspect and certify., Operator workflow represented by a review task packet., Verb vocabulary for append-only review events., ReviewAction (+11 more)
 
 ### Community 27 - "SourcePageArtifact"
+Cohesion: 0.10
+Nodes (30): One acquired source page before preparation., SourcePageArtifact, _build_assessment(), _build_preparation_result(), Build assessment metadata for one prepared page. Keyword Args: source_page:…, Assemble the persisted result model for one prepared page. Args: source_page:…, _artifact_from_raster(), _image_dpi() (+22 more)
+
+### Community 28 - "PreparationRecipe"
 Cohesion: 0.07
-Nodes (56): Print the some version info of this package,, version(), Supported top-level source kinds., SourceType, PdfPageImageMode, One acquired source page before preparation., PDF page rasterization strategy during source acquisition., SourcePageArtifact (+48 more)
+Nodes (36): PdfPage, PreparationRecipe, Keep tile overlap strictly smaller than tile height. Returns: The validated…, Deterministic page-preparation profile., _build_prepared_units(), _derive_prepared_page_id(), _ensure_supported_recipe(), _fixed_tile_boxes() (+28 more)
 
-### Community 28 - "_NoteCandidate"
-Cohesion: 0.12
-Nodes (31): _apply_note_link_resolution(), _mapped_note_link_sets(), _MarkerMappingContext, _min_merge_confidence(), _note_link_alternates(), _note_marker_links_from_mapped_sets(), _note_marker_links_when_mapping_ambiguous(), _note_text_alternates_from_candidates() (+23 more)
+### Community 29 - "_bundle_page_payload"
+Cohesion: 0.09
+Nodes (24): _bundle_page_payload(), _provenance(), Return a mutable dump of a valid bundle page with optional overrides., Return valid single-page object provenance., Graph boxes and polygons must name a known page coordinate space., Non-empty baselines require an explicit baseline coordinate space id., Baseline coordinate spaces must resolve to a known page space., Every line listed by a region must claim that region as parent. (+16 more)
 
-### Community 29 - "MergeOrchestrator"
-Cohesion: 0.12
-Nodes (14): MergeOrchestrator, Per-page mutable merge state and step runner. Args: policy: Versioned merge…, Execute the Spec 0009 merge sequence for one page. Returns: Accepted page graph…, Choose the accepted prepared page variant for this merge., Keep same-variant witnesses and record skipped cross-variant evidence., Pick one coordinate-rich structure scaffold and detect layout conflicts., Record insufficient evidence when no layout scaffold is available., Compare other witnesses against the chosen scaffold and flag conflicts. Args:… (+6 more)
-
-### Community 30 - "GoldPageAnnotation"
-Cohesion: 0.16
-Nodes (13): GoldNoteLink, GoldPageAnnotation, Gold note-marker linkage target., Gold data slice for one page., _NoteLinkageScorer, Score exact marker-to-note edges and emit linkage flags. Gold…, Aggregate note-linkage success for covered gold edges. Args: prediction:…, Map predicted note ids to gold region annotation ids that name them. Args:… (+5 more)
+### Community 30 - "SourceAcquisitionService"
+Cohesion: 0.24
+Nodes (20): pdf_fixture(), Path, Load the Phase 3 recipe fixture with optional field overrides. Keyword Args:…, Build a one-page blank PDF for acquisition tests. Args: tmp_path: Optional…, Write a tiny RGB PNG/JPEG/TIFF image to ``path``. Args: path: Destination image…, recipe(), test_image_bounds_must_overlap_most_of_page_area(), test_image_folder_records_image_set_source_type() (+12 more)
 
 ### Community 31 - "test_page_interchange.py"
 Cohesion: 0.10
 Nodes (34): _export_note_page(), _line_unicode(), _page_element(), _parse_native_corrected(), Element, parametrize, Path, Export should round PAGE coordinates to importer-friendly integers. (+26 more)
 
-### Community 32 - "_stable_json_schema"
-Cohesion: 0.33
-Nodes (6): Return Pydantic-generated JSON Schema with stable key ordering. Args:…, DocumentBundle JSON Schema must match the checked-in generated snapshot., RagDocument JSON Schema must match the checked-in generated snapshot., _stable_json_schema(), test_generated_schema_document_bundle_v1_matches_snapshot(), test_generated_schema_rag_document_v1_matches_snapshot()
+### Community 32 - "_RateAccumulator"
+Cohesion: 0.10
+Nodes (20): _facet_match(), _RateAccumulator, Score one gold style span into facet and marker accumulators. Args: gold_span:…, Score independent typography facets into shared accumulators. Args: gold_typo:…, Score footnote-marker retention when gold carries that role. Args: gold_span:…, Emit partial collapse when weight and slant XOR-match. Fires only when both…, Score one enum typography facet when gold is known. Args: rate: Target…, Score small-caps or letter-spacing when gold is known. Args: rate: Target… (+12 more)
 
-### Community 33 - "DocumentExportService"
-Cohesion: 0.05
-Nodes (45): RagChunk, Page-local retrieval chunk., Cross-page retrieval chunk stitched from accepted page-local chunks., StitchedChunk, DocumentExportService, PageGraphIndex, Render an evidence-preserving Markdown reading view from accepted graphs. Args:…, Map linked marker span ids to owning note ids for one page. Args: page:… (+37 more)
+### Community 33 - "ReviewOverlayService"
+Cohesion: 0.06
+Nodes (39): MonkeyPatch, Replay of frozen fixture events must equal fixture current_state., Successor copies resolvable events only and keeps conflict packets., Successor remaps nested region and line ids on a copied split event., Corrupt split dump shapes must raise ValueError, not shrink regions., test_overlay_v1_fixture_replay_matches_current_state(), test_successor_rebases_only_resolved_events_and_queues_conflicts(), test_successor_rebases_split_region_nested_ids() (+31 more)
 
 ### Community 34 - "test_runner_execution.py"
 Cohesion: 0.15
-Nodes (33): HostedInvocationResult, Raw result returned from one hosted runner invocation., InvokeResult, execution_service(), _fail_all_items(), _fail_second_item(), FakeOlmocrRunner, fixture_root() (+25 more)
+Nodes (31): InvokeResult, execution_service(), _fail_all_items(), _fail_second_item(), FakeOlmocrRunner, fixture_root(), hosted_result(), policy() (+23 more)
 
-### Community 35 - "model_validator"
+### Community 35 - "PageEvaluationSummary"
+Cohesion: 0.11
+Nodes (24): _flag(), Return a minimal evaluation flag for queue fixtures., test_adjudication_excludes_page_id_from_related_object_ids(), test_blank_target_object_id_routes_to_adjudication(), test_build_review_tasks_preserves_dimension_specific_coverage(), test_note_linkage_marker_only_flags_collapse_to_adjudication(), EvaluationFamilySummary, EvaluationFlag (+16 more)
+
+### Community 36 - "models/__init__.py"
 Cohesion: 0.05
-Nodes (22): model_validator, Require baseline_coordinate_space_id exactly when baseline is present. Returns:…, Reject duplicate ids and dangling page-graph references. Returns: The validated…, Keep top-level schema identity, page count, and page ids coherent. Returns: The…, Keep page-local page ids aligned with provenance. Returns: The validated page-…, Keep stitched page ids distinct and aligned with provenance. Returns: The…, Keep page-local and stitched retrieval references coherent. Returns: The…, Reject duplicate related ids and overlap with primary targets. Returns: The… (+14 more)
+Nodes (101): Alternate merge interpretations live in provenance, not duplicate nodes., test_object_provenance_accepts_alternate_candidates(), _event_base(), _polygon(), datetime, Return polygon-only replacement geometry., Return orthogonal typography facets for style correction., Build one overlay covering every replay assertion path. current_state is… (+93 more)
 
-### Community 36 - "test_review_overlay.py"
+### Community 37 - "File map"
+Cohesion: 0.13
+Nodes (14): Done criteria (from spec), File map, Rename `bochord` → `wordwending` Implementation Plan, Task 10: GitHub rename + URL sweep, Task 11: Operator checklist (human), Task 1: Branch, Task 2: Move package directory, Task 3: Mechanical replace (in-scope only) (+6 more)
+
+### Community 38 - "test_ocr_models.py"
 Cohesion: 0.06
-Nodes (66): AcceptReviewEvent, CorrectGeometryReviewEvent, CorrectStyleReviewEvent, CorrectTextReviewEvent, FlagReviewEvent, LinkNoteReviewEvent, MarkIllegibleReviewEvent, PageOverlay (+58 more)
+Nodes (29): Prepared-unit identifiers must be unique on one prepared page., Prepared units must belong to the prepared page and known spaces., Return a valid preparation-recipe payload with optional overrides., Return Pydantic-generated JSON Schema with stable key ordering. Args:…, Frozen document-bundle-v1.json must validate and dump identically., Frozen rag-document-v1.json must validate and dump identically., DocumentBundle JSON Schema must match the checked-in generated snapshot., RagDocument JSON Schema must match the checked-in generated snapshot. (+21 more)
 
-### Community 37 - "._coords"
-Cohesion: 0.21
-Nodes (6): Build one PAGE TextRegion from a canonical region record. Args: region:…, Build one PAGE TextLine from a canonical line record. Args: line: Canonical…, Convert one axis-aligned box to PAGE Coords. Args: bounding_box: Axis-aligned…, Convert one polygon to PAGE Coords. Args: polygon: Non-rectangular page…, Convert one baseline polyline to PAGE Baseline. Args: baseline: Ordered…, Serialize one PAGE coordinate as an importer-friendly integer. Args: value:…
+### Community 39 - "Rename `bochord` → `wordwending` Design"
+Cohesion: 0.17
+Nodes (11): Done Criteria, Execution Order, Identity Map, In Scope, Locked Decisions, Non-Goals (Ponytail), Out of Scope, Purpose (+3 more)
 
-### Community 38 - "model_runner_payload"
-Cohesion: 0.18
-Nodes (11): capability_payload(), execution_batch_payload(), model_runner_payload(), parametrize, Return a valid model-backed runner payload with optional overrides., Return a valid runner capability payload with optional overrides., Return a valid runner execution batch payload with optional overrides., test_model_backed_runner_requires_hardware_class() (+3 more)
+### Community 40 - "RunnerInputPackager"
+Cohesion: 0.28
+Nodes (17): bundle_root(), planned_batch(), fixture, Path, Build a planned batch aligned with ``prepared-inputs.json``., Create a bundle root with PNG inputs for packaging tests., test_direct_packaging_references_original_artifact(), test_direct_packaging_rejects_multi_item_batch() (+9 more)
 
-### Community 39 - "PageXmlInterchangeService"
-Cohesion: 0.12
-Nodes (18): PageXmlInterchangeService, Element, Apply PAGE-supported field updates onto the canonical sidecar. Args: root:…, Return the PAGE Page element, raising when it is absent. Args: root: Parsed…, Reject PAGE corrections for a different prepared image identity. Args: page_el:…, Index TextLine and Word elements by stable id. Args: region_elements: PAGE…, Merge PAGE region geometry and reading order. Args: regions: Canonical region…, Round-trip canonical page evidence through PAGE review packages. Exports a… (+10 more)
+### Community 41 - "._coords"
+Cohesion: 0.13
+Nodes (10): Path, Merge PAGE-supported corrections into canonical sidecar data. Args:…, Serialize one bundle page to PAGE 2019-07-15 XML. Args: page: Canonical page…, Build one PAGE TextRegion from a canonical region record. Args: region:…, Build one PAGE TextLine from a canonical line record. Args: line: Canonical…, Convert one axis-aligned box to PAGE Coords. Args: bounding_box: Axis-aligned…, Convert one polygon to PAGE Coords. Args: polygon: Non-rectangular page…, Convert one baseline polyline to PAGE Baseline. Args: baseline: Ordered… (+2 more)
 
-### Community 40 - "_bundle_page_payload"
-Cohesion: 0.09
-Nodes (22): _bundle_page_payload(), Return a mutable dump of a valid bundle page with optional overrides., Graph boxes and polygons must name a known page coordinate space., Non-empty baselines require an explicit baseline coordinate space id., Baseline coordinate spaces must resolve to a known page space., Every line listed by a region must claim that region as parent., Every span listed by a line must claim that line as parent., Every note listed by a region must claim that region as parent. (+14 more)
-
-### Community 41 - "_RateAccumulator"
-Cohesion: 0.12
-Nodes (19): GoldStyleSpan, Gold style target for one span or image-anchored area., Semantic role kept separate from visual typography., TextRole, _facet_match(), _RateAccumulator, Score one gold style span into facet and marker accumulators. Args: gold_span:…, Score independent typography facets into shared accumulators. Args: gold_typo:… (+11 more)
-
-### Community 42 - "RunnerExecutionPolicy"
-Cohesion: 0.12
-Nodes (32): Declared pass-runner input and batching contract., RunnerCapability, Frozen execution policy for one runner and hosting boundary., RunnerExecutionPolicy, Bind one hosted olmOCR runner to endpoint settings and an HTTP client. Args:…, Return the declared olmOCR input and batching contract. Returns: Hosted olmOCR…, _chunk_size(), Plan fixed runner batches from prepared artifacts and policy. (+24 more)
+### Community 42 - "RunnerBatchPlanner"
+Cohesion: 0.15
+Nodes (27): Persisted batch status must agree with submitted and failed items., Return a valid runner execution policy payload with optional overrides., runner_policy_payload(), test_endpoint_policy_rejects_estimate_above_run_cap(), test_spec_0013_runner_invariants_reject_invalid_payloads(), artifacts(), capability(), policy() (+19 more)
 
 ### Community 43 - "cli"
 Cohesion: 0.13
-Nodes (15): cli(), bochord command line interface. Args: ctx: Click context object. verbose:…, group, _dense_two_column_image(), Image, Path, Test the prepare command., Test prepare aborts before writes when override lacks a reason. (+7 more)
+Nodes (16): group, _dense_two_column_image(), Image, Path, Test the prepare command., Test prepare aborts before writes when override lacks a reason., Test the export command., Export writes Spec 0006 derived artifacts under exports/. (+8 more)
 
-### Community 44 - "run_runner"
-Cohesion: 0.20
-Nodes (15): argument, eval_cohorts(), eval_page(), export_document(), Settings-related commands. Args: ctx: Click context object., Score one predicted page against gold annotations. Args: prediction: Predicted…, Summarize page evaluation records into fixed cohort views. Args: records: JSON…, Execute prepared artifacts against one hosted olmOCR runner. Args: ctx: Click… (+7 more)
+### Community 44 - "PageClass"
+Cohesion: 0.09
+Nodes (45): metric(), Return one metric from a family summary by id., Build one page evaluation record with a single macron_recall metric., record(), test_empty_input_returns_three_empty_lists(), test_page_class_summary_sums_metric_denominators(), test_reports_split_same_class_by_mode_and_runner(), test_zero_denominator_unit_error_aggregates_as_unit_error() (+37 more)
 
 ### Community 45 - "Settings"
-Cohesion: 0.19
-Nodes (10): Settings management for bochord., Application settings with cascading configuration support. Note: The app_name…, Validate settings and ensure required directories exist. Raises:…, Settings, patch, Test the run command., _run_cli_args(), _runner_reference_json() (+2 more)
+Cohesion: 0.18
+Nodes (10): patch, Test the run command., _run_cli_args(), TestCLIRun, Test that model_config is properly configured., Test that extra fields in TOML are ignored., Test that settings fields have correct types., Validate settings and ensure required directories exist. Raises:… (+2 more)
 
-### Community 46 - "._score_text_pair"
-Cohesion: 0.12
-Nodes (14): _edit_distance(), _graphemes(), _is_ligature(), _is_macron_grapheme(), _is_thorn_eth(), Return whether ``grapheme`` carries a macron in NFC or NFD form. Args:…, Return whether ``grapheme`` is thorn or eth. Args: grapheme: One NFC grapheme…, Return whether ``grapheme`` is an OE ligature under watch. Args: grapheme: One… (+6 more)
+### Community 46 - "Path"
+Cohesion: 0.14
+Nodes (21): MockerFixture, binary_recipe(), bundle_service(), dense_two_column_image(), Path, Write a single-page source raster for bundle tests. Returns: Path to a…, Write a two-page image folder for multi-page bundle tests. Returns: Path to a…, Build a preparation bundle service wired to ``acquisition``. Args: acquisition:… (+13 more)
 
 ### Community 47 - "Machine Assistance Resources"
 Cohesion: 0.13
@@ -397,19 +394,19 @@ Nodes (16): OCR Learning Goal Record, Witness-first OCR to structured data learn
 
 ### Community 48 - "TestOcrModels"
 Cohesion: 0.05
-Nodes (28): _minimal_page_overlay(), Gold text without a graph target or geometry cannot be scored., Model-backed evidence must be reproducible., OCR models must run on the required Hugging Face hosting boundary., Bundle pages store review event ids, not an embedded overlay graph., Return fields required by every review event., Return a minimal text-review task bound to the overlay defaults., Return a minimal page overlay with one text task and no events. (+20 more)
+Nodes (27): _minimal_page_overlay(), Gold text without a graph target or geometry cannot be scored., Model-backed evidence must be reproducible., OCR models must run on the required Hugging Face hosting boundary., Bundle pages store review event ids, not an embedded overlay graph., Return fields required by every review event., Return a minimal text-review task bound to the overlay defaults., Return a minimal page overlay with one text task and no events. (+19 more)
 
 ### Community 49 - "Spec 0004: Ordered V1 Implementation"
-Cohesion: 0.15
-Nodes (15): Spec 0004: Ordered V1 Implementation, Candidate Model Bake-Off, Hugging Face Hosted OCR Inference, Recommended Initial CLI, Ordered V1 Implementation Phases, Evidence-Bound Human Review, Spec 0012: Runner Execution and Batch Policy, Runner Batch Execution Policy (+7 more)
+Cohesion: 0.18
+Nodes (13): Spec 0004: Ordered V1 Implementation, Candidate Model Bake-Off, Hugging Face Hosted OCR Inference, Recommended Initial CLI, Ordered V1 Implementation Phases, Spec 0012: Runner Execution and Batch Policy, Runner Batch Execution Policy, Hugging Face Deployment Target (+5 more)
 
-### Community 50 - "_stitched_chunk"
-Cohesion: 0.09
-Nodes (28): Return multi-page retrieval provenance with stable witness pointers., Return a cross-page stitched chunk with optional field overrides., Stitched chunk ids must stay unique within a RagDocument., Page-local chunks must not span multiple pages., Stitched chunks must span at least two distinct pages., JSONL stitched lines reject single-page provenance at parse time., Stitched page_ids must stay distinct in first-seen order., Stitched provenance must list every declared page. (+20 more)
+### Community 50 - "_rag_chunk"
+Cohesion: 0.07
+Nodes (46): _minimal_rag_document(), _rag_chunk(), Return multi-page retrieval provenance with stable witness pointers., Return a page-local retrieval chunk with optional field overrides., Return a cross-page stitched chunk with optional field overrides., Return a document-level RAG export with optional chunk overrides., Page-local chunk ids must stay unique within a RagDocument., Stitched chunk ids must stay unique within a RagDocument. (+38 more)
 
-### Community 51 - "_rag_chunk"
-Cohesion: 0.12
-Nodes (16): _rag_chunk(), Return a page-local retrieval chunk with optional field overrides., Page-local chunk ids must stay unique within a RagDocument., Page-local chunks must belong to the parent document., Stitched chunks must belong to the parent document., Page-local chunks must declare exactly one page., JSONL page-local lines reject multi-page provenance at parse time., Page-local chunks must retain at least one accepted source object. (+8 more)
+### Community 51 - "MergeOrchestrator"
+Cohesion: 0.11
+Nodes (16): MergeOrchestrator, Per-page mutable merge state and step runner. Args: policy: Versioned merge…, Execute the Spec 0009 merge sequence for one page. Returns: Accepted page graph…, Choose the accepted prepared page variant for this merge., Keep same-variant witnesses and record skipped cross-variant evidence., Pick one coordinate-rich structure scaffold and detect layout conflicts., Record insufficient evidence when no layout scaffold is available., Compare other witnesses against the chosen scaffold and flag conflicts. Args:… (+8 more)
 
 ### Community 52 - "TestCLISettings"
 Cohesion: 0.14
@@ -417,19 +414,19 @@ Nodes (8): Test the settings command., Test the settings command with table outp
 
 ### Community 53 - "test_cli_utils.py"
 Cohesion: 0.21
-Nodes (9): print_info(), print_success(), Print success message. Args: message: Success message, Print informational message. Args: message: Informational message, Tests for CLI utilities., Test info printing functions., Test basic info printing., Test info panel has correct styling. (+1 more)
+Nodes (9): Tests for CLI utilities., Test info printing functions., Test basic info printing., Test info panel has correct styling., TestPrintInfo, print_info(), print_success(), Print success message. Args: message: Success message (+1 more)
 
 ### Community 54 - "main"
 Cohesion: 0.23
-Nodes (8): main(), patch, Tests for the main module., Test the main function., Test that main function calls the CLI., Test that main function can be imported and called., Test that main function exists and is callable., TestMain
+Nodes (8): patch, Tests for the main module., Test the main function., Test that main function calls the CLI., Test that main function can be imported and called., Test that main function exists and is callable., TestMain, main()
 
 ### Community 55 - "DocumentRunOrchestrator"
 Cohesion: 0.15
 Nodes (13): ADR 0001 Package Boundary, Acquire-Prepare-Pass-Align-Evaluate-Review-Export Workflow, ADR 0005 Evaluation First, Separate Evaluation Score Families, Spec 0001 System Architecture, BundleWriter, DocumentRunOrchestrator, EvaluationService (+5 more)
 
 ### Community 56 - "i-mutation / i-umlaut"
-Cohesion: 0.26
-Nodes (12): Ablaut (inherited vowel alternation), OE fæder walk-back (Grimm + Verner), OE fōt walk-back (Grimm + ablaut + i-mutation), Grimm's Law, i-mutation / i-umlaut, Proto-Germanic, Proto-Indo-European, Lesson 0001 Sound Change and Reconstruction (+4 more)
+Cohesion: 0.23
+Nodes (13): Ablaut (inherited vowel alternation), OE fæder walk-back (Grimm + Verner), OE fōt walk-back (Grimm + ablaut + i-mutation), Grimm's Law, i-mutation / i-umlaut, Proto-Germanic, Proto-Indo-European, Lesson 0001 Sound Change and Reconstruction (+5 more)
 
 ### Community 57 - "conftest.py"
 Cohesion: 0.21
@@ -437,31 +434,31 @@ Nodes (12): cli_context(), mock_console(), mock_settings(), fixture, Test config
 
 ### Community 58 - "print_error"
 Cohesion: 0.21
-Nodes (8): print_error(), Print error message with optional suggestions. Args: message: Error message…, Test error printing functions., Test basic error printing., Test error printing with suggestions., Test error printing without suggestions., Test error panel has correct styling., TestPrintError
+Nodes (8): Test error printing functions., Test basic error printing., Test error printing with suggestions., Test error printing without suggestions., Test error panel has correct styling., TestPrintError, print_error(), Print error message with optional suggestions. Args: message: Error message…
 
-### Community 59 - ".score"
-Cohesion: 0.19
-Nodes (10): AnchoredGoldAnnotation, GoldRegionAnnotation, Gold annotation that resolves to graph evidence or prepared image geometry., Gold region or structure target., Score structure metrics and provenance-backed structure flags. Covers region…, Aggregate region, order, join, and table metrics for one page. Args:…, Resolve scored gold regions under exhaustive STRUCTURE coverage. Args:…, Score adjacent gold reading-order pairs among covered regions. Args: matches:… (+2 more)
+### Community 59 - "test_preparation_service.py"
+Cohesion: 0.17
+Nodes (35): dense_source_page(), preparation_service(), MonkeyPatch, parametrize, Build the default page-preparation service for tests. Returns: Page preparation…, Build a source-page artifact backed by a written PNG. Keyword Args: dpi:…, Build a two-column dense dictionary source page on disk. Returns: Source page…, Index quality signals by ``signal_id``. Args: signals: Measured quality signals… (+27 more)
 
 ### Community 60 - "Preparation Gold Specs"
 Cohesion: 0.17
 Nodes (12): V1 Gold Data Expectations, Spec 0007: PDF-to-Image Preparation, Competing Preparation Recipes, Coordinate and Image Provenance, Page Subdivision into OCR Units, Preparation Pipeline Stage, Preparation Recipe, V1 Page Class Taxonomy (+4 more)
 
 ### Community 61 - "Raw OCR witness layer"
-Cohesion: 0.22
-Nodes (9): Normalized structured export layer, Overlay correction layer, Raw OCR witness layer, Two-stage text-plus-style OCR pipeline, Lesson 0006 BT Entry Structuring, Dictionary entry block as structuring unit, Lossless raw entry representation, OCR artifact ladder (witness/normalized/overlay/structured) (+1 more)
+Cohesion: 0.17
+Nodes (12): Normalized structured export layer, Overlay correction layer, Raw OCR witness layer, Bosworth-Toller dense two-column page prep case, Page region/tile splitting for dense OCR, Two-stage text-plus-style OCR pipeline, Lesson 0006 BT Entry Structuring, Dictionary entry block as structuring unit (+4 more)
 
-### Community 62 - "CLI Progress Utils"
+### Community 62 - "create_progress"
 Cohesion: 0.22
-Nodes (8): create_progress(), Create a rich progress indicator for long-running operations. Returns:…, Progress, Test progress creation., Test progress creation returns a Progress object., Test progress has spinner column., Test progress has text column., TestCreateProgress
+Nodes (8): Progress, Test progress creation., Test progress creation returns a Progress object., Test progress has spinner column., Test progress has text column., TestCreateProgress, create_progress(), Create a rich progress indicator for long-running operations. Returns:…
 
 ### Community 63 - "Spec 0002: V1 Bundle Layout and Data Shape"
 Cohesion: 0.18
 Nodes (11): Spec 0002: V1 Bundle Layout and Data Shape, Document Bundle Layout, Review Overlays, V1 Typography and Role Vocabulary, Spec 0014: Review Task and Overlay Schema, correct_text Event Semantics, PageOverlay Append-Only Log, ReviewTask Packet (+3 more)
 
 ### Community 64 - "Spec 0005: Human Markup and Review"
-Cohesion: 0.18
-Nodes (11): Spec 0005: Human Markup and Review, Diplomatic Text Review, Independent Review Dimensions, Trust States machine/reviewed/corrected, Spec 0008: Text and Normalization, Dual Diplomatic/Normalized Text, Retrieval Convenience Text Fields, Spec 0009: Merge and Alignment (+3 more)
+Cohesion: 0.25
+Nodes (8): Spec 0005: Human Markup and Review, Diplomatic Text Review, Evidence-Bound Human Review, Independent Review Dimensions, Spec 0008: Text and Normalization, Dual Diplomatic/Normalized Text, Retrieval Convenience Text Fields, Reject eScriptorium as Review Boundary
 
 ### Community 65 - "Coding Standards Docs"
 Cohesion: 0.27
@@ -471,9 +468,9 @@ Nodes (11): Python Coding Standards, Pydantic vs Dataclass vs TypedDict, Python 
 Cohesion: 0.14
 Nodes (8): Test global CLI options., Test verbose flag is properly set., Test quiet flag is properly set., Test default output format is table., Test JSON output format., Test text output format., Test invalid output format., TestCLIGlobalOptions
 
-### Community 67 - "model_validator"
-Cohesion: 0.22
-Nodes (5): model_validator, Keep tile overlap strictly smaller than tile height. Returns: The validated…, Require a non-empty reason for operator page-class overrides. Returns: The…, Require at least one override choice and a non-empty reason. Returns: The…, Require a non-empty reason for operator preparation overrides. Returns: The…
+### Community 67 - "ReviewTask"
+Cohesion: 0.14
+Nodes (13): Self-contained instructions and evidence binding for human review., ReviewTask, Build a span-scoped diplomatic-text review task packet. Task identity is scoped…, Build a region-scoped layout/structure review task packet. Split and merge work…, Build a span-scoped typography review task packet. Typography certification is…, Build a note-scoped linkage review task packet. Primary targets are note ids.…, Build a page-scoped preparation / subdivision task packet. Args: page: Accepted…, Build a page-scoped adjudication task for empty or unknown flag targets. Args:… (+5 more)
 
 ### Community 68 - "ADR 0009 OCR-D PAGE eScriptorium"
 Cohesion: 0.22
@@ -489,7 +486,7 @@ Nodes (12): Acceptance Checks, Deferred (explicitly not this plan), File Map, Gl
 
 ### Community 71 - ".settings_customise_sources"
 Cohesion: 0.22
-Nodes (6): BaseSettings, Path, Load settings from file with cascading configuration. Args: config_file:…, Get list of configuration file paths that were loaded. Use this for debugging.…, PydanticBaseSettingsSource, Test loading configuration with TOML file.
+Nodes (6): BaseSettings, PydanticBaseSettingsSource, Test loading configuration with TOML file., Path, Load settings from file with cascading configuration. Args: settings_cls:…, Get list of configuration file paths that were loaded. Use this for debugging.…
 
 ### Community 72 - "Normalized Page Graph"
 Cohesion: 0.29
@@ -507,21 +504,21 @@ Nodes (9): Anglian dialect group, Kentish dialect, Mercian dialect, Northumbrian
 Cohesion: 0.25
 Nodes (5): Test the version command., Test the version command displays version information., Test the version command with verbose flag., Test the version command with quiet flag., TestCLIVersion
 
-### Community 76 - ".validate_item_page_alignment"
-Cohesion: 0.29
-Nodes (4): model_validator, Require one page number for every packaged batch item. Returns: The validated…, Keep failure counts and derived throughput internally coherent. Returns: The…, Reject endpoint estimates that exceed the configured run cost cap. Returns: The…
+### Community 76 - "._normalize_text"
+Cohesion: 0.13
+Nodes (8): Normalize span diplomatic text without note-marker rewriting. Args:…, Normalize note diplomatic text, including note-marker policy. Args:…, Return a span copy with ``text_normalized`` regenerated. Args: span: Accepted…, Return a note copy with ``text_normalized`` regenerated. Args: note: Accepted…, Normalize every span and note while leaving diplomatic text unchanged. Args:…, Apply policy-ordered Unicode, whitespace, and optional marker rules. Args:…, Map known superscript codepoints when flattening is enabled. Args: text: Text…, Replace documented marker codepoints when placeholder mode is enabled. Args:…
 
 ### Community 77 - "Learner lacks stable conceptual map of sound-change order"
 Cohesion: 0.29
 Nodes (7): Learner lacks stable conceptual map of sound-change order, OE Grammar Starting Point, OE Grammar Mission, Read and translate Old English with grammatical confidence, OCR and engineering workflows out of scope for OE grammar workspace, OE Grammar Notes, Do not let engineering or OCR topics bleed into OE grammar workspace
 
 ### Community 78 - "OE Grammar Resources"
-Cohesion: 0.20
-Nodes (10): Bosworth-Toller dense two-column page prep case, Page region/tile splitting for dense OCR, Comparative method of reconstruction, Cognate, Reference Reconstruction Glossary, Reflex (descended later form), OE Grammar Resources, Bosworth-Toller Anglo-Saxon Dictionary (+2 more)
+Cohesion: 0.33
+Nodes (6): Comparative method of reconstruction, Cognate, Reference Reconstruction Glossary, Reflex (descended later form), OE Grammar Resources, Proto-Germanic Introduction: Linguistic Methods
 
-### Community 79 - "test_merge_service.py"
+### Community 79 - "MergePolicy"
 Cohesion: 0.06
-Nodes (124): MergePageInput, MergePolicy, Versioned deterministic merge precedence and acceptance thresholds., Competing witness fragments prepared for single-page merge., BoundingBox, FontFamilyCandidate, _geometry_space_id(), Return the named coordinate space for optional box or polygon geometry. Args:… (+116 more)
+Nodes (110): _aligned_text_witnesses(), _bounding_box(), _line(), _load_merge_fixture(), _prepared_page(), Empty precedence with differing text flags disagreement and abstains., When multiple IoU-matched spans share a preferred runner, the first wins., Return a minimal prepared page shared by merge tests. (+102 more)
 
 ### Community 80 - "ADR 0004 Layered Truth"
 Cohesion: 0.33
@@ -547,33 +544,33 @@ Nodes (8): Acceptance Checks, Exact Invariant Matrix, File Map, Global Constrain
 Cohesion: 0.33
 Nodes (4): Test console quiet mode functionality., Test that console can be set to quiet mode., Test that stderr console can be set to quiet mode., TestConsoleQuietMode
 
-### Community 86 - "_review_polygon"
-Cohesion: 0.29
-Nodes (6): Return a valid review geometry bounding box., Return a valid review geometry polygon., Box and polygon must share one coordinate space identity., Region revisions must not mix geometry from different spaces., _review_box(), _review_polygon()
+### Community 86 - "test_merge_service.py"
+Cohesion: 0.18
+Nodes (13): _coordinate_space(), _note(), _provenance(), Return coordinate space aligned to the test prepared page., Build one note record for merge tests., Return valid single-page object provenance., PassWitnessPage serializes and validates a runner page graph fragment., test_pass_witness_page_round_trip() (+5 more)
 
-### Community 87 - "test_ocr_models.py"
-Cohesion: 0.06
-Nodes (27): _page_witness(), Return a witness owned by the given page., Existing provenance fixtures stay valid without alternate candidates., Document page ids must stay unique., Source page_count must remain exact versus exported pages., Return a valid preparation-recipe payload with optional overrides., Frozen document-bundle-v1.json must validate and dump identically., Frozen rag-document-v1.json must validate and dump identically. (+19 more)
+### Community 87 - "valid_bundle_page"
+Cohesion: 0.22
+Nodes (9): _page_witness(), Return a witness owned by the given page., Document page ids must stay unique., Source page_count must remain exact versus exported pages., Return a minimal valid page graph for join-reference tests., test_bundle_rejects_unknown_line_join_target(), test_document_bundle_rejects_duplicate_page_ids(), test_document_bundle_rejects_inexact_source_page_count() (+1 more)
 
-### Community 88 - "_apply_span_text_resolution"
-Cohesion: 0.20
-Nodes (8): _apply_span_text_resolution(), Collect unique witness ids from span candidates in input order. Args:…, Collect unique runner ids from span candidates in input order. Args:…, Apply text agreement or disagreement resolution for one span. Args: span:…, Resolve diplomatic text for each accepted span from witness candidates., Choose diplomatic text for one accepted span from matched witnesses. Args:…, _runner_ids_from_candidates(), _witness_ids_from_candidates()
+### Community 88 - "model_runner_payload"
+Cohesion: 0.17
+Nodes (11): capability_payload(), execution_batch_payload(), model_runner_payload(), parametrize, Return a valid model-backed runner payload with optional overrides., Return a valid runner capability payload with optional overrides., Return a valid runner execution batch payload with optional overrides., Boxes must represent a positive-area rectangle. (+3 more)
 
 ### Community 89 - "Sphinx Docs Index"
-Cohesion: 0.50
-Nodes (5): API Models Autodoc, Changelog, Sphinx Docs Index, README, Read the Docs Config
+Cohesion: 0.67
+Nodes (4): Changelog, Sphinx Docs Index, README, Read the Docs Config
 
 ### Community 90 - "Lesson 0003 Pronouncing Old English Letters"
 Cohesion: 0.40
 Nodes (5): Macron recall metric, Micro-gold calibration workflow, OE fricative voicing between voiced sounds, Lesson 0003 Pronouncing Old English Letters, Four-step OE pronunciation reading routine
 
 ### Community 91 - "MockHttpxClient"
-Cohesion: 0.39
-Nodes (5): MockHttpxClient, Any, BaseException, Response, Minimal httpx client stand-in for hosted runner tests.
+Cohesion: 0.29
+Nodes (7): MockHttpxClient, Any, BaseException, Response, Minimal httpx client stand-in for hosted runner tests., BatchUnitKind, Batch grouping units for runner execution.
 
 ### Community 92 - ".validate_https_huggingface_endpoints"
 Cohesion: 0.50
-Nodes (3): AnyHttpUrl, Require HTTPS for every configured Hugging Face endpoint URL. Args: endpoints:…, field_validator
+Nodes (3): AnyHttpUrl, field_validator, Require HTTPS for every configured Hugging Face endpoint URL. Args: endpoints:…
 
 ### Community 93 - "Page Graph Line"
 Cohesion: 0.50
@@ -595,17 +592,17 @@ Nodes (3): Test console objects., Test that console objects are properly initial
 Cohesion: 0.67
 Nodes (3): AUTHORS Credits, Chris Malek, MIT License
 
-### Community 98 - "._pick_scaffold_witness"
-Cohesion: 0.33
-Nodes (5): _coordinate_rich_line_count(), _first_witness_by_runner_preference(), Select one scaffold witness from structure-bearing candidates. Args:…, Pick the first eligible witness for the earliest preferred runner id. Args:…, Count lines carrying bounding boxes or baseline geometry. Args: witness: One…
+### Community 98 - "_review_polygon"
+Cohesion: 0.29
+Nodes (6): Return a valid review geometry bounding box., Return a valid review geometry polygon., Box and polygon must share one coordinate space identity., Region revisions must not mix geometry from different spaces., _review_box(), _review_polygon()
 
-### Community 99 - "._write_page_xml"
-Cohesion: 0.20
-Nodes (6): Path, Merge PAGE-supported corrections into canonical sidecar data. Args:…, Serialize one bundle page to PAGE 2019-07-15 XML. Args: page: Canonical page…, Build one PAGE Word from a canonical span record. Args: span: Canonical span to…, Map supported typography facets to PAGE TextStyle. Args: typography: Canonical…, Write PAGE review ZIP and canonical JSON sidecar. Args: page: Canonical page…
+### Community 99 - ".validate_item_page_alignment"
+Cohesion: 0.29
+Nodes (4): model_validator, Require one page number for every packaged batch item. Returns: The validated…, Keep failure counts and derived throughput internally coherent. Returns: The…, Reject endpoint estimates that exceed the configured run cost cap. Returns: The…
 
-### Community 100 - "_apply_span_typography_resolution"
-Cohesion: 0.22
-Nodes (10): _apply_span_typography_resolution(), Confidence, alternates, and flag callback for span-role resolution., Resolve span roles from witness candidates. Args: candidates: Matched witness…, Apply typography and role resolution for one span. Args: span: Accepted span…, Resolve span roles from matched witness candidates. Args: candidates: Matched…, Serialize competing role lists as alternate candidates. Args: candidates:…, _resolve_span_role_conflicts(), _resolve_span_roles() (+2 more)
+### Community 100 - "_NoteCandidate"
+Cohesion: 0.10
+Nodes (34): NamedTuple, _apply_note_link_resolution(), _mapped_note_link_sets(), _MarkerMappingContext, _min_merge_confidence(), _note_link_alternates(), _note_marker_links_from_mapped_sets(), _note_marker_links_when_mapping_ambiguous() (+26 more)
 
 ### Community 101 - "ADR 0008 Stable IDs and Review History"
 Cohesion: 0.67
@@ -615,45 +612,41 @@ Nodes (3): ADR 0008 Stable IDs and Review History, Stable Graph Object IDs, mach
 Cohesion: 0.67
 Nodes (3): Five-layer philology-aware metric stack, Character Error Rate (CER), Word Error Rate (WER)
 
+### Community 113 - "_prepared_unit_ref"
+Cohesion: 0.50
+Nodes (4): _prepared_unit_ref(), Return a prepared-unit artifact bound to page preparation context., Transform and prepared-unit spaces are valid geometry contexts., test_bundle_page_accepts_known_transform_and_unit_spaces()
+
+### Community 122 - "TestCLIEval"
+Cohesion: 0.50
+Nodes (3): Test the eval command., Test eval writes deterministic PageEvaluationSummary JSON., TestCLIEval
+
 ### Community 128 - "TestPrintSuccess"
 Cohesion: 0.33
 Nodes (4): Test success panel has correct styling., Test success printing functions., Test basic success printing., TestPrintSuccess
 
-### Community 129 - ".create_successor"
-Cohesion: 0.20
-Nodes (8): _normalize_tasks(), Normalize a successor task map or list into a task-id dictionary. Args:…, Reject task maps that point at missing successor tasks. Args: task_id_map:…, Derive successor run, graph, and checksum from caller-supplied tasks. Args:…, Replay ``overlay.review_events`` into per-object overlay state. Ignores any…, Build a rebased successor overlay without mutating the predecessor. Copies only…, _require_mapped_tasks(), _successor_bindings()
+### Community 129 - "._resolve_context"
+Cohesion: 0.25
+Nodes (6): Suggest a page class using the fixed priority heuristics. Args: signals:…, Read one signal value by id. Args: by_id: Signals indexed by ``signal_id``.…, Resolve assessment, class, and subdivision choices for one page. Args:…, Resolve final page class from automation or operator override. Args: suggested:…, _resolve_page_class(), _signal_value()
 
-### Community 130 - "DocumentBundle"
-Cohesion: 0.09
-Nodes (22): DocumentBundle, Canonical software-facing document export., load_export_minimal_bundle(), load_frozen_document_bundle_v1(), Persisted document exports match renderer output and preserve overlays., Layout exports from document-bundle-v1 keep stable ids and model-valid JSONL., Load the compact export-fixture DocumentBundle., Load the frozen document-bundle-v1 contract fixture. (+14 more)
-
-### Community 131 - "Typography"
-Cohesion: 0.36
-Nodes (8): Orthogonal visual typography facets for one text span., Typography, bold_but_not_italic_prediction(), bold_italic_gold(), One span that is bold but upright (not italic)., Gold style requiring both bold and italic facets., test_style_facets_are_independent(), test_style_family_collapse_is_partial_xor()
-
-### Community 132 - "_known_page_space_ids"
-Cohesion: 0.33
-Nodes (5): _known_page_space_ids(), _known_preparation_space_ids(), Collect coordinate-space ids declared by preparation context. Args:…, Collect coordinate-space ids usable by page-graph geometry. Args:…, Keep prepared-unit ids unique and bound to this page's spaces. Returns: The…
-
-### Community 133 - "Point"
-Cohesion: 0.33
-Nodes (4): Point, One point in an identified image coordinate space., Parse PAGE point strings into coordinate pairs. Args: points: Space-separated…, Derive one point list from PAGE Baseline or Coords. Args: element: Optional…
-
-### Community 134 - "ReviewTaskType"
-Cohesion: 0.33
-Nodes (4): Operator workflow represented by a review task packet., ReviewTaskType, Build a deterministic task id from page, type, and target ids. Identity is…, HumanMarkupService task types must certify only their exclusive dimension.
-
-### Community 135 - "_validate_zip_member"
+### Community 130 - "test_write_document_exports_frozen_contract_jsonl_validates"
 Cohesion: 0.50
-Nodes (5): Detect UNIX symlink members via ``external_attr``. Args: info: ZIP member…, Reject unsafe ZIP members and return a normalized relative path. Args: info:…, _validate_zip_member(), _zip_member_is_symlink(), ZipInfo
+Nodes (4): load_frozen_document_bundle_v1(), Layout exports from document-bundle-v1 keep stable ids and model-valid JSONL., Load the frozen document-bundle-v1 contract fixture., test_write_document_exports_frozen_contract_jsonl_validates()
 
-### Community 137 - "TestCLIEval"
+### Community 131 - "Spec 0009: Merge and Alignment"
+Cohesion: 0.40
+Nodes (5): Trust States machine/reviewed/corrected, Spec 0009: Merge and Alignment, Abstaining Merge Policy, Machine/Merge/Trust Confidence Triad, Structure Scaffold Selection
+
+### Community 132 - "test_write_document_exports_writes_derived_views"
 Cohesion: 0.50
-Nodes (3): Test the eval command., Test eval writes deterministic PageEvaluationSummary JSON., TestCLIEval
+Nodes (4): load_export_minimal_bundle(), Persisted document exports match renderer output and preserve overlays., Load the compact export-fixture DocumentBundle., test_write_document_exports_writes_derived_views()
+
+### Community 135 - "services/merge.py"
+Cohesion: 0.03
+Nodes (116): _LayoutObject, _object_provenance(), Return valid single-page provenance for programmatic graph tests., Separate region/line/span maps must not overwrite unlike graph records., test_typed_page_indexes_resolve_colliding_ids_by_object_kind(), page(), _provenance(), fixture (+108 more)
 
 ### Community 138 - "_PreparedInputsManifest"
 Cohesion: 0.67
-Nodes (3): _PreparedInputsManifest, BaseModel, Prepared artifact manifest accepted by ``bochord run``.
+Nodes (3): _PreparedInputsManifest, BaseModel, Prepared artifact manifest accepted by ``wordwending run``.
 
 ## Ambiguous Edges - Review These
 - `README` → `Sphinx Docs Index`  [AMBIGUOUS]
@@ -664,9 +657,9 @@ Nodes (3): _PreparedInputsManifest, BaseModel, Prepared artifact manifest accept
   teaching/oe-grammar/lessons/0001-sound-change-and-reconstruction.html · relation: semantically_similar_to
 
 ## Knowledge Gaps
-- **137 isolated node(s):** `release.sh script`, `bochord`, `IPA_AUDIO`, `Locked Decisions (from grilling)`, `Global Constraints` (+132 more)
+- **158 isolated node(s):** `release.sh script`, `wordwending`, `IPA_AUDIO`, `Locked Decisions (from grilling)`, `Global Constraints` (+153 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **26 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **24 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -677,11 +670,11 @@ _Questions this graph is uniquely positioned to answer:_
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
 - **What is the exact relationship between `i-mutation / i-umlaut` and `Ablaut (inherited vowel alternation)`?**
   _Edge tagged AMBIGUOUS (relation: semantically_similar_to) - confidence is low._
-- **Why does `BundlePage` connect `BundlePage` to `._emit_result`, `models/__init__.py`, `test_text_normalization.py`, `DocumentBundle`, `test_bundle_layout.py`, `Typography`, `test_evaluation_service.py`, `TextNormalizer`, `test_document_export.py`, `cli.py`, `BundlePaths`, `services/evaluation.py`, `GoldPageAnnotation`, `test_page_interchange.py`, `DocumentExportService`, `model_validator`, `PageXmlInterchangeService`, `.score`, `test_merge_service.py`, `test_ocr_models.py`, `._write_page_xml`?**
-  _High betweenness centrality (0.084) - this node is a cross-community bridge._
-- **Why does `AlternateCandidate` connect `models/__init__.py` to `DocumentBundle`, `PlannedRunnerBatch`, `test_bundle_layout.py`, `BundlePage`, `services/preparation.py`, `Point`, `test_evaluation_service.py`, `ReviewTaskType`, `RunnerThroughputSummary`, `Typography`, `test_document_export.py`, `cli.py`, `BundlePaths`, `HuggingFaceOlmocrRunner`, `_SpanCandidate`, `PageEvaluationSummary`, `SourcePageArtifact`, `_NoteCandidate`, `GoldPageAnnotation`, `DocumentExportService`, `test_review_overlay.py`, `_RateAccumulator`, `RunnerExecutionPolicy`, `.score`, `test_merge_service.py`, `test_ocr_models.py`, `_apply_span_typography_resolution`?**
-  _High betweenness centrality (0.057) - this node is a cross-community bridge._
-- **Why does `SchemaModel` connect `models/__init__.py` to `DocumentBundle`, `PlannedRunnerBatch`, `test_bundle_layout.py`, `BundlePage`, `services/preparation.py`, `Point`, `test_evaluation_service.py`, `Typography`, `RunnerThroughputSummary`, `test_text_normalization.py`, `cli.py`, `BundlePaths`, `services/evaluation.py`, `PageEvaluationSummary`, `SourcePageArtifact`, `GoldPageAnnotation`, `DocumentExportService`, `test_runner_execution.py`, `test_review_overlay.py`, `RunnerExecutionPolicy`, `.score`, `test_merge_service.py`?**
-  _High betweenness centrality (0.051) - this node is a cross-community bridge._
+- **Why does `BundlePage` connect `BundlePage` to `test_document_export.py`, `test_text_normalization.py`, `RagChunk`, `cli.py`, `services/merge.py`, `test_evaluation_service.py`, `MetricProfile`, `model_validator`, `WitnessReference`, `RunnerReference`, `BundlePaths`, `PageXmlInterchangeService`, `ReviewDimension`, `test_page_interchange.py`, `_RateAccumulator`, `PageEvaluationSummary`, `models/__init__.py`, `test_ocr_models.py`, `._coords`, `MergeOrchestrator`, `ReviewTask`, `._normalize_text`, `MergePolicy`, `test_merge_service.py`, `valid_bundle_page`?**
+  _High betweenness centrality (0.083) - this node is a cross-community bridge._
+- **Why does `SchemaModel` connect `models/__init__.py` to `services/preparation.py`, `test_document_export.py`, `test_text_normalization.py`, `RagChunk`, `cli.py`, `BundlePage`, `FlagSeverity`, `services/merge.py`, `test_evaluation_service.py`, `test_bundle_layout.py`, `MetricProfile`, `WitnessReference`, `PlannedRunnerBatch`, `RunnerReference`, `BundlePaths`, `SourcePageArtifact`, `PreparationRecipe`, `PageEvaluationSummary`, `RunnerBatchPlanner`, `PageClass`, `ReviewTask`, `MergePolicy`, `test_merge_service.py`?**
+  _High betweenness centrality (0.052) - this node is a cross-community bridge._
+- **Why does `Settings` connect `Settings` to `TestCLIGlobalOptions`, `cli.py`, `test_configuration.py`, `.settings_customise_sources`, `cli`, `TestCLIVersion`, `TestCLIErrorHandling`, `TestCLISettings`, `TestConfiguration`, `TestCLIEval`, `.validate_https_huggingface_endpoints`?**
+  _High betweenness centrality (0.040) - this node is a cross-community bridge._
 - **Are the 94 inferred relationships involving `AlternateCandidate` (e.g. with `BundlePage` and `CoordinateSpace`) actually correct?**
   _`AlternateCandidate` has 94 INFERRED edges - model-reasoned connections that need verification._

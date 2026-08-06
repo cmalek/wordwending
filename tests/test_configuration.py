@@ -12,7 +12,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from bochord.settings import Settings
+from wordwending.settings import Settings
 
 
 class TestConfiguration:
@@ -21,12 +21,12 @@ class TestConfiguration:
     def test_default_settings(self):
         """Test default settings values."""
         with patch(
-            "bochord.settings.Settings.model_config",
-            {"extra": "ignore", "env_prefix": "BOCHORD_"},
+            "wordwending.settings.Settings.model_config",
+            {"extra": "ignore", "env_prefix": "WORDWENDING_"},
         ):
             settings = Settings()
 
-            assert settings.app_name == "bochord"
+            assert settings.app_name == "wordwending"
             assert settings.app_version == "0.1.0"
             assert settings.default_output_format == "table"
             assert settings.enable_colors is True
@@ -42,14 +42,14 @@ class TestConfiguration:
         with patch("pathlib.Path.exists", return_value=True):
             settings.validate_settings()
 
-    @patch("bochord.settings.Path.home")
+    @patch("wordwending.settings.Path.home")
     def test_load_config_with_toml_file(self, mock_home, tmp_path):
         """Test loading configuration with TOML file."""
         # Mock file system calls to simulate a config file existing
         # Mock file system calls to simulate a config file existing
         mock_home.return_value = tmp_path / "home" / "user"
         mock_home.return_value.mkdir(parents=True, exist_ok=True)
-        config_file = mock_home.return_value / ".bochord.toml"
+        config_file = mock_home.return_value / ".wordwending.toml"
         config_file.write_text('default_output_format = "json"', encoding="utf-8")
 
         # Test that the Settings class can be instantiated with TOML-like behavior
@@ -73,7 +73,7 @@ class TestConfiguration:
 
     def test_load_config_without_toml_file(self):
         """Test loading configuration without TOML file."""
-        with patch("bochord.settings.Settings.model_config", {"toml_file": []}):
+        with patch("wordwending.settings.Settings.model_config", {"toml_file": []}):
             settings = Settings()
 
             # Should use default values
@@ -87,11 +87,11 @@ class TestConfiguration:
         """Test loading configuration with error."""
         with (  # noqa: SIM117
             patch(
-                "bochord.settings.Settings.model_config",
-                {"extra": "ignore", "env_prefix": "BOCHORD_"},
+                "wordwending.settings.Settings.model_config",
+                {"extra": "ignore", "env_prefix": "WORDWENDING_"},
             ),
             patch(
-                "bochord.settings.Settings.__init__",
+                "wordwending.settings.Settings.__init__",
                 side_effect=Exception("Config error"),
             ),
         ):
@@ -117,7 +117,7 @@ class TestConfiguration:
         settings = Settings()
 
         # Check that env_file includes the expected files
-        assert settings.model_config.get("env_prefix") == "BOCHORD_"
+        assert settings.model_config.get("env_prefix") == "WORDWENDING_"
         assert settings.model_config.get("extra") == "ignore"
 
     def test_settings_validation_output_format(self):
@@ -151,12 +151,12 @@ class TestConfiguration:
             patch.dict(
                 "os.environ",
                 {
-                    "BOCHORD_YOUR_ENV_VAR": "value",
+                    "WORDWENDING_YOUR_ENV_VAR": "value",
                 },
             ),
             patch(
-                "bochord.settings.Settings.model_config",
-                {"extra": "ignore", "env_prefix": "BOCHORD_"},
+                "wordwending.settings.Settings.model_config",
+                {"extra": "ignore", "env_prefix": "WORDWENDING_"},
             ),
         ):
             settings = Settings()
@@ -169,12 +169,12 @@ class TestConfiguration:
             patch.dict(
                 "os.environ",
                 {
-                    "BOCHORD_DEFAULT_OUTPUT_FORMAT": "json",
+                    "WORDWENDING_DEFAULT_OUTPUT_FORMAT": "json",
                 },
             ),
             patch(
-                "bochord.settings.Settings.model_config",
-                {"extra": "ignore", "env_prefix": "BOCHORD_"},
+                "wordwending.settings.Settings.model_config",
+                {"extra": "ignore", "env_prefix": "WORDWENDING_"},
             ),
         ):
             settings = Settings()
@@ -187,12 +187,12 @@ class TestConfiguration:
             patch.dict(
                 "os.environ",
                 {
-                    "bochord_default_output_format": "json",
+                    "wordwending_default_output_format": "json",
                 },
             ),
             patch(
-                "bochord.settings.Settings.model_config",
-                {"extra": "ignore", "env_prefix": "BOCHORD_"},
+                "wordwending.settings.Settings.model_config",
+                {"extra": "ignore", "env_prefix": "WORDWENDING_"},
             ),
         ):
             settings = Settings()
@@ -234,8 +234,8 @@ class TestConfiguration:
         """Test that settings fields have correct defaults."""
 
         with patch(
-            "bochord.settings.Settings.model_config",
-            {"extra": "ignore", "env_prefix": "BOCHORD_"},
+            "wordwending.settings.Settings.model_config",
+            {"extra": "ignore", "env_prefix": "WORDWENDING_"},
         ):
             settings = Settings()
 
@@ -252,7 +252,7 @@ class TestConfiguration:
     ):
         """Hugging Face credentials and endpoint URLs load from settings."""
         monkeypatch.chdir(tmp_path)
-        with patch("bochord.settings.Path.home", return_value=tmp_path / "home"):
+        with patch("wordwending.settings.Path.home", return_value=tmp_path / "home"):
             settings = Settings(
                 huggingface_api_key="hf_test_token",
                 huggingface_model_endpoints={
@@ -275,7 +275,7 @@ class TestConfiguration:
         """Hugging Face endpoint URLs must use HTTPS."""
         monkeypatch.chdir(tmp_path)
         with (
-            patch("bochord.settings.Path.home", return_value=tmp_path / "home"),
+            patch("wordwending.settings.Path.home", return_value=tmp_path / "home"),
             pytest.raises(ValidationError, match="must use an https URL"),
         ):
             Settings(

@@ -7,32 +7,31 @@ import json
 from collections.abc import Callable
 from pathlib import Path
 
+import httpx
 import pytest
 from PIL import Image
 from pydantic import ValidationError
 
-import httpx
-
-from bochord.exc import ConfigurationError, RunnerEndpointUnavailable
-from bochord.models.ocr import (
+from tests.test_olmocr_runner import hosted_runner, mock_client, olmocr_response
+from tests.test_runner_batching import artifacts as batching_artifacts
+from wordwending.exc import ConfigurationError, RunnerEndpointUnavailable
+from wordwending.models.ocr import (
     BatchResultStatus,
     PreparedArtifactRef,
     RunnerCapability,
     RunnerReference,
 )
-from bochord.models.runner_execution import (
+from wordwending.models.runner_execution import (
     HostedInvocationResult,
     PlannedRunnerBatch,
     RetryMode,
     RunnerExecutionPolicy,
     RunnerThroughputSummary,
 )
-from bochord.services.olmocr_runner import OLMOCR_CAPABILITY
-from bochord.services.runner_batching import RunnerBatchPlanner
-from bochord.services.runner_execution import RunnerExecutionService
-from bochord.services.runner_packaging import RunnerInputPackager
-from tests.test_olmocr_runner import hosted_runner, mock_client, olmocr_response
-from tests.test_runner_batching import artifacts as batching_artifacts
+from wordwending.services.olmocr_runner import OLMOCR_CAPABILITY
+from wordwending.services.runner_batching import RunnerBatchPlanner
+from wordwending.services.runner_execution import RunnerExecutionService
+from wordwending.services.runner_packaging import RunnerInputPackager
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "runner"
 PREPARED_INPUTS_PATH = FIXTURE_ROOT / "prepared-inputs.json"
