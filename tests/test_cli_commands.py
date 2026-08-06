@@ -600,7 +600,10 @@ class TestCLIExport:
         )
 
         assert result.exit_code != 0
-        assert "validation" in result.output.lower() or result.exception is not None
+        output = result.output.lower()
+        assert "validation error" in output or "invalid json" in output
+        assert "no such command" not in output
+        assert not (root / "exports").exists()
 
     def test_export_requires_bundle_root(self, runner, tmp_path: Path) -> None:
         """Export requires --bundle-root."""
@@ -610,8 +613,11 @@ class TestCLIExport:
 
         result = runner.invoke(cli, ["export", str(bundle_json)])
 
-        assert result.exit_code != 0
-        assert "bundle-root" in result.output.lower() or "Usage:" in result.output
+        assert result.exit_code == 2
+        output = result.output.lower()
+        assert "bundle-root" in output
+        assert "missing option" in output
+        assert "no such command" not in output
 
 
 class TestCLIErrorHandling:
