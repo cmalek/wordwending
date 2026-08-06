@@ -32,15 +32,19 @@ Stage Map
 
 The intended end-to-end spine:
 
-1. **prepare** — render stable page images and record preparation recipe
-2. **run** — execute OCR runner passes; preserve raw witness artifacts
-3. **merge / assemble** — combine passes into a ``DocumentBundle`` *(not yet a
-   CLI; see* :ref:`what-is-missing` *)*
-4. **export** — derive bundle JSON, RAG JSONL, and Markdown from an accepted
-   ``DocumentBundle``
+1. **prepare** (``bochord prepare``) — render stable page images and record
+   preparation recipe
+2. **run** (``bochord run``) — execute OCR runner passes; preserve raw witness
+   artifacts
+3. **merge / assemble** — combine passes into a ``DocumentBundle`` (not yet a
+   CLI; see :ref:`what-is-missing`)
+4. **export** (``bochord export``) — derive bundle JSON, RAG JSONL, and Markdown
+   from an accepted ``DocumentBundle``
 
 Supporting commands:
 
+- ``bochord prepare`` — stage 1: PDF or page images to prepared page images
+- ``bochord run`` — stage 2: OCR runner passes and raw witness artifacts
 - ``bochord version`` — confirm installed CLI
 - ``bochord settings`` — inspect effective configuration
 - ``bochord eval`` — score one page against gold
