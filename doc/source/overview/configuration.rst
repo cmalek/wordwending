@@ -18,13 +18,15 @@ Highest priority wins:
 File locations
 --------------
 
-Settings search (later / more specific wins when multiple exist; an explicit
-``--config-file`` or ``BOCHORD_CONFIG_FILE`` path is preferred when set):
+Paths operators can rely on today:
 
-1. Global: ``/etc/bochord.toml`` (Unix) or ``C:/ProgramData/bochord.toml`` (Windows)
-2. User: ``~/.bochord.toml``
-3. Local: ``./.bochord.toml`` (current working directory)
-4. Explicit: ``BOCHORD_CONFIG_FILE`` or ``--config-file``
+1. User: ``~/.bochord.toml``
+2. Local: ``./.bochord.toml`` (current working directory)
+3. Explicit: ``--config-file`` or ``BOCHORD_CONFIG_FILE``
+
+When more than one of these exists, the more specific / explicit source wins.
+System-wide global config (for example under ``/etc``) is **not** currently a
+supported operator path—do not depend on it.
 
 Inspect what the process actually loaded:
 
