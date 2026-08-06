@@ -19,6 +19,7 @@ import bochord
 from ..exc import ConfigurationError
 from ..models import (
     BundlePage,
+    DocumentBundle,
     GoldDocument,
     MetricProfile,
     PageClass,
@@ -30,6 +31,7 @@ from ..models import (
     RunnerReference,
 )
 from ..models.runner_execution import RunnerExecutionPolicy
+from ..services.bundle_layout import BundleLayoutService
 from ..services.evaluation import EvaluationService
 from ..services.evaluation_cohorts import EvaluationCohortService
 from ..services.olmocr_runner import HuggingFaceOlmocrRunner
@@ -663,3 +665,45 @@ def run_runner(  # noqa: PLR0913, PLR0917
         count = summary.failed_item_count
         msg = f"runner execution finished with {count} failed item(s)"
         raise click.ClickException(msg)
+
+
+@cli.command("export")
+@click.argument(
+    "document_bundle",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+)
+@click.option(
+    "--bundle-root",
+    required=True,
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Filesystem root that receives exports/ artifacts.",
+)
+def export_document(document_bundle: Path, bundle_root: Path) -> None:
+    """
+    Write derived bundle/RAG/Markdown exports from a DocumentBundle JSON.
+
+    Args:
+        document_bundle: DocumentBundle JSON file path.
+        bundle_root: Filesystem root that receives exports/ artifacts.
+
+    Side Effects:
+        Writes exports/bundle.json, exports/rag.jsonl,
+        exports/stitched_chunks.jsonl, and exports/document.md.
+
+    Raises:
+        click.ClickException: When bundle JSON or export writes fail validation.
+
+    """
+    try:
+        bundle = DocumentBundle.model_validate_json(
+            document_bundle.read_text(encoding="utf-8")
+        )
+        exported = BundleLayoutService().write_document_exports(
+            bundle, bundle_root
+        )
+    except (OSError, ValidationError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    exports = exported.exports
+    if exports.document_markdown_path is not None:
+        click.echo(f"markdown: {bundle_root / exports.document_markdown_path}")
+    click.echo(f"bundle_json: {bundle_root / exports.bundle_json_path}")

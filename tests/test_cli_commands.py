@@ -565,6 +565,55 @@ class TestCLIRun:
         assert "failed item" in result.output.lower()
 
 
+class TestCLIExport:
+    """Test the export command."""
+
+    def test_export_writes_document_markdown(self, runner, tmp_path: Path) -> None:
+        """Export writes Spec 0006 derived artifacts under exports/."""
+        fixture = Path("tests/fixtures/export_models/document-bundle-v1.json")
+        bundle_json = tmp_path / "document-bundle.json"
+        bundle_json.write_text(fixture.read_text(encoding="utf-8"), encoding="utf-8")
+        root = tmp_path / "bundle-root"
+        root.mkdir()
+
+        result = runner.invoke(
+            cli,
+            ["export", str(bundle_json), "--bundle-root", str(root)],
+        )
+
+        assert result.exit_code == 0
+        assert (root / "exports" / "document.md").exists()
+        assert (root / "exports" / "bundle.json").exists()
+        assert (root / "exports" / "rag.jsonl").exists()
+        assert (root / "exports" / "stitched_chunks.jsonl").exists()
+
+    def test_export_rejects_invalid_bundle_json(self, runner, tmp_path: Path) -> None:
+        """Export aborts when DocumentBundle JSON fails validation."""
+        bundle_json = tmp_path / "invalid-bundle.json"
+        bundle_json.write_text("{not valid json", encoding="utf-8")
+        root = tmp_path / "bundle-root"
+        root.mkdir()
+
+        result = runner.invoke(
+            cli,
+            ["export", str(bundle_json), "--bundle-root", str(root)],
+        )
+
+        assert result.exit_code != 0
+        assert "validation" in result.output.lower() or result.exception is not None
+
+    def test_export_requires_bundle_root(self, runner, tmp_path: Path) -> None:
+        """Export requires --bundle-root."""
+        fixture = Path("tests/fixtures/export_models/document-bundle-v1.json")
+        bundle_json = tmp_path / "document-bundle.json"
+        bundle_json.write_text(fixture.read_text(encoding="utf-8"), encoding="utf-8")
+
+        result = runner.invoke(cli, ["export", str(bundle_json)])
+
+        assert result.exit_code != 0
+        assert "bundle-root" in result.output.lower() or "Usage:" in result.output
+
+
 class TestCLIErrorHandling:
     """Test CLI error handling."""
 
