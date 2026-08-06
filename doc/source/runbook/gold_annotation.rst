@@ -1,12 +1,12 @@
-==========================
+========================
 Gold Annotation Protocol
-==========================
+========================
 
 Purpose
 =======
 
-This runbook defines the reproducible operator protocol for creating gold
-annotations and verifying that two evaluators produce byte-identical score
+This runbook defines the reproducible user workflow for creating gold
+annotations and verifying that two users produce byte-identical score
 files. Follow it before comparing OCR runners or model revisions on held-out
 pages.
 

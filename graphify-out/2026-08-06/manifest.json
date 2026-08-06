@@ -175,8 +175,8 @@
     "semantic_hash": "35004847858157e37de280d0cdb7a682"
   },
   "tests/test_cli_commands.py": {
-    "mtime": 1786031911.363144,
-    "ast_hash": "dd44c4d201c2e4fa5f528e8b28737528",
+    "mtime": 1786031733.5412016,
+    "ast_hash": "58de6d137f25ab81064b84786ff3cd95",
     "semantic_hash": ""
   },
   "tests/test_cli_utils.py": {
@@ -255,9 +255,14 @@
     "semantic_hash": "74d41160c1966d8ce6611a2a9b635729"
   },
   "README.md": {
-    "mtime": 1786032700.0254815,
-    "ast_hash": "9bdb9faee5b80d60dbd9be1db419bd86",
-    "semantic_hash": ""
+    "mtime": 1784991716.2370706,
+    "ast_hash": "5c127e46ede9d2859da58b6c15f7f620",
+    "semantic_hash": "5c127e46ede9d2859da58b6c15f7f620"
+  },
+  "doc/source/api/models.rst": {
+    "mtime": 1785028493.6603448,
+    "ast_hash": "d1ce1408853fef54dc4e70476e969fec",
+    "semantic_hash": "d1ce1408853fef54dc4e70476e969fec"
   },
   "doc/source/architecture/adr_0001_package_boundary.rst": {
     "mtime": 1784993510.7356594,
@@ -400,14 +405,14 @@
     "semantic_hash": "284b3a30d2559e215d56f717d1a48708"
   },
   "doc/source/index.rst": {
-    "mtime": 1786032433.922391,
-    "ast_hash": "2d566fa02792898d9ca23d7310100945",
-    "semantic_hash": ""
+    "mtime": 1785037200.9223607,
+    "ast_hash": "7fecf07b3a55981b443cc5a5e998db17",
+    "semantic_hash": "7fecf07b3a55981b443cc5a5e998db17"
   },
   "doc/source/overview/configuration.rst": {
-    "mtime": 1786032538.5741017,
-    "ast_hash": "0df7bd1476cf69f83552fb359fb4532c",
-    "semantic_hash": ""
+    "mtime": 1785028551.9684992,
+    "ast_hash": "8f30d04699fbca24e620490fb7baa19c",
+    "semantic_hash": "8f30d04699fbca24e620490fb7baa19c"
   },
   "doc/source/overview/domain_language.rst": {
     "mtime": 1784995113.3718374,
@@ -415,24 +420,24 @@
     "semantic_hash": "7d55b32e2a42bfd721fb13626cd7a24a"
   },
   "doc/source/overview/faq.rst": {
-    "mtime": 1786032447.8655992,
-    "ast_hash": "4d7772348e392e3308f77e58ee1c0332",
-    "semantic_hash": ""
+    "mtime": 1785028551.3418632,
+    "ast_hash": "d4fbe41eea2b5d5ea662cdd0960a7894",
+    "semantic_hash": "d4fbe41eea2b5d5ea662cdd0960a7894"
   },
   "doc/source/overview/installation.rst": {
-    "mtime": 1786032388.0964146,
-    "ast_hash": "9e55a24e18fc60c81dfa2b3edd2ee40d",
-    "semantic_hash": ""
+    "mtime": 1784991720.822684,
+    "ast_hash": "a15dbb7bd8eeeabf5944dd20beca7dd2",
+    "semantic_hash": "a15dbb7bd8eeeabf5944dd20beca7dd2"
   },
   "doc/source/overview/quickstart.rst": {
-    "mtime": 1786032398.7806892,
-    "ast_hash": "f4bc7a07e7bffaa74b1ec494cbeb17b1",
-    "semantic_hash": ""
+    "mtime": 1784991720.8241644,
+    "ast_hash": "5677c9f93ff9523dfef01a59c7076541",
+    "semantic_hash": "5677c9f93ff9523dfef01a59c7076541"
   },
   "doc/source/overview/usage.rst": {
-    "mtime": 1786032409.7927678,
-    "ast_hash": "53948a9008b309c9549f07ef87358faf",
-    "semantic_hash": ""
+    "mtime": 1785028551.546932,
+    "ast_hash": "a2c3fc1877697858fd7073951bd1db29",
+    "semantic_hash": "a2c3fc1877697858fd7073951bd1db29"
   },
   "doc/source/runbook/coding_standards.rst": {
     "mtime": 1785028551.7596166,
@@ -450,19 +455,19 @@
     "semantic_hash": "d5e6ffc4bff931a3a50bc1aa86222146"
   },
   "doc/source/runbook/huggingface_setup.rst": {
-    "mtime": 1786032436.367442,
-    "ast_hash": "91e2bb1e94115b34f3233eafbf915e6b",
-    "semantic_hash": ""
+    "mtime": 1785028314.7751758,
+    "ast_hash": "35813769006d7b07b9ff5720d66c384b",
+    "semantic_hash": "35813769006d7b07b9ff5720d66c384b"
   },
   "doc/source/runbook/ocr_process.rst": {
-    "mtime": 1786032081.8197193,
-    "ast_hash": "763061a3a30990d95760858718784b10",
-    "semantic_hash": ""
+    "mtime": 1785028019.10453,
+    "ast_hash": "199fc8a7ea4c029c955d27e77e5774f6",
+    "semantic_hash": "199fc8a7ea4c029c955d27e77e5774f6"
   },
   "doc/source/runbook/operator_notes.rst": {
-    "mtime": 1786032082.1675997,
-    "ast_hash": "0151b2006cb7f31da289b848adb2e1fe",
-    "semantic_hash": ""
+    "mtime": 1785027846.004798,
+    "ast_hash": "e4326c620e61b659d30c5fca377afe91",
+    "semantic_hash": "e4326c620e61b659d30c5fca377afe91"
   },
   "docs/superpowers/plans/2026-07-25-phase-1-page-interoperability-spike.md": {
     "mtime": 1785029887.1082194,
@@ -917,11 +922,6 @@
   "docs/superpowers/plans/2026-08-05-readme-operator-docs-and-export-cli.md": {
     "mtime": 1785975220.8621018,
     "ast_hash": "c5af07e4648a68ab6666eb9f94c7f24a",
-    "semantic_hash": ""
-  },
-  "doc/source/runbook/from_source_to_markdown.rst": {
-    "mtime": 1786032293.858934,
-    "ast_hash": "05ca99132c8cf193f6a24916fa2b2b91",
     "semantic_hash": ""
   }
 }

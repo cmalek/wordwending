@@ -1,6 +1,6 @@
-======================================
+================================
 From Source Material to Markdown
-======================================
+================================
 
 Purpose
 =======
@@ -53,7 +53,7 @@ Supporting commands:
 For stage theory and engineering detail, see :doc:`/runbook/ocr_process`.
 
 Provisional Path: Export When You Have a DocumentBundle
-========================================================
+=======================================================
 
 When a valid ``DocumentBundle`` JSON already exists (for example from tests,
 fixtures, or manual assembly), export derived views with:
@@ -128,5 +128,3 @@ Related Runbooks
 - :doc:`/runbook/operator_notes` — short preservation and triage rules
 - :doc:`/runbook/gold_annotation` — gold slice protocol for ``eval`` /
   ``eval-cohorts``
-
-Published docs: https://bochord.readthedocs.io
