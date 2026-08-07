@@ -125,14 +125,36 @@ class EndpointLedgerEntry(SchemaModel):
     #: Last recorded lifecycle action for the session row.
     last_action: EndpointLastAction
 
+    @property
+    def url(self) -> str:
+        """
+        Return the last known HTTPS endpoint URL.
+
+        Returns:
+            Stored endpoint URL for dict-style ledger access.
+
+        """
+        return self.endpoint_url
+
 
 class EndpointSessionLedger(SchemaModel):
     """Persisted endpoint session ledger without API tokens."""
 
     #: Ledger schema version.
     schema_version: str = ENDPOINT_SESSION_LEDGER_SCHEMA_VERSION
-    #: Session rows keyed in list order at load time.
-    entries: list[EndpointLedgerEntry] = Field(default_factory=list)
+    #: Session rows keyed by ``runner_id``.
+    entries: dict[str, EndpointLedgerEntry] = Field(default_factory=dict)
+
+
+class EndpointRemoteState(SchemaModel):
+    """Remote Inference Endpoint snapshot from Hugging Face Hub."""
+
+    #: Inference Endpoint name in the hosting provider.
+    name: str
+    #: Remote HF endpoint status string.
+    status: str
+    #: HTTPS endpoint URL when deployed or scaled to zero.
+    url: str | None = None
 
 
 class EndpointEnsureResult(SchemaModel):
