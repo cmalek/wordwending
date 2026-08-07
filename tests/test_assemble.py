@@ -185,6 +185,64 @@ def test_assemble_document_rejects_multi_witness_page(tmp_path: Path) -> None:
         )
 
 
+def test_assemble_document_rejects_duplicate_witness_id_across_pages(
+    tmp_path: Path,
+) -> None:
+    """Wave A assemble requires unique witness_id across all pages."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_bundle_inputs(bundle_root)
+    pages = [
+        AssemblePageRequest(
+            page_id="page-0001",
+            page_number=1,
+            prepared_page=_prepared_page(prepared_page_id="prepared-page-1"),
+            raw_witnesses=[
+                RawWitnessRef(
+                    witness_id="wit-1",
+                    runner_id="olmocr",
+                    artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
+                    coordinate_space=_coordinate_space(prepared_page_id="prepared-page-1"),
+                )
+            ],
+        ),
+        AssemblePageRequest(
+            page_id="page-0002",
+            page_number=2,
+            prepared_page=_prepared_page(
+                prepared_page_id="prepared-page-2",
+                image_path="prepared/page-2.png",
+            ),
+            raw_witnesses=[
+                RawWitnessRef(
+                    witness_id="wit-1",
+                    runner_id="olmocr",
+                    artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
+                    coordinate_space=_coordinate_space(prepared_page_id="prepared-page-2"),
+                )
+            ],
+        ),
+    ]
+    image_dir = bundle_root / "prepared"
+    (image_dir / "page-2.png").write_bytes(b"fake-png-bytes-2")
+
+    with pytest.raises(ValueError, match=r"unique witness_id"):
+        _orchestrator().assemble_document(
+            bundle_root=bundle_root,
+            source=SourceDescriptor(
+                source_id="src-1",
+                source_type=SourceType.SINGLE_IMAGE,
+                source_label="pages.png",
+                original_path="sources/pages.png",
+                page_count=2,
+            ),
+            bibliographic=_bibliographic(),
+            acquisition=_acquisition(),
+            pages=pages,
+            merge_policy=_merge_policy(),
+        )
+
+
 def test_assemble_document_happy_path_writes_bundle_tree(tmp_path: Path) -> None:
     """One page + olmOCR fixture: adapt → merge → write returns DocumentBundle."""
     bundle_root = tmp_path / "bundle"

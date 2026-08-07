@@ -39,6 +39,10 @@ class AssembleOrchestrator:
     """
     Sequence adapt → merge → document-bundle write for one assemble pass.
 
+    Wave A uses single-witness pages and does not persist merge flags or
+    abstention (``MergePageResult.flags`` / ``.abstained``); Wave C owns
+    multi-witness flag inspectability.
+
     Args:
         adapter: Converts persisted raw witness artifacts into PassWitnessPage.
         merge: Abstaining merge of adapted witnesses into BundlePage graphs.
@@ -100,7 +104,13 @@ class AssembleOrchestrator:
 
         Raises:
             ValueError: If any page has more than one raw witness (Wave A
-                single-witness only).
+                single-witness only), or if the same ``witness_id`` appears on
+                more than one page.
+            ValueError: Propagated from witness adaptation when artifact paths
+                are empty or the payload is not a supported chat.completion
+                format.
+            FileNotFoundError: Propagated from witness adaptation when a
+                resolved artifact path does not exist.
 
         """
         execution = _AssembleExecution(
@@ -182,7 +192,11 @@ class _AssembleExecution:
             page_request: Prepared page plus raw witness refs for one page.
 
         Raises:
-            ValueError: If the page has more than one raw witness.
+            ValueError: If the page has more than one raw witness, if
+                ``witness_id`` was already used on a prior page, or if witness
+                adaptation rejects the artifact.
+            FileNotFoundError: If a resolved witness artifact path does not
+                exist.
 
         """
         if len(page_request.raw_witnesses) != 1:
@@ -194,6 +208,12 @@ class _AssembleExecution:
             raise ValueError(msg)
 
         raw_ref = page_request.raw_witnesses[0]
+        if raw_ref.witness_id in self.witness_files:
+            msg = (
+                "Wave A assemble requires unique witness_id across pages; "
+                f"witness_id {raw_ref.witness_id!r} already used"
+            )
+            raise ValueError(msg)
         resolved_paths = [
             _resolve_against_bundle_root(self._bundle_root, path_str)
             for path_str in raw_ref.artifact_paths
@@ -214,6 +234,7 @@ class _AssembleExecution:
             ),
             self._merge_policy,
         )
+        # ponytail: Wave A discards merge_result.flags / .abstained; Wave C.
         page = _bundle_ready_page(
             merge_result.page,
             raw_ref=raw_ref,
