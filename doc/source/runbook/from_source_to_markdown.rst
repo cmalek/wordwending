@@ -115,9 +115,13 @@ Operator workflow:
 1. Inspect prepared images, raw witnesses, and merge flags
    (:doc:`/runbook/operator_notes`, ``inspect-bundle``).
 2. Apply review concepts from :doc:`/architecture/spec_0005_human_markup`
-   (diplomatic text, typography, note linkage, trust states). Merge flags from
-   multi-witness assemble project into Spec 0005 review task packets where
-   models exist.
+   (diplomatic text, typography, note linkage, trust states). Multi-witness
+   assemble projects merge disagreements into dimension-specific **evaluation
+   flags** (``evaluation/flags.json`` and the page evaluation summary)—use
+   ``inspect-bundle`` to read them. Spec 0005 ``ReviewTask`` packets are **not**
+   auto-emitted by ``assemble`` or the CLI; operators hand-author a
+   ``PageOverlay`` JSON (library code exposes
+   ``MergeFlagReviewService.build_review_tasks`` for separate workflows).
 3. Prepare a ``PageOverlay`` JSON with review events (Spec 0014).
 4. Append events and materialize overlay state:
 
@@ -132,12 +136,15 @@ Operator workflow:
      --bundle-root path/to/bundle-root \
      --page-id PAGE_ID
 
-5. Run ``wordwending export`` again to regenerate ``exports/document.md``.
+5. Overlay acceptance is persisted under the page tree. **Graph rebase**—applying
+   accepted overlay corrections back onto the accepted page graph—is deferred
+   (Spec 0004 Phase 8 exit). ``wordwending export`` reads ``DocumentBundle`` page
+   graphs only; it does **not** consume ``overlays/review_events.jsonl`` or
+   ``overlays/current_state.json`` until rebase lands. Re-running export after
+   ``review apply`` does not regenerate Markdown from overlay edits.
 
 Append-only overlay history is preserved under ``overlays/review_events.jsonl``;
 ``review materialize`` rebuilds ``overlays/current_state.json`` from that log.
-Full graph rebase after source-run changes remains a later workflow (Spec 0004
-Phase 8 exit).
 
 What Markdown Is and Is Not
 ===========================
@@ -148,30 +155,35 @@ Per :doc:`/architecture/spec_0006_exports_and_retrieval`:
   agents.
 - Markdown is **not** source of truth. The canonical software contract is
   bundle JSON plus preserved witness artifacts and overlays.
-- Rebuild Markdown whenever graph logic, overlays, or export rules change.
+- Rebuild Markdown when graph logic or export rules change, or after graph rebase
+  incorporates accepted overlays into the bundle graph.
 
 .. _what-is-missing:
 
 Spec 0004 Phase 4 Status
 ==========================
 
-On the current spine, Spec 0004 Phase 4 **full bullets are met** for a
-representative page traveling end to end without hand-edited ``DocumentBundle``
-JSON:
+On the current spine, the v1 plan **Phase 4 full bullets (Waves A+C+D)** are met
+for a representative page traveling end to end without hand-edited
+``DocumentBundle`` JSON:
 
 - **Two real hosted runners on assemble** — olmOCR (provisional text) and kraken
   (``HuggingFaceKrakenRunner``) adapt through ``wordwending assemble`` with
   multi-witness merge and flag persistence
 - **Raw witnesses preserved** — exact runner response bytes under the bundle tree
 - **Derived page graph** — region/line/span/note scaffold via merge on assemble
-- **Score, review tasks, overlay, export** — ``eval`` / ``eval-cohorts``;
-  merge flags → Spec 0005 review packets; ``review apply`` / ``review materialize``;
-  ``export`` for JSON and Markdown
+  (provisional text-first geometry on both runners today)
+- **Score, evaluation flags, overlay CLI, export** — ``eval`` / ``eval-cohorts``;
+  merge flags → dimension-specific **evaluation flags**
+  (``evaluation/flags.json``); operators hand-author ``PageOverlay`` for
+  ``review apply`` / ``review materialize``; ``export`` for JSON and Markdown
+  from bundle page graphs
 
 This is **not** a claim that Spec 0004 Phase 5 (candidate bake-off), Phase 6
 (PassRunner Protocol extract), or Phase 10 (operational hardening) are complete.
-Kraken geometry on the spine is conservative/text-first until Phase 7 alignment
-exit matures coordinate-rich merge.
+Spec 0004 Phase 4's **coordinate-rich second-runner** bullet remains
+**deferred**: kraken on the spine uses conservative/text-first geometry until
+Phase 7 alignment exit matures coordinate-rich merge.
 
 What Is Missing
 ===============
@@ -188,6 +200,8 @@ These pieces are planned but **not** available or **not complete** today:
   (Wave F; do not mark Phase 5 COMPLETE yet)
 - **Phase 6 PassRunner Protocol** — common runner interface extracted after bake-off
   evidence (Wave G; Fake runners are test doubles only)
+- **Graph rebase / overlay → export** — ``review apply`` persists overlays, but
+  ``export`` reads bundle page graphs only until rebase lands
 - **Phase 10 operations** — resumability, deployment health, cost controls beyond
   basic inspect (Wave H; do not mark Phase 10 COMPLETE yet)
 

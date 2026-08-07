@@ -57,8 +57,9 @@ boundary.
 
 Implications:
 
-- Operators correct evidence through append-only review overlays and task packets
-  defined in Spec 0005 and Spec 0014, surfaced by the review CLI.
+- Operators correct evidence through append-only review overlays (Spec 0014),
+  hand-authored ``PageOverlay`` JSON, and Spec 0005 review concepts—not through
+  auto-emitted review packets from ``assemble``.
 - eScriptorium is **not** the v1 review UI. Do not build production workflows
   that depend on eScriptorium round-tripping span-level identity.
 - ``PageXmlInterchangeService`` remains for **optional** PAGE XML import and
@@ -85,13 +86,17 @@ References
 Spec 0004 Phase 4 Status (2026-08-07)
 ======================================
 
-After Waves A, C, and D, Spec 0004 Phase 4 **full bullets are met** on the
-fixture-backed spine: olmOCR + kraken witnesses adapt through ``assemble``,
-multi-witness merge persists flags, merge flags project to Spec 0005 review
-packets, operators apply overlays via ``wordwending review``, and ``eval`` /
-``export`` follow without hand-edited ``DocumentBundle`` JSON.
+After Waves A, C, and D, the v1 plan **Phase 4 full bullets (Waves A+C+D)** are
+met on the fixture-backed spine: olmOCR + kraken witnesses adapt through
+``assemble``, multi-witness merge persists **evaluation flags**
+(``evaluation/flags.json``), operators hand-author ``PageOverlay`` and apply
+overlays via ``wordwending review``, and ``eval`` / ``export`` follow without
+hand-edited ``DocumentBundle`` JSON. ``MergeFlagReviewService.build_review_tasks``
+exists in library code but is not auto-wired into ``assemble`` or the CLI.
 
-**Not claimed:** Phase 5 COMPLETE (bake-off), Phase 6 COMPLETE (PassRunner
-Protocol), Phase 10 COMPLETE (operational hardening). Kraken on the spine is a
-provisional second hosted adapter with conservative geometry until Phase 7
-alignment exit matures coordinate-rich merge.
+**Not claimed:** Spec 0004 Phase 4's **coordinate-rich second-runner** bullet
+(deferred until Phase 7); Phase 5 COMPLETE (bake-off); Phase 6 COMPLETE
+(PassRunner Protocol); Phase 10 COMPLETE (operational hardening). Kraken on the
+spine is a provisional second hosted adapter with conservative/text-first
+geometry. ``export`` reads bundle page graphs only—overlay files are not consumed
+until graph rebase lands.

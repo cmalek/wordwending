@@ -135,7 +135,9 @@ Adapt raw witness artifacts, merge (single- or multi-witness), and write a
 
 Paths inside the manifest are relative posix strings resolved against
 ``--bundle-root``. Multi-witness pages list olmOCR and kraken (or other
-supported runner) artifact paths; merge flags persist for review.
+supported runner) artifact paths; merge flags persist as dimension-specific
+evaluation flags (``evaluation/flags.json``) for ``inspect-bundle`` and
+operator review prep—not auto-emitted Spec 0005 ``ReviewTask`` packets.
 
 inspect-bundle
 ^^^^^^^^^^^^^^
@@ -176,7 +178,9 @@ export
 ^^^^^^
 
 Write derived exports from a ``DocumentBundle`` JSON into
-``<bundle-root>/exports/``.
+``<bundle-root>/exports/``. Export reads accepted page graphs only; overlay
+files (``overlays/review_events.jsonl``, ``overlays/current_state.json``) are
+not consumed until graph rebase lands.
 
 .. code-block:: bash
 

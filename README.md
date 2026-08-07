@@ -102,9 +102,10 @@ guide on Read the Docs.
 | `export` | Derive bundle / RAG / Markdown exports from a DocumentBundle |
 
 Multi-witness assemble (olmOCR + kraken) and review overlays ship on the current
-spine. Spec 0004 Phase 4 full bullets are met on fixture-backed pages; Phase 5
-(bake-off), Phase 6 (PassRunner Protocol), and Phase 10 (ops hardening) are not
-complete. See the
+spine. The v1 plan Phase 4 full bullets (Waves A+C+D) are met on
+fixture-backed pages; Spec 0004's coordinate-rich second-runner bullet and
+Phase 5 (bake-off), Phase 6 (PassRunner Protocol), and Phase 10 (ops hardening)
+are not complete. See the
 [from source to Markdown](https://wordwending.readthedocs.io/en/latest/runbook/from_source_to_markdown.html)
 runbook for honest gaps.
 
