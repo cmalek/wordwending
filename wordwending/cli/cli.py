@@ -907,26 +907,17 @@ def _assemble_manifest_from_run(  # noqa: PLR0913
             msg = f"{option_name} is required with --from-run."
             raise click.UsageError(msg)
 
-    if (
-        source_json is None
-        or bibliographic_json is None
-        or acquisition_json is None
-        or merge_policy_path is None
-    ):
-        msg = "Provenance JSON paths are required with --from-run."
-        raise click.UsageError(msg)
-
     source = SourceDescriptor.model_validate_json(
-        source_json.read_text(encoding="utf-8")
+        cast("Path", source_json).read_text(encoding="utf-8")
     )
     bibliographic = BibliographicProvenance.model_validate_json(
-        bibliographic_json.read_text(encoding="utf-8")
+        cast("Path", bibliographic_json).read_text(encoding="utf-8")
     )
     acquisition = AcquisitionProvenance.model_validate_json(
-        acquisition_json.read_text(encoding="utf-8")
+        cast("Path", acquisition_json).read_text(encoding="utf-8")
     )
     merge_policy = MergePolicy.model_validate_json(
-        merge_policy_path.read_text(encoding="utf-8")
+        cast("Path", merge_policy_path).read_text(encoding="utf-8")
     )
     assemble_manifest = AssembleManifestBuilder().build(
         bundle_root=bundle_root,

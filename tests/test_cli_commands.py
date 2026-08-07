@@ -907,6 +907,32 @@ class TestCLIAssemble:
         assert result.exit_code != 0
         assert "manifest" in result.output.lower() or "from-run" in result.output.lower()
 
+    def test_assemble_write_manifest_requires_from_run(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """Assemble rejects --write-manifest without --from-run."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        self._stage_bundle_inputs(bundle_root)
+        manifest_path = tmp_path / "built-manifest.json"
+
+        result = runner.invoke(
+            cli,
+            [
+                "assemble",
+                "--bundle-root",
+                str(bundle_root),
+                "--manifest",
+                str(self._MANIFEST_FIXTURE),
+                "--write-manifest",
+                str(manifest_path),
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "write-manifest" in result.output.lower()
+        assert "from-run" in result.output.lower()
+
     def test_assemble_writes_bundle_tree(self, runner, tmp_path: Path) -> None:
         """Assemble materializes Spec 0002 bundle tree from manifest."""
         bundle_root = tmp_path / "bundle"
