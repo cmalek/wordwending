@@ -22,6 +22,7 @@ from wordwending.models import (
     PageBundleManifest,
     PageEvaluationSummary,
     ReviewEvent,
+    ReviewTask,
     RunnerReference,
     WitnessReference,
     page_dir_name,
@@ -898,6 +899,54 @@ class BundleLayoutService:
                 review_events_path=_relative_path(root, review_events_path),
             )
         _rewrite_page_manifest(paths, page_number, updated)
+
+    def write_pending_review_tasks(
+        self,
+        root: Path,
+        page_number: int,
+        tasks: list[ReviewTask],
+    ) -> None:
+        """
+        Overwrite ``overlays/pending_tasks.json`` as a JSON list.
+
+        Side Effects:
+            Atomically replaces ``overlays/pending_tasks.json`` (writes ``[]``
+            when ``tasks`` is empty for inspectability).
+
+        Args:
+            root: Filesystem root for one document bundle tree.
+            page_number: 1-based page index within the document bundle.
+            tasks: Spec 0005 review-task packets for the page.
+
+        """
+        paths = BundlePaths(root)
+        payload = [task.model_dump(mode="json") for task in tasks]
+        _atomic_write_json(paths.pending_tasks_path(page_number), payload)
+
+    def read_pending_review_tasks(
+        self,
+        root: Path,
+        page_number: int,
+    ) -> list[ReviewTask]:
+        """
+        Read Spec 0005 pending review tasks for one page.
+
+        Args:
+            root: Filesystem root for one document bundle tree.
+            page_number: 1-based page index within the document bundle.
+
+        Returns:
+            Validated review tasks from ``overlays/pending_tasks.json``.
+
+        Raises:
+            FileNotFoundError: If the pending-tasks file does not exist.
+
+        """
+        paths = BundlePaths(root)
+        payload = json.loads(
+            paths.pending_tasks_path(page_number).read_text(encoding="utf-8")
+        )
+        return [ReviewTask.model_validate(item) for item in payload]
 
     def read_review_events(
         self,

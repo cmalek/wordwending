@@ -90,8 +90,8 @@
     "semantic_hash": "35004847858157e37de280d0cdb7a682"
   },
   "tests/test_cli_commands.py": {
-    "mtime": 1786146067.8252947,
-    "ast_hash": "92ce63daf2c65154dcd393f9b77c9833",
+    "mtime": 1786146214.3690114,
+    "ast_hash": "5407e06eee0139d60cec7d39e44bd39f",
     "semantic_hash": ""
   },
   "tests/test_cli_utils.py": {
@@ -645,8 +645,8 @@
     "semantic_hash": "8be66a7d9dab2e0b81cb7c944e9ab8af"
   },
   "tests/test_bundle_layout.py": {
-    "mtime": 1786053192.6089516,
-    "ast_hash": "5d1f6a58b54c34d726074f9a37942b3c",
+    "mtime": 1786146359.437597,
+    "ast_hash": "ee3f3192d50103911e75096206fd53ae",
     "semantic_hash": ""
   },
   "tests/fixtures/bundle_layout/minimal_document.json": {
@@ -775,8 +775,8 @@
     "semantic_hash": ""
   },
   "wordwending/cli/cli.py": {
-    "mtime": 1786146099.4505444,
-    "ast_hash": "28aad55b191eb66141214a464dda8c01",
+    "mtime": 1786146225.850837,
+    "ast_hash": "51f50d70e443942f26c07e3c71b20390",
     "semantic_hash": ""
   },
   "wordwending/cli/utils.py": {
@@ -800,8 +800,8 @@
     "semantic_hash": ""
   },
   "wordwending/models/bundle_layout.py": {
-    "mtime": 1786053192.6559649,
-    "ast_hash": "0b467d3f1836a824f6289c8235413109",
+    "mtime": 1786146401.9119396,
+    "ast_hash": "af6911b23400c5d8314683b1206919eb",
     "semantic_hash": ""
   },
   "wordwending/models/evaluation.py": {
@@ -840,8 +840,8 @@
     "semantic_hash": ""
   },
   "wordwending/services/bundle_layout.py": {
-    "mtime": 1786137701.7747896,
-    "ast_hash": "18435355b23a9b074453b05cce1d67d7",
+    "mtime": 1786146437.267973,
+    "ast_hash": "ef1f743126a80de3ff05e8570c49c905",
     "semantic_hash": ""
   },
   "wordwending/services/document_export.py": {
@@ -965,8 +965,8 @@
     "semantic_hash": ""
   },
   "tests/test_assemble.py": {
-    "mtime": 1786137665.3138106,
-    "ast_hash": "d1adee371d9102668bb6064a01f0a084",
+    "mtime": 1786146359.3969135,
+    "ast_hash": "2109d7616c5295419a84ffc0b9af60a4",
     "semantic_hash": ""
   },
   "tests/test_assemble_wave_a_exit.py": {
@@ -1045,8 +1045,8 @@
     "semantic_hash": ""
   },
   "wordwending/services/assemble.py": {
-    "mtime": 1786137684.8801892,
-    "ast_hash": "68140ce1325d04275bd1edb81ad5d1f9",
+    "mtime": 1786146436.389268,
+    "ast_hash": "dd4c6ca8abe0f1f55ef11834cf8ff6f8",
     "semantic_hash": ""
   },
   "wordwending/services/bakeoff.py": {

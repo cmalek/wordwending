@@ -15,6 +15,7 @@ from pydantic import ValidationError
 from wordwending.models import (
     AcquisitionProvenance,
     BibliographicProvenance,
+    BundlePaths,
     CoordinateSpace,
     MergeFlag,
     MergeFlagType,
@@ -24,6 +25,7 @@ from wordwending.models import (
     PageClass,
     PreparationMode,
     PreparedPage,
+    ReviewTask,
     SourceDescriptor,
     SourceType,
 )
@@ -283,6 +285,91 @@ def test_assemble_document_multi_witness_disagreement_persists_flags(
         flag.flag_type == "text_disagreement"
         for flag in bundle.pages[0].evaluation_summary.text.flags
     )
+
+
+def test_assemble_document_multi_witness_disagreement_persists_pending_tasks(
+    tmp_path: Path,
+) -> None:
+    """Multi-witness disagreement writes Spec 0005 pending_tasks.json."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_multi_witness_bundle_inputs(bundle_root)
+    page = AssemblePageRequest(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        raw_witnesses=[
+            RawWitnessRef(
+                witness_id="wit-olmocr",
+                runner_id="olmocr",
+                artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
+                coordinate_space=_coordinate_space(),
+            ),
+            RawWitnessRef(
+                witness_id="wit-kraken",
+                runner_id="kraken",
+                artifact_paths=["raw/witnesses/kraken-chat-completion-v1.json"],
+                coordinate_space=_coordinate_space(),
+            ),
+        ],
+    )
+
+    bundle = _orchestrator().assemble_document(
+        bundle_root=bundle_root,
+        source=_source(),
+        bibliographic=_bibliographic(),
+        acquisition=_acquisition(),
+        pages=[page],
+        merge_policy=_merge_policy(runners=["olmocr", "kraken"]),
+    )
+
+    page_graph = bundle.pages[0]
+    assert page_graph.graph_revision == "graph-v0"
+    pending_path = BundlePaths(bundle_root).pending_tasks_path(1)
+    assert pending_path.is_file()
+    tasks = BundleLayoutService().read_pending_review_tasks(bundle_root, 1)
+    assert tasks
+    assert all(isinstance(task, ReviewTask) for task in tasks)
+    assert all(
+        task.base_graph_revision == page_graph.graph_revision for task in tasks
+    )
+    assert all(task.base_run_id == bundle.run.run_id for task in tasks)
+
+
+def test_assemble_document_empty_flags_writes_empty_pending_tasks(
+    tmp_path: Path,
+) -> None:
+    """Single-witness assemble with no flags still writes pending_tasks.json as []."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_bundle_inputs(bundle_root)
+    page = AssemblePageRequest(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        raw_witnesses=[
+            RawWitnessRef(
+                witness_id="wit-1",
+                runner_id="olmocr",
+                artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
+                coordinate_space=_coordinate_space(),
+            )
+        ],
+    )
+
+    _orchestrator().assemble_document(
+        bundle_root=bundle_root,
+        source=_source(),
+        bibliographic=_bibliographic(),
+        acquisition=_acquisition(),
+        pages=[page],
+        merge_policy=_merge_policy(),
+    )
+
+    pending_path = BundlePaths(bundle_root).pending_tasks_path(1)
+    assert pending_path.is_file()
+    assert json.loads(pending_path.read_text(encoding="utf-8")) == []
+    assert BundleLayoutService().read_pending_review_tasks(bundle_root, 1) == []
 
 
 def test_assemble_document_projects_non_text_merge_flags(
