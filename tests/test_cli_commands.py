@@ -11,8 +11,15 @@ from unittest.mock import patch
 from PIL import Image, ImageDraw
 
 from wordwending.cli.cli import cli
-from wordwending.models import EvaluationCohortReport, PreparationResult
+from wordwending.models import (
+    DocumentBundle,
+    EvaluationCohortReport,
+    PageOverlay,
+    PreparationResult,
+)
 from wordwending.models.runner_execution import RunnerThroughputSummary
+from wordwending.services.bundle_layout import BundleLayoutService
+from wordwending.services.review_overlay import ReviewOverlayService
 from wordwending.settings import Settings
 
 
@@ -897,6 +904,200 @@ class TestCLIAssemble:
             ["inspect-bundle", "--bundle-root", str(missing_root)],
         )
         assert result.exit_code != 0
+
+
+class TestCLIReview:
+    """Test review apply and materialize commands."""
+
+    _OVERLAY_FIXTURE = Path("tests/fixtures/review_overlay/page-overlay-v1.json")
+    _MINIMAL_BUNDLE_FIXTURE = Path(
+        "tests/fixtures/bundle_layout/minimal_document.json"
+    )
+
+    def _stage_minimal_bundle(self, bundle_root: Path, tmp_path: Path) -> None:
+        """Write a minimal Spec 0002 bundle tree under ``bundle_root``."""
+        inputs = tmp_path / "inputs"
+        inputs.mkdir(parents=True, exist_ok=True)
+        source_pdf = inputs / "sample.pdf"
+        source_pdf.write_bytes(b"%PDF-1.4 minimal")
+        source_page = inputs / "page1.jp2"
+        source_page.write_bytes(b"fake-jp2-bytes")
+        prepared_image = inputs / "prepared.jp2"
+        prepared_image.write_bytes(b"fake-prepared-bytes")
+        witness_src = inputs / "olmocr-response.json"
+        witness_src.write_text('{"text": "hello"}', encoding="utf-8")
+
+        bundle = json.loads(
+            self._MINIMAL_BUNDLE_FIXTURE.read_text(encoding="utf-8")
+        )
+        service = BundleLayoutService()
+        service.write_document_bundle(
+            DocumentBundle.model_validate(bundle),
+            bundle_root,
+            source_files={"sample.pdf": source_pdf},
+            source_page_images={1: source_page},
+            page_images={"page-0001": prepared_image},
+            witness_files={"wit-1": witness_src},
+        )
+
+    def test_review_apply_appends_events_and_writes_state(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """Apply appends overlay events and materializes current_state.json."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        self._stage_minimal_bundle(bundle_root, tmp_path)
+        overlay = PageOverlay.model_validate_json(
+            self._OVERLAY_FIXTURE.read_text(encoding="utf-8")
+        )
+
+        result = runner.invoke(
+            cli,
+            [
+                "review",
+                "apply",
+                "--bundle-root",
+                str(bundle_root),
+                "--overlay",
+                str(self._OVERLAY_FIXTURE),
+                "--page-id",
+                "page-0001",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        review_path = (
+            bundle_root / "pages" / "page-0001" / "overlays" / "review_events.jsonl"
+        )
+        state_path = (
+            bundle_root / "pages" / "page-0001" / "overlays" / "current_state.json"
+        )
+        assert review_path.exists()
+        assert state_path.exists()
+        assert f"events_appended: {len(overlay.review_events)}" in result.output
+        replayed = ReviewOverlayService().materialize(overlay)
+        written = json.loads(state_path.read_text(encoding="utf-8"))
+        assert written == [state.model_dump(mode="json") for state in replayed]
+
+    def test_review_apply_is_append_only(self, runner, tmp_path: Path) -> None:
+        """Re-applying the same overlay must not rewrite prior JSONL bytes."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        self._stage_minimal_bundle(bundle_root, tmp_path)
+        args = [
+            "review",
+            "apply",
+            "--bundle-root",
+            str(bundle_root),
+            "--overlay",
+            str(self._OVERLAY_FIXTURE),
+            "--page-id",
+            "page-0001",
+        ]
+        first = runner.invoke(cli, args)
+        assert first.exit_code == 0, first.output
+        review_path = (
+            bundle_root / "pages" / "page-0001" / "overlays" / "review_events.jsonl"
+        )
+        bytes_after_first = review_path.read_bytes()
+
+        second = runner.invoke(cli, args)
+        assert second.exit_code == 0, second.output
+        assert "events_appended: 0" in second.output
+        assert review_path.read_bytes() == bytes_after_first
+
+    def test_review_materialize_recomputes_state(self, runner, tmp_path: Path) -> None:
+        """Materialize replays JSONL history into current_state.json."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        self._stage_minimal_bundle(bundle_root, tmp_path)
+        apply_result = runner.invoke(
+            cli,
+            [
+                "review",
+                "apply",
+                "--bundle-root",
+                str(bundle_root),
+                "--overlay",
+                str(self._OVERLAY_FIXTURE),
+                "--page-id",
+                "page-0001",
+            ],
+        )
+        assert apply_result.exit_code == 0, apply_result.output
+        state_path = (
+            bundle_root / "pages" / "page-0001" / "overlays" / "current_state.json"
+        )
+        state_path.unlink()
+
+        result = runner.invoke(
+            cli,
+            [
+                "review",
+                "materialize",
+                "--bundle-root",
+                str(bundle_root),
+                "--page-id",
+                "page-0001",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        overlay = PageOverlay.model_validate_json(
+            self._OVERLAY_FIXTURE.read_text(encoding="utf-8")
+        )
+        replayed = ReviewOverlayService().materialize(overlay)
+        written = json.loads(state_path.read_text(encoding="utf-8"))
+        assert written == [state.model_dump(mode="json") for state in replayed]
+        assert "states:" in result.output
+
+    def test_review_apply_rejects_page_id_mismatch(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """Apply fails when --page-id does not match the overlay file."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        self._stage_minimal_bundle(bundle_root, tmp_path)
+
+        result = runner.invoke(
+            cli,
+            [
+                "review",
+                "apply",
+                "--bundle-root",
+                str(bundle_root),
+                "--overlay",
+                str(self._OVERLAY_FIXTURE),
+                "--page-id",
+                "page-9999",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "does not match" in result.output
+
+    def test_review_materialize_rejects_unknown_page_id(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """Materialize fails when the bundle has no matching page id."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        self._stage_minimal_bundle(bundle_root, tmp_path)
+
+        result = runner.invoke(
+            cli,
+            [
+                "review",
+                "materialize",
+                "--bundle-root",
+                str(bundle_root),
+                "--page-id",
+                "page-9999",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "page-9999" in result.output
 
 
 class TestCLIErrorHandling:
