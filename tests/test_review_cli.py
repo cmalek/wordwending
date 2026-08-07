@@ -1,5 +1,10 @@
 # Copyright (C) 2026 Chris Malek.
-"""Tests for review CLI orchestration service (apply / materialize)."""
+"""
+Tests for review CLI orchestration service (apply / materialize / issue).
+
+Includes default ``--run-id`` resolution for ``review issue``: bundle run id
+when ``document-bundle.json`` exists, else ``run-review-issue``.
+"""
 
 from __future__ import annotations
 
@@ -459,3 +464,94 @@ def test_review_issue_cli_echoes_task_count(runner, tmp_path: Path) -> None:
     tasks = layout.read_pending_review_tasks(bundle_root, 1)
     assert len(tasks) == 1
     assert tasks[0].base_run_id == "run-cli-test"
+
+
+def test_review_issue_cli_defaults_run_id_from_document_bundle(
+    runner, tmp_path: Path
+) -> None:
+    """Omitting --run-id uses document-bundle.json run id for task base_run_id."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_minimal_bundle(bundle_root, tmp_path)
+    (bundle_root / "document-bundle.json").write_text(
+        _MINIMAL_BUNDLE_FIXTURE.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    layout = BundleLayoutService()
+    page = layout.read_page_graph(bundle_root, 1)
+    flagged = page.model_copy(
+        update={
+            "evaluation_summary": PageEvaluationSummary(
+                text=EvaluationFamilySummary(
+                    flags=[
+                        _eval_flag(
+                            str(MergeFlagType.TEXT_DISAGREEMENT),
+                            ["span-1"],
+                        )
+                    ]
+                )
+            ),
+        }
+    )
+    _write_page_graph(bundle_root, flagged)
+
+    result = runner.invoke(
+        cli,
+        [
+            "review",
+            "issue",
+            "--bundle-root",
+            str(bundle_root),
+            "--page-id",
+            "page-0001",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    tasks = layout.read_pending_review_tasks(bundle_root, 1)
+    assert len(tasks) == 1
+    assert tasks[0].base_run_id == "run-minimal"
+
+
+def test_review_issue_cli_defaults_run_id_when_bundle_json_absent(
+    runner, tmp_path: Path
+) -> None:
+    """Omitting --run-id without document-bundle.json uses run-review-issue."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_minimal_bundle(bundle_root, tmp_path)
+    assert not (bundle_root / "document-bundle.json").exists()
+    layout = BundleLayoutService()
+    page = layout.read_page_graph(bundle_root, 1)
+    flagged = page.model_copy(
+        update={
+            "evaluation_summary": PageEvaluationSummary(
+                text=EvaluationFamilySummary(
+                    flags=[
+                        _eval_flag(
+                            str(MergeFlagType.TEXT_DISAGREEMENT),
+                            ["span-1"],
+                        )
+                    ]
+                )
+            ),
+        }
+    )
+    _write_page_graph(bundle_root, flagged)
+
+    result = runner.invoke(
+        cli,
+        [
+            "review",
+            "issue",
+            "--bundle-root",
+            str(bundle_root),
+            "--page-id",
+            "page-0001",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    tasks = layout.read_pending_review_tasks(bundle_root, 1)
+    assert len(tasks) == 1
+    assert tasks[0].base_run_id == "run-review-issue"
