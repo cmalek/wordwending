@@ -708,7 +708,11 @@ class TestCLIAssemble:
     """Test assemble and inspect-bundle commands."""
 
     _WITNESS_FIXTURE = Path("tests/fixtures/assemble/olmocr-chat-completion-v1.json")
+    _KRAKEN_FIXTURE = Path("tests/fixtures/assemble/kraken-chat-completion-v1.json")
     _MANIFEST_FIXTURE = Path("tests/fixtures/assemble/manifest-v1.json")
+    _MULTI_WITNESS_MANIFEST = Path(
+        "tests/fixtures/assemble/manifest-multi-witness-v1.json"
+    )
 
     def _stage_bundle_inputs(self, bundle_root: Path) -> None:
         """Copy witness fixture and prepared image under bundle_root."""
@@ -721,6 +725,14 @@ class TestCLIAssemble:
         image_dir = bundle_root / "prepared"
         image_dir.mkdir(parents=True, exist_ok=True)
         (image_dir / "page.png").write_bytes(b"fake-png-bytes")
+
+    def _stage_multi_witness_bundle_inputs(self, bundle_root: Path) -> None:
+        """Copy olmOCR + kraken fixtures and prepared image under bundle_root."""
+        self._stage_bundle_inputs(bundle_root)
+        witnesses_dir = bundle_root / "raw" / "witnesses"
+        shutil.copy(
+            self._KRAKEN_FIXTURE, witnesses_dir / "kraken-chat-completion-v1.json"
+        )
 
     def test_assemble_writes_bundle_tree(self, runner, tmp_path: Path) -> None:
         """Assemble materializes Spec 0002 bundle tree from manifest."""
@@ -808,6 +820,36 @@ class TestCLIAssemble:
         assert "page-0001" in result.output
         assert "page_number: 1" in result.output
         assert "olmocr" in result.output
+
+    def test_inspect_bundle_surfaces_multi_witness_merge_flags(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """inspect-bundle prints merge flags after multi-witness disagreement."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        self._stage_multi_witness_bundle_inputs(bundle_root)
+        assemble_result = runner.invoke(
+            cli,
+            [
+                "assemble",
+                "--bundle-root",
+                str(bundle_root),
+                "--manifest",
+                str(self._MULTI_WITNESS_MANIFEST),
+            ],
+        )
+        assert assemble_result.exit_code == 0
+
+        result = runner.invoke(
+            cli,
+            ["inspect-bundle", "--bundle-root", str(bundle_root)],
+        )
+
+        assert result.exit_code == 0
+        assert "wit-olmocr" in result.output
+        assert "wit-kraken" in result.output
+        assert "text_disagreement" in result.output
+        assert "flag:" in result.output
 
     def test_assemble_fails_when_witness_artifacts_missing(
         self, runner, tmp_path: Path

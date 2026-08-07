@@ -44,7 +44,7 @@ class AssemblePageRequest(SchemaModel):
     page_number: int
     #: Accepted prepared page variant all witnesses must align to.
     prepared_page: PreparedPage
-    #: Raw witness refs to adapt before merge (Wave A: exactly one).
+    #: Raw witness refs to adapt before merge (one or more per page).
     raw_witnesses: list[RawWitnessRef] = Field(min_length=1)
 
 

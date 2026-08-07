@@ -13,9 +13,13 @@ from wordwending.models import (
     BundlePage,
     DocumentBundle,
     DocumentEvaluationSummary,
+    EvaluationFlag,
     ExportSummary,
+    FlagSeverity,
+    MergeFlag,
     MergePageInput,
     MergePolicy,
+    PassWitnessPage,
     RunMetadata,
     RunnerReference,
     SourceDescriptor,
@@ -41,9 +45,10 @@ class AssembleOrchestrator:
     """
     Sequence adapt → merge → document-bundle write for one assemble pass.
 
-    Wave A uses single-witness pages and does not persist merge flags or
-    abstention (``MergePageResult.flags`` / ``.abstained``); Wave C owns
-    multi-witness flag inspectability.
+    Multi-witness pages are supported. Merge flags from ``MergePageResult``
+    are projected into ``BundlePage.evaluation_summary`` so Spec 0002
+    ``evaluation/flags.json`` remains the inspectable sidecar (no second
+    flag schema).
 
     Args:
         adapter: Converts persisted raw witness artifacts into PassWitnessPage.
@@ -107,9 +112,8 @@ class AssembleOrchestrator:
             Assembled ``DocumentBundle`` after successful on-disk write.
 
         Raises:
-            ValueError: If any page has more than one raw witness (Wave A
-                single-witness only), or if the same ``witness_id`` appears on
-                more than one page.
+            ValueError: If any page has no raw witnesses, or if the same
+                ``witness_id`` appears on more than one page.
             ValueError: Propagated from witness adaptation when artifact paths
                 are empty or the payload is not a supported chat.completion
                 format.
@@ -201,62 +205,151 @@ class _AssembleExecution:
             page_request: Prepared page plus raw witness refs for one page.
 
         Raises:
-            ValueError: If the page has more than one raw witness, if
-                ``witness_id`` was already used on a prior page, or if witness
-                adaptation rejects the artifact.
+            ValueError: If the page has no raw witnesses, if ``witness_id`` was
+                already used on a prior page, or if witness adaptation rejects
+                the artifact.
             FileNotFoundError: If a resolved witness artifact path does not
                 exist.
 
         """
-        if len(page_request.raw_witnesses) != 1:
+        if not page_request.raw_witnesses:
             msg = (
-                "Wave A assemble requires exactly one raw witness per page; "
-                f"page {page_request.page_id!r} has "
-                f"{len(page_request.raw_witnesses)}"
+                "Assemble requires at least one raw witness per page; "
+                f"page {page_request.page_id!r} has 0"
             )
             raise ValueError(msg)
 
-        raw_ref = page_request.raw_witnesses[0]
-        if raw_ref.witness_id in self.witness_files:
-            msg = (
-                "Wave A assemble requires unique witness_id across pages; "
-                f"witness_id {raw_ref.witness_id!r} already used"
-            )
-            raise ValueError(msg)
-        resolved_paths = [
-            _resolve_against_bundle_root(self._bundle_root, path_str)
-            for path_str in raw_ref.artifact_paths
-        ]
-        adapted = self._adapter.adapt_page(
-            prepared_page=page_request.prepared_page,
-            witness_id=raw_ref.witness_id,
-            runner_id=raw_ref.runner_id,
-            artifact_paths=[path.as_posix() for path in resolved_paths],
-            coordinate_space=raw_ref.coordinate_space,
+        adapted, resolved_by_id, raw_refs_by_id = self._adapt_page_witnesses(
+            page_request
         )
         merge_result = self._merge.merge_page(
             MergePageInput(
                 page_id=page_request.page_id,
                 page_number=page_request.page_number,
                 prepared_page=page_request.prepared_page,
-                witnesses=[adapted],
+                witnesses=adapted,
             ),
             self._merge_policy,
         )
-        # ponytail: Wave A discards merge_result.flags / .abstained; Wave C.
         page = _bundle_ready_page(
             merge_result.page,
-            raw_ref=raw_ref,
-            resolved_artifact=resolved_paths[0],
+            raw_refs_by_id=raw_refs_by_id,
+            resolved_artifacts=resolved_by_id,
         )
+        page = _page_with_merge_flags(page, merge_result.flags)
+        self._accumulate_page(
+            page_request=page_request,
+            page=page,
+            resolved_by_id=resolved_by_id,
+            raw_refs_by_id=raw_refs_by_id,
+        )
+
+    def _adapt_page_witnesses(
+        self,
+        page_request: AssemblePageRequest,
+    ) -> tuple[list[PassWitnessPage], dict[str, Path], dict[str, RawWitnessRef]]:
+        """
+        Adapt every raw witness on one page with unique-id checks.
+
+        Args:
+            page_request: Prepared page plus raw witness refs.
+
+        Returns:
+            Adapted witnesses, resolved primary artifact paths, and raw refs
+            keyed by ``witness_id``.
+
+        Raises:
+            ValueError: If a ``witness_id`` collides within or across pages.
+            FileNotFoundError: If a resolved witness artifact path does not
+                exist.
+
+        """
+        adapted_witnesses: list[PassWitnessPage] = []
+        resolved_by_witness_id: dict[str, Path] = {}
+        raw_refs_by_id: dict[str, RawWitnessRef] = {}
+        for raw_ref in page_request.raw_witnesses:
+            self._assert_unique_witness_id(
+                page_id=page_request.page_id,
+                witness_id=raw_ref.witness_id,
+                seen_on_page=resolved_by_witness_id,
+            )
+            resolved_paths = [
+                _resolve_against_bundle_root(self._bundle_root, path_str)
+                for path_str in raw_ref.artifact_paths
+            ]
+            adapted_witnesses.append(
+                self._adapter.adapt_page(
+                    prepared_page=page_request.prepared_page,
+                    witness_id=raw_ref.witness_id,
+                    runner_id=raw_ref.runner_id,
+                    artifact_paths=[path.as_posix() for path in resolved_paths],
+                    coordinate_space=raw_ref.coordinate_space,
+                )
+            )
+            resolved_by_witness_id[raw_ref.witness_id] = resolved_paths[0]
+            raw_refs_by_id[raw_ref.witness_id] = raw_ref
+        return adapted_witnesses, resolved_by_witness_id, raw_refs_by_id
+
+    def _assert_unique_witness_id(
+        self,
+        *,
+        page_id: str,
+        witness_id: str,
+        seen_on_page: dict[str, Path],
+    ) -> None:
+        """
+        Reject duplicate ``witness_id`` within a page or across pages.
+
+        Keyword Args:
+            page_id: Page being assembled (for error context).
+            witness_id: Candidate witness identifier.
+            seen_on_page: Witness ids already resolved on this page.
+
+        Raises:
+            ValueError: If ``witness_id`` was already used.
+
+        """
+        if witness_id in self.witness_files:
+            msg = (
+                "Assemble requires unique witness_id across pages; "
+                f"witness_id {witness_id!r} already used"
+            )
+            raise ValueError(msg)
+        if witness_id in seen_on_page:
+            msg = (
+                "Assemble requires unique witness_id within a page; "
+                f"witness_id {witness_id!r} duplicated on page {page_id!r}"
+            )
+            raise ValueError(msg)
+
+    def _accumulate_page(
+        self,
+        *,
+        page_request: AssemblePageRequest,
+        page: BundlePage,
+        resolved_by_id: dict[str, Path],
+        raw_refs_by_id: dict[str, RawWitnessRef],
+    ) -> None:
+        """
+        Record one merged page and its witness/image paths into run state.
+
+        Keyword Args:
+            page_request: Original assemble page request.
+            page: Bundle-ready page graph with persisted merge flags.
+            resolved_by_id: Resolved primary artifact paths by witness id.
+            raw_refs_by_id: Raw witness refs by witness id.
+
+        """
         if not self.bundle_pages:
             self.preparation_recipe_id = (
                 page_request.prepared_page.preparation_recipe_id
             )
         self.bundle_pages.append(page)
-        self.witness_files[raw_ref.witness_id] = resolved_paths[0]
-        if raw_ref.runner_id not in self.runner_ids:
-            self.runner_ids.append(raw_ref.runner_id)
+        for witness_id, resolved_path in resolved_by_id.items():
+            self.witness_files[witness_id] = resolved_path
+            runner_id = raw_refs_by_id[witness_id].runner_id
+            if runner_id not in self.runner_ids:
+                self.runner_ids.append(runner_id)
         image_path = _resolve_prepared_image(
             self._bundle_root,
             page_request.prepared_page.image_path,
@@ -348,11 +441,62 @@ def _resolve_prepared_image(bundle_root: Path, image_path: str) -> Path | None:
     return None
 
 
+def _evaluation_flags_from_merge(flags: list[MergeFlag]) -> list[EvaluationFlag]:
+    """
+    Project Spec 0009 merge flags into Spec 0002 evaluation flag payloads.
+
+    Args:
+        flags: Merge flags emitted for one page.
+
+    Returns:
+        Evaluation flags suitable for ``evaluation/flags.json`` via
+        ``PageEvaluationSummary``.
+
+    """
+    return [
+        EvaluationFlag(
+            flag_id=flag.flag_id,
+            flag_type=str(flag.flag_type),
+            severity=FlagSeverity.WARNING,
+            message=flag.message,
+            target_object_ids=list(flag.target_object_ids),
+        )
+        for flag in flags
+    ]
+
+
+def _page_with_merge_flags(page: BundlePage, flags: list[MergeFlag]) -> BundlePage:
+    """
+    Attach merge flags onto the page evaluation summary text family.
+
+    Args:
+        page: Accepted page graph after witness rewrite.
+        flags: Merge flags from ``MergePageResult``.
+
+    Returns:
+        Page whose ``evaluation_summary.text.flags`` includes projected merge
+        flags (unchanged when ``flags`` is empty).
+
+    """
+    if not flags:
+        return page
+    projected = _evaluation_flags_from_merge(flags)
+    text_summary = page.evaluation_summary.text.model_copy(
+        update={
+            "flags": [*page.evaluation_summary.text.flags, *projected],
+        }
+    )
+    evaluation_summary = page.evaluation_summary.model_copy(
+        update={"text": text_summary}
+    )
+    return page.model_copy(update={"evaluation_summary": evaluation_summary})
+
+
 def _bundle_ready_page(
     page: BundlePage,
     *,
-    raw_ref: RawWitnessRef,
-    resolved_artifact: Path,
+    raw_refs_by_id: dict[str, RawWitnessRef],
+    resolved_artifacts: dict[str, Path],
 ) -> BundlePage:
     """
     Rewrite merge witnesses to Spec 0002 text-family references for write.
@@ -364,8 +508,9 @@ def _bundle_ready_page(
         page: Accepted page graph from merge.
 
     Keyword Args:
-        raw_ref: Raw witness ref that produced the adapted pass witness.
-        resolved_artifact: Resolved filesystem path of the primary artifact.
+        raw_refs_by_id: Raw witness refs keyed by ``witness_id``.
+        resolved_artifacts: Resolved primary artifact paths keyed by
+            ``witness_id``.
 
     Returns:
         Bundle page with ``witness_kind=text`` and basename artifact paths.
@@ -373,7 +518,9 @@ def _bundle_ready_page(
     """
     rewritten: list[WitnessReference] = []
     for witness in page.witnesses:
-        if witness.witness_id == raw_ref.witness_id:
+        raw_ref = raw_refs_by_id.get(witness.witness_id)
+        resolved_artifact = resolved_artifacts.get(witness.witness_id)
+        if raw_ref is not None and resolved_artifact is not None:
             rewritten.append(
                 witness.model_copy(
                     update={

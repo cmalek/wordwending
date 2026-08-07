@@ -835,3 +835,34 @@ def inspect_bundle(bundle_root: Path) -> None:
                 f"witness: {witness.witness_id} runner={witness.runner_id} "
                 f"path={witness.artifact_path}"
             )
+        _echo_page_flags(bundle_root, page_manifest.evaluation_flags_path)
+
+
+def _echo_page_flags(bundle_root: Path, evaluation_flags_path: str | None) -> None:
+    """
+    Print evaluation/merge flags from one page ``flags.json`` sidecar.
+
+    Args:
+        bundle_root: Filesystem root for the document bundle tree.
+        evaluation_flags_path: Bundle-relative path to ``evaluation/flags.json``.
+
+    """
+    if not evaluation_flags_path:
+        return
+    flags_path = bundle_root / evaluation_flags_path
+    if not flags_path.is_file():
+        return
+    try:
+        payload = json.loads(flags_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    flags = payload.get("flags", [])
+    if not isinstance(flags, list):
+        return
+    for flag in flags:
+        if not isinstance(flag, dict):
+            continue
+        flag_id = flag.get("flag_id", "")
+        flag_type = flag.get("flag_type", "")
+        message = flag.get("message", "")
+        click.echo(f"flag: {flag_id} type={flag_type} message={message}")

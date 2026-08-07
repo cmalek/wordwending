@@ -45,11 +45,15 @@ assemble writes `pages/page-0001/graph/page_graph.json`.
 | File | Role |
 |------|------|
 | `manifest-v1.json` | Assemble input: one page, one olmOCR raw witness |
+| `manifest-multi-witness-v1.json` | Assemble input: one page, olmOCR + kraken with intentional text disagreement |
 | `olmocr-chat-completion-v1.json` | Raw witness bytes (exact `chat.completion` shape) |
+| `kraken-chat-completion-v1.json` | Second-runner raw witness with disagreeing diplomatic lines |
 | `gold-v1.json` | Partial text gold keyed to adapted span ids |
 | `metric-profile-v1.json` | Eval profile for Wave A exit |
 
 ## Consumers
 
 - `tests/test_witness_adaptation.py` — adapt identity + gold span pairing
+- `tests/test_assemble.py` — multi-witness disagreement → `evaluation/flags.json`
 - `tests/test_assemble_wave_a_exit.py` — assemble → eval → export exit path
+- `tests/test_cli_commands.py` — assemble / inspect-bundle including merge flags

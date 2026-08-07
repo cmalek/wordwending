@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
@@ -27,9 +28,9 @@ from wordwending.services.bundle_layout import BundleLayoutService
 from wordwending.services.merge import AbstainingMergeService
 from wordwending.services.witness_adaptation import WitnessAdaptationService
 
-_FIXTURE = (
-    Path(__file__).parent / "fixtures" / "assemble" / "olmocr-chat-completion-v1.json"
-)
+_FIXTURES = Path(__file__).parent / "fixtures" / "assemble"
+_FIXTURE = _FIXTURES / "olmocr-chat-completion-v1.json"
+_KRAKEN_FIXTURE = _FIXTURES / "kraken-chat-completion-v1.json"
 
 
 def _prepared_page(
@@ -84,18 +85,19 @@ def _acquisition() -> AcquisitionProvenance:
     )
 
 
-def _merge_policy() -> MergePolicy:
-    """Return a single-witness merge policy for Wave A assemble."""
+def _merge_policy(*, runners: list[str] | None = None) -> MergePolicy:
+    """Return a merge policy with optional multi-runner precedence."""
+    ordered = runners or ["olmocr"]
     return MergePolicy(
         policy_id="merge-v1",
         version="1.0.0",
-        runner_text_precedence=["olmocr"],
-        structure_scaffold_runner_ids=["olmocr"],
+        runner_text_precedence=list(ordered),
+        structure_scaffold_runner_ids=[ordered[0]],
     )
 
 
 def _orchestrator() -> AssembleOrchestrator:
-    """Build AssembleOrchestrator with real Wave A collaborators."""
+    """Build AssembleOrchestrator with real assemble collaborators."""
     return AssembleOrchestrator(
         adapter=WitnessAdaptationService(),
         merge=AbstainingMergeService(),
@@ -121,6 +123,17 @@ def _stage_bundle_inputs(bundle_root: Path) -> tuple[Path, Path]:
     image_path = image_dir / "page.png"
     image_path.write_bytes(b"fake-png-bytes")
     return witness_path, image_path
+
+
+def _stage_multi_witness_bundle_inputs(bundle_root: Path) -> None:
+    """Stage olmOCR + kraken fixtures and prepared image under ``bundle_root``."""
+    witnesses_dir = bundle_root / "raw" / "witnesses"
+    witnesses_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy(_FIXTURE, witnesses_dir / "olmocr-chat-completion-v1.json")
+    shutil.copy(_KRAKEN_FIXTURE, witnesses_dir / "kraken-chat-completion-v1.json")
+    image_dir = bundle_root / "prepared"
+    image_dir.mkdir(parents=True, exist_ok=True)
+    (image_dir / "page.png").write_bytes(b"fake-png-bytes")
 
 
 def test_raw_witness_ref_paths_are_relative_posix_strings() -> None:
@@ -150,45 +163,63 @@ def test_raw_witness_ref_rejects_empty_artifact_paths() -> None:
         )
 
 
-def test_assemble_document_rejects_multi_witness_page(tmp_path: Path) -> None:
-    """Wave A assemble requires exactly one raw witness per page."""
+def test_assemble_document_multi_witness_disagreement_persists_flags(
+    tmp_path: Path,
+) -> None:
+    """Multi-witness text disagreement writes non-empty evaluation/flags.json."""
     bundle_root = tmp_path / "bundle"
     bundle_root.mkdir()
-    _stage_bundle_inputs(bundle_root)
+    _stage_multi_witness_bundle_inputs(bundle_root)
     page = AssemblePageRequest(
         page_id="page-0001",
         page_number=1,
         prepared_page=_prepared_page(),
         raw_witnesses=[
             RawWitnessRef(
-                witness_id="wit-1",
+                witness_id="wit-olmocr",
                 runner_id="olmocr",
                 artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
                 coordinate_space=_coordinate_space(),
             ),
             RawWitnessRef(
-                witness_id="wit-2",
-                runner_id="olmocr",
-                artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
+                witness_id="wit-kraken",
+                runner_id="kraken",
+                artifact_paths=["raw/witnesses/kraken-chat-completion-v1.json"],
                 coordinate_space=_coordinate_space(),
             ),
         ],
     )
-    with pytest.raises(ValueError, match=r"Wave A assemble requires exactly one"):
-        _orchestrator().assemble_document(
-            bundle_root=bundle_root,
-            source=_source(),
-            bibliographic=_bibliographic(),
-            acquisition=_acquisition(),
-            pages=[page],
-            merge_policy=_merge_policy(),
-        )
+
+    bundle = _orchestrator().assemble_document(
+        bundle_root=bundle_root,
+        source=_source(),
+        bibliographic=_bibliographic(),
+        acquisition=_acquisition(),
+        pages=[page],
+        merge_policy=_merge_policy(runners=["olmocr", "kraken"]),
+    )
+
+    assert len(bundle.pages) == 1
+    assert {w.runner_id for w in bundle.pages[0].witnesses} == {"olmocr", "kraken"}
+    flags_path = (
+        bundle_root / "pages" / "page-0001" / "evaluation" / "flags.json"
+    )
+    assert flags_path.is_file()
+    flags_payload = json.loads(flags_path.read_text(encoding="utf-8"))
+    assert flags_payload["flags"]
+    assert any(
+        flag["flag_type"] == "text_disagreement" for flag in flags_payload["flags"]
+    )
+    assert any(
+        flag.flag_type == "text_disagreement"
+        for flag in bundle.pages[0].evaluation_summary.text.flags
+    )
 
 
 def test_assemble_document_rejects_duplicate_witness_id_across_pages(
     tmp_path: Path,
 ) -> None:
-    """Wave A assemble requires unique witness_id across all pages."""
+    """Assemble requires unique witness_id across all pages."""
     bundle_root = tmp_path / "bundle"
     bundle_root.mkdir()
     _stage_bundle_inputs(bundle_root)
