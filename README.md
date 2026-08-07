@@ -96,7 +96,7 @@ guide on Read the Docs.
 | `eval` | Score one predicted page against gold annotations |
 | `eval-cohorts` | Summarize page evaluations into fixed cohort views |
 | `assemble` | Adapt raw witnesses, merge, and write a document bundle tree |
-| `inspect-bundle` | Summarize an assembled bundle (manifests, pages, witnesses) |
+| `inspect-bundle` | Summarize an assembled bundle (manifests, pages, witnesses, exports when present) |
 | `review apply` | Append overlay review events and materialize overlay state |
 | `review materialize` | Replay append-only review history into current overlay state |
 | `export` | Derive bundle / RAG / Markdown exports from a DocumentBundle |

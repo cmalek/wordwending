@@ -142,8 +142,8 @@ operator review prep—not auto-emitted Spec 0005 ``ReviewTask`` packets.
 inspect-bundle
 ^^^^^^^^^^^^^^
 
-Summarize an assembled bundle: manifests, pages, witnesses, merge flags, and
-overlay paths.
+Summarize an assembled bundle: manifests, pages, witnesses, merge flags,
+overlay paths, and ``exports/*`` artifact paths when export has run.
 
 .. code-block:: bash
 

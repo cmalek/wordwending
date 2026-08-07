@@ -51,7 +51,8 @@ Yes, with honest limits:
 - ``assemble`` adapts raw witnesses, merges (including olmOCR + kraken multi-witness),
   and writes a ``DocumentBundle`` tree from an operator ``AssembleManifest``
 - ``inspect-bundle`` summarizes the assembled tree, including merge flags as
-  dimension-specific evaluation flags (``evaluation/flags.json``)
+  dimension-specific evaluation flags (``evaluation/flags.json``) and
+  ``exports/*`` paths when derived exports exist on disk
 - ``review apply`` and ``review materialize`` drive append-only overlay acceptance
   (operators hand-author ``PageOverlay`` JSON; Spec 0005 ``ReviewTask`` packets
   are not auto-emitted by assemble)

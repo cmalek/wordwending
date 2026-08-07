@@ -20,6 +20,7 @@ from ..exc import ConfigurationError
 from ..models import (
     BundlePage,
     DocumentBundle,
+    ExportSummary,
     GoldDocument,
     MetricProfile,
     PageClass,
@@ -840,6 +841,63 @@ def inspect_bundle(bundle_root: Path) -> None:
                 f"path={witness.artifact_path}"
             )
         _echo_page_flags(bundle_root, page_manifest.evaluation_flags_path)
+    _echo_export_paths(bundle_root)
+
+
+def _resolve_export_summary(bundle_root: Path) -> ExportSummary | None:
+    """
+    Load export path hints from the best available bundle JSON on disk.
+
+    Args:
+        bundle_root: Filesystem root for one document bundle tree.
+
+    Returns:
+        ``ExportSummary`` from ``exports/bundle.json`` when present, otherwise
+        from ``document-bundle.json``; ``None`` when neither file is readable.
+
+    """
+    exported_bundle = bundle_root / "exports" / "bundle.json"
+    if exported_bundle.is_file():
+        try:
+            bundle = DocumentBundle.model_validate_json(
+                exported_bundle.read_text(encoding="utf-8")
+            )
+        except (OSError, ValidationError, ValueError):
+            pass
+        else:
+            return bundle.exports
+    doc_bundle = bundle_root / DOCUMENT_BUNDLE_JSON
+    if doc_bundle.is_file():
+        try:
+            bundle = DocumentBundle.model_validate_json(
+                doc_bundle.read_text(encoding="utf-8")
+            )
+        except (OSError, ValidationError, ValueError):
+            pass
+        else:
+            return bundle.exports
+    return None
+
+
+def _echo_export_paths(bundle_root: Path) -> None:
+    """
+    Print bundle-relative export artifact paths that exist on disk.
+
+    Args:
+        bundle_root: Filesystem root for the document bundle tree.
+
+    """
+    summary = _resolve_export_summary(bundle_root)
+    if summary is None:
+        return
+    for rel_path in (
+        summary.bundle_json_path,
+        summary.rag_jsonl_path,
+        summary.stitched_chunks_jsonl_path,
+        summary.document_markdown_path,
+    ):
+        if rel_path and (bundle_root / rel_path).is_file():
+            click.echo(f"export: {rel_path}")
 
 
 def _echo_page_flags(bundle_root: Path, evaluation_flags_path: str | None) -> None:

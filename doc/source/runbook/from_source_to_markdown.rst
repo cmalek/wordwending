@@ -72,7 +72,8 @@ witness paths, then runs:
 Paths inside the manifest are **relative posix strings** resolved against
 ``--bundle-root``. After assemble, ``document-bundle.json`` at the bundle root
 is the loadable ``DocumentBundle`` input for ``wordwending export``; use
-``inspect-bundle`` to verify the written tree:
+``inspect-bundle`` to verify the written tree (and, after ``export``, list
+``exports/*`` paths):
 
 .. code-block:: bash
 

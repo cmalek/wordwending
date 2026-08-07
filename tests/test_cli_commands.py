@@ -774,7 +774,7 @@ class TestCLIAssemble:
     def test_assemble_then_export_writes_document_markdown(
         self, runner, tmp_path: Path
     ) -> None:
-        """Assemble followed by export produces exports/document.md."""
+        """Assemble followed by export produces all Spec 0006 export artifacts."""
         bundle_root = tmp_path / "bundle"
         bundle_root.mkdir()
         self._stage_bundle_inputs(bundle_root)
@@ -799,7 +799,75 @@ class TestCLIAssemble:
         )
 
         assert export_result.exit_code == 0
-        assert (bundle_root / "exports" / "document.md").exists()
+        exports_dir = bundle_root / "exports"
+        assert (exports_dir / "document.md").exists()
+        assert (exports_dir / "bundle.json").exists()
+        assert (exports_dir / "rag.jsonl").exists()
+        assert (exports_dir / "stitched_chunks.jsonl").exists()
+
+    def test_inspect_bundle_omits_export_paths_before_export(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """inspect-bundle does not list export paths until export has run."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        self._stage_bundle_inputs(bundle_root)
+        assemble_result = runner.invoke(
+            cli,
+            [
+                "assemble",
+                "--bundle-root",
+                str(bundle_root),
+                "--manifest",
+                str(self._MANIFEST_FIXTURE),
+            ],
+        )
+        assert assemble_result.exit_code == 0
+
+        result = runner.invoke(
+            cli,
+            ["inspect-bundle", "--bundle-root", str(bundle_root)],
+        )
+
+        assert result.exit_code == 0
+        assert "export:" not in result.output
+
+    def test_inspect_bundle_lists_export_paths_after_export(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """inspect-bundle lists exports/* paths after assemble and export."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        self._stage_bundle_inputs(bundle_root)
+        assemble_result = runner.invoke(
+            cli,
+            [
+                "assemble",
+                "--bundle-root",
+                str(bundle_root),
+                "--manifest",
+                str(self._MANIFEST_FIXTURE),
+            ],
+        )
+        assert assemble_result.exit_code == 0
+
+        bundle_json = bundle_root / "document-bundle.json"
+        export_result = runner.invoke(
+            cli,
+            ["export", str(bundle_json), "--bundle-root", str(bundle_root)],
+        )
+        assert export_result.exit_code == 0
+
+        result = runner.invoke(
+            cli,
+            ["inspect-bundle", "--bundle-root", str(bundle_root)],
+        )
+
+        assert result.exit_code == 0
+        assert "export: exports/bundle.json" in result.output
+        assert "export: exports/rag.jsonl" in result.output
+        assert "export: exports/stitched_chunks.jsonl" in result.output
+        assert "export: exports/document.md" in result.output
 
     def test_inspect_bundle_shows_page_info(self, runner, tmp_path: Path) -> None:
         """inspect-bundle prints document and page summary."""
