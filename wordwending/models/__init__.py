@@ -1,6 +1,11 @@
 # Copyright (C) 2026 Chris Malek.
 """Exported data models for wordwending."""
 
+from wordwending.models.bundle_checksum import (
+    BundleChecksumReport,
+    ChecksumVerificationResult,
+    ChecksumVerificationStatus,
+)
 from wordwending.models.bundle_layout import (
     BUNDLE_SCHEMA_VERSION,
     BundlePaths,
@@ -174,8 +179,11 @@ __all__ = [
     "BibliographicProvenance",
     "BinarizeMode",
     "BoundingBox",
+    "BundleChecksumReport",
     "BundlePage",
     "BundlePaths",
+    "ChecksumVerificationResult",
+    "ChecksumVerificationStatus",
     "ChunkType",
     "ColorMode",
     "CoordinateSpace",

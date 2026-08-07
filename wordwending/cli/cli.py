@@ -19,6 +19,7 @@ import wordwending
 from ..exc import ConfigurationError
 from ..models import (
     BundlePage,
+    ChecksumVerificationStatus,
     DocumentBundle,
     ExportSummary,
     GoldDocument,
@@ -36,6 +37,7 @@ from ..models.bakeoff import BAKEOFF_MATRIX_FILENAME, BakeoffManifest
 from ..models.runner_execution import RunnerExecutionPolicy
 from ..services.assemble import DOCUMENT_BUNDLE_JSON, AssembleOrchestrator
 from ..services.bakeoff import BakeoffService
+from ..services.bundle_checksum import BundleChecksumService
 from ..services.bundle_layout import BundleLayoutService
 from ..services.evaluation import EvaluationService
 from ..services.evaluation_cohorts import EvaluationCohortService
@@ -827,6 +829,7 @@ def inspect_bundle(bundle_root: Path) -> None:
                 f"path={witness.artifact_path}"
             )
         _echo_page_flags(bundle_root, page_manifest.evaluation_flags_path)
+    _echo_checksum_results(bundle_root)
     _echo_export_paths(bundle_root)
 
 
@@ -939,6 +942,33 @@ def _resolve_export_summary(bundle_root: Path) -> ExportSummary | None:
         else:
             return bundle.exports
     return None
+
+
+def _echo_checksum_results(bundle_root: Path) -> None:
+    """
+    Print OK/FAIL/SKIPPED lines for bundle-layout recorded checksums.
+
+    Args:
+        bundle_root: Filesystem root for the document bundle tree.
+
+    """
+    report = BundleChecksumService().verify(bundle_root)
+    for result in report.results:
+        if result.status == ChecksumVerificationStatus.OK:
+            click.echo(f"checksum: {result.artifact_path} OK")
+            continue
+        if result.status == ChecksumVerificationStatus.SKIPPED:
+            detail = result.detail or "skipped"
+            click.echo(f"checksum: {result.artifact_path} SKIPPED {detail}")
+            continue
+        line = f"checksum: {result.artifact_path} FAIL"
+        if result.recorded_checksum:
+            line += f" recorded={result.recorded_checksum}"
+        if result.computed_checksum:
+            line += f" computed={result.computed_checksum}"
+        if result.detail:
+            line += f" ({result.detail})"
+        click.echo(line)
 
 
 def _echo_export_paths(bundle_root: Path) -> None:

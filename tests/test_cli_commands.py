@@ -925,6 +925,52 @@ class TestCLIAssemble:
         assert "page_number: 1" in result.output
         assert "olmocr" in result.output
 
+    def test_inspect_bundle_reports_checksum_fail_for_placeholder_digest(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """inspect-bundle surfaces FAIL when recorded digests do not match bytes."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        self._stage_bundle_inputs(bundle_root)
+        assemble_result = runner.invoke(
+            cli,
+            [
+                "assemble",
+                "--bundle-root",
+                str(bundle_root),
+                "--manifest",
+                str(self._MANIFEST_FIXTURE),
+            ],
+        )
+        assert assemble_result.exit_code == 0
+
+        result = runner.invoke(
+            cli,
+            ["inspect-bundle", "--bundle-root", str(bundle_root)],
+        )
+
+        assert result.exit_code == 0
+        assert "checksum:" in result.output
+        assert " FAIL " in result.output
+        assert "pages/page-0001/image/page.png" in result.output
+
+    def test_inspect_bundle_reports_checksum_ok_for_matching_bundle(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """inspect-bundle surfaces OK when layout digests match on-disk bytes."""
+        from tests.test_bundle_checksum import _write_bundle_with_matching_checksums
+
+        bundle_root = _write_bundle_with_matching_checksums(tmp_path)
+
+        result = runner.invoke(
+            cli,
+            ["inspect-bundle", "--bundle-root", str(bundle_root)],
+        )
+
+        assert result.exit_code == 0
+        assert "checksum: pages/page-0001/image/prepared.jp2 OK" in result.output
+        assert "checksum: source/sample.pdf OK" in result.output
+
     def test_inspect_bundle_surfaces_multi_witness_merge_flags(
         self, runner, tmp_path: Path
     ) -> None:
