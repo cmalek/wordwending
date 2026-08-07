@@ -14,6 +14,7 @@ from wordwending.cli.cli import cli
 from wordwending.exc import EndpointLifecycleError
 from wordwending.models.bakeoff import (
     BAKEOFF_MATRIX_FILENAME,
+    BakeoffCandidate,
     BakeoffManifest,
     default_bakeoff_candidates,
 )
@@ -329,3 +330,64 @@ def test_bakeoff_ensure_endpoints_fail_closed_on_lifecycle_error(
     assert result.exit_code != 0
     assert "unknown endpoint runner id" in result.output
     assert not (output_dir / BAKEOFF_MATRIX_FILENAME).exists()
+
+
+def test_bakeoff_ensure_endpoints_skips_when_no_catalog_candidates(
+    runner,
+    tmp_path: Path,
+    configured_settings: Settings,
+    fake_service: FakeEndpointLifecycleService,
+) -> None:
+    """Fake-only bakeoff must not expand empty filter into ensure-all catalog."""
+    profile_src = Path("tests/fixtures/evaluation/metric-profile-v1.json")
+    profile_path = tmp_path / "profile.json"
+    profile_path.write_text(profile_src.read_text(encoding="utf-8"), encoding="utf-8")
+    gold_path = tmp_path / "gold-page.json"
+    gold_path.write_text("{}", encoding="utf-8")
+    manifest = BakeoffManifest(
+        candidates=[
+            BakeoffCandidate(
+                runner_id="FakePassRunner",
+                license_placeholder="harness",
+                cost_placeholder="n/a",
+                operability_placeholder="n/a",
+            )
+        ],
+        pages=[
+            {
+                "page_id": "page-1",
+                "page_class": PageClass.ORDINARY_PROSE,
+                "gold_path": gold_path.name,
+            }
+        ],
+        predictions=[],
+    )
+    manifest_path = tmp_path / "bakeoff-manifest.json"
+    manifest_path.write_text(manifest.model_dump_json(), encoding="utf-8")
+    output_dir = tmp_path / "out"
+
+    with (
+        patch("wordwending.cli.cli.Settings", return_value=configured_settings),
+        patch(
+            "wordwending.cli.endpoints.build_endpoint_lifecycle_service",
+            return_value=fake_service,
+        ),
+    ):
+        runner.invoke(
+            cli,
+            [
+                "bakeoff",
+                "--bundle-root",
+                str(tmp_path),
+                "--manifest",
+                str(manifest_path),
+                "--profile",
+                str(profile_path),
+                "--output-dir",
+                str(output_dir),
+                "--ensure-endpoints",
+            ],
+        )
+
+    assert fake_service.pause_idle_calls == 0
+    assert fake_service.ensure_up_calls == []

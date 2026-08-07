@@ -962,7 +962,10 @@ def _ensure_catalogued_bakeoff_endpoints(
     """
     Ensure catalogued real bakeoff candidates and overlay HTTPS URLs.
 
-    Fake / non-catalog runners in the manifest are skipped.
+    Fake / non-catalog runners in the manifest are skipped. When the
+    intersection of manifest candidates with the catalog is empty, skip
+    ensure/overlay entirely (do not call ``ensure_up([])``, which means
+    all catalogued runners for the ``endpoints up`` CLI).
 
     Args:
         ctx: Click context carrying settings.
@@ -979,6 +982,8 @@ def _ensure_catalogued_bakeoff_endpoints(
         for candidate in bakeoff_manifest.candidates
         if candidate.runner_id in catalog
     ]
+    if not runner_ids:
+        return
     _overlay_ensure_endpoints(ctx, settings, runner_ids)
 
 
