@@ -156,6 +156,29 @@ def test_rebase_applies_text_diplomatic_override() -> None:
     assert result.notes[0].text_diplomatic == "note-body"
 
 
+def test_rebase_applies_note_text_diplomatic_override() -> None:
+    """Text overrides rewrite note diplomatic text by object_id + scope."""
+    page = _page()
+    states = [
+        OverlayState(
+            object_id="note-1",
+            scope=ReviewScope.NOTE,
+            trust_state=TrustState.CORRECTED,
+            text_diplomatic_override="emended-note",
+            corrected_dimensions=[ReviewDimension.TEXT],
+            applied_event_ids=["evt-note-text"],
+        )
+    ]
+
+    result = GraphRebaseService().rebase_page(
+        page, states, new_graph_revision="graph-v1"
+    )
+
+    assert result.notes[0].text_diplomatic == "emended-note"
+    assert result.notes[0].trust_state == TrustState.CORRECTED
+    assert result.spans[0].text_diplomatic == "machine-text"
+
+
 def test_rebase_applies_typography_and_roles() -> None:
     """Typography and role overrides update the matching span."""
     page = _page()
