@@ -749,6 +749,7 @@ class TestCLIAssemble:
     _MULTI_WITNESS_MANIFEST = Path(
         "tests/fixtures/assemble/manifest-multi-witness-v1.json"
     )
+    _HANDS_OFF_FIXTURES = Path("tests/fixtures/hands_off")
 
     def _stage_bundle_inputs(self, bundle_root: Path) -> None:
         """Copy witness fixture and prepared image under bundle_root."""
@@ -769,6 +770,142 @@ class TestCLIAssemble:
         shutil.copy(
             self._KRAKEN_FIXTURE, witnesses_dir / "kraken-chat-completion-v1.json"
         )
+
+    def _stage_hands_off_from_run_inputs(
+        self, bundle_root: Path, tmp_path: Path
+    ) -> Path:
+        """Stage prepare tree and one olmOCR run fixture for --from-run."""
+        shutil.copytree(
+            self._HANDS_OFF_FIXTURES / "prepare" / "pages", bundle_root / "pages"
+        )
+        run_dir = tmp_path / "run-olmocr"
+        shutil.copytree(self._HANDS_OFF_FIXTURES / "run-olmocr", run_dir)
+        return run_dir
+
+    def _hands_off_from_run_args(
+        self,
+        *,
+        bundle_root: Path,
+        run_dir: Path,
+        write_manifest: Path | None = None,
+    ) -> list[str]:
+        """Build CLI argv for assemble --from-run with hands-off fixtures."""
+        args = [
+            "assemble",
+            "--bundle-root",
+            str(bundle_root),
+            "--from-run",
+            "--run-dir",
+            str(run_dir),
+            "--source-json",
+            str(self._HANDS_OFF_FIXTURES / "source.json"),
+            "--bibliographic-json",
+            str(self._HANDS_OFF_FIXTURES / "bibliographic.json"),
+            "--acquisition-json",
+            str(self._HANDS_OFF_FIXTURES / "acquisition.json"),
+            "--merge-policy",
+            str(self._HANDS_OFF_FIXTURES / "merge-policy.json"),
+        ]
+        if write_manifest is not None:
+            args.extend(["--write-manifest", str(write_manifest)])
+        return args
+
+    def test_assemble_from_run_writes_bundle_tree(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """Assemble --from-run builds manifest from run dirs and writes bundle."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        run_dir = self._stage_hands_off_from_run_inputs(bundle_root, tmp_path)
+
+        result = runner.invoke(
+            cli,
+            self._hands_off_from_run_args(bundle_root=bundle_root, run_dir=run_dir),
+        )
+
+        assert result.exit_code == 0, result.output
+        assert (bundle_root / "manifest.json").exists()
+        assert (bundle_root / "document-bundle.json").exists()
+        assert (
+            bundle_root
+            / "runs"
+            / "run-olmocr"
+            / "witnesses"
+            / "batch-olmocr-1"
+            / "item-1.json"
+        ).is_file()
+        assert (
+            bundle_root / "pages" / "page-0001" / "graph" / "page_graph.json"
+        ).exists()
+        assert "doc-src-1" in result.output
+        assert "pages: 1" in result.output
+
+    def test_assemble_from_run_write_manifest(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """Assemble --from-run optionally persists the built manifest JSON."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        run_dir = self._stage_hands_off_from_run_inputs(bundle_root, tmp_path)
+        manifest_path = tmp_path / "built-manifest.json"
+
+        result = runner.invoke(
+            cli,
+            self._hands_off_from_run_args(
+                bundle_root=bundle_root,
+                run_dir=run_dir,
+                write_manifest=manifest_path,
+            ),
+        )
+
+        assert result.exit_code == 0, result.output
+        assert manifest_path.is_file()
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert payload["source"]["source_id"] == "src-1"
+        assert len(payload["pages"]) == 1
+        assert payload["pages"][0]["raw_witnesses"][0]["runner_id"] == "olmocr"
+
+    def test_assemble_rejects_manifest_and_from_run(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """Assemble rejects using --manifest and --from-run together."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        run_dir = self._stage_hands_off_from_run_inputs(bundle_root, tmp_path)
+
+        result = runner.invoke(
+            cli,
+            [
+                *self._hands_off_from_run_args(
+                    bundle_root=bundle_root, run_dir=run_dir
+                ),
+                "--manifest",
+                str(self._MANIFEST_FIXTURE),
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "manifest" in result.output.lower()
+        assert "from-run" in result.output.lower()
+
+    def test_assemble_requires_manifest_or_from_run(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """Assemble requires either --manifest or --from-run."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+
+        result = runner.invoke(
+            cli,
+            [
+                "assemble",
+                "--bundle-root",
+                str(bundle_root),
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "manifest" in result.output.lower() or "from-run" in result.output.lower()
 
     def test_assemble_writes_bundle_tree(self, runner, tmp_path: Path) -> None:
         """Assemble materializes Spec 0002 bundle tree from manifest."""

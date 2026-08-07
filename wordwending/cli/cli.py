@@ -8,6 +8,7 @@ import os
 import sys
 from importlib.metadata import Distribution
 from pathlib import Path
+from typing import cast
 
 import click
 import httpx
@@ -34,8 +35,15 @@ from ..models import (
 )
 from ..models.assemble import AssembleManifest
 from ..models.bakeoff import BAKEOFF_MATRIX_FILENAME, BakeoffManifest
+from ..models.merge import MergePolicy
+from ..models.ocr import (
+    AcquisitionProvenance,
+    BibliographicProvenance,
+    SourceDescriptor,
+)
 from ..models.runner_execution import RunnerExecutionPolicy
 from ..services.assemble import DOCUMENT_BUNDLE_JSON, AssembleOrchestrator
+from ..services.assemble_manifest import AssembleManifestBuilder
 from ..services.bakeoff import BakeoffService
 from ..services.bundle_checksum import BundleChecksumService
 from ..services.bundle_layout import BundleLayoutService
@@ -735,17 +743,72 @@ def export_document(document_bundle: Path, bundle_root: Path) -> None:
 )
 @click.option(
     "--manifest",
-    required=True,
+    required=False,
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     help="AssembleManifest JSON with relative witness and image paths.",
 )
-def assemble_document(bundle_root: Path, manifest: Path) -> None:
+@click.option(
+    "--from-run",
+    is_flag=True,
+    help="Build manifest by scanning prepare/run artifact trees under bundle_root.",
+)
+@click.option(
+    "--run-dir",
+    "run_dirs",
+    multiple=True,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Runner output directory. Repeat for multiple runners.",
+)
+@click.option(
+    "--source-json",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="SourceDescriptor JSON (required with --from-run).",
+)
+@click.option(
+    "--bibliographic-json",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="BibliographicProvenance JSON (required with --from-run).",
+)
+@click.option(
+    "--acquisition-json",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="AcquisitionProvenance JSON (required with --from-run).",
+)
+@click.option(
+    "--merge-policy",
+    "merge_policy_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="MergePolicy JSON (required with --from-run).",
+)
+@click.option(
+    "--write-manifest",
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="Optional path to persist the built manifest JSON (--from-run only).",
+)
+def assemble_document(  # noqa: PLR0913, PLR0917
+    bundle_root: Path,
+    manifest: Path | None,
+    from_run: bool,
+    run_dirs: tuple[Path, ...],
+    source_json: Path | None,
+    bibliographic_json: Path | None,
+    acquisition_json: Path | None,
+    merge_policy_path: Path | None,
+    write_manifest: Path | None,
+) -> None:
     """
     Adapt raw witnesses, merge, and write a Spec 0002 document bundle.
 
     Args:
         bundle_root: Filesystem root for relative paths and bundle output.
         manifest: AssembleManifest JSON describing pages and witness refs.
+        from_run: When ``True``, build manifest from prepare/run artifacts.
+        run_dirs: Runner output directories to scan when ``from_run``.
+        source_json: SourceDescriptor JSON for ``from_run``.
+        bibliographic_json: BibliographicProvenance JSON for ``from_run``.
+        acquisition_json: AcquisitionProvenance JSON for ``from_run``.
+        merge_policy_path: MergePolicy JSON for ``from_run``.
+        write_manifest: Optional destination for built manifest JSON.
 
     Side Effects:
         Writes document and page manifests, graphs, witnesses, images, and
@@ -753,25 +816,41 @@ def assemble_document(bundle_root: Path, manifest: Path) -> None:
 
     Raises:
         click.ClickException: When manifest validation or assemble fails.
+        click.UsageError: When ``--manifest`` and ``--from-run`` are combined
+            or required options are missing.
 
     """
+    if from_run and manifest is not None:
+        msg = "Use either --manifest or --from-run, not both."
+        raise click.UsageError(msg)
+    if not from_run and manifest is None:
+        msg = "Either --manifest or --from-run is required."
+        raise click.UsageError(msg)
+    if write_manifest is not None and not from_run:
+        msg = "--write-manifest requires --from-run."
+        raise click.UsageError(msg)
+
     try:
-        assemble_manifest = AssembleManifest.model_validate_json(
-            manifest.read_text(encoding="utf-8")
-        )
-        orchestrator = AssembleOrchestrator(
-            adapter=WitnessAdaptationService(),
-            merge=AbstainingMergeService(),
-            bundles=BundleLayoutService(),
-        )
-        bundle = orchestrator.assemble_document(
+        if from_run:
+            assemble_manifest = _assemble_manifest_from_run(
+                bundle_root=bundle_root,
+                run_dirs=list(run_dirs),
+                source_json=source_json,
+                bibliographic_json=bibliographic_json,
+                acquisition_json=acquisition_json,
+                merge_policy_path=merge_policy_path,
+                write_manifest=write_manifest,
+            )
+        else:
+            assemble_manifest = AssembleManifest.model_validate_json(
+                cast("Path", manifest).read_text(encoding="utf-8")
+            )
+        bundle = _run_assemble_orchestrator(
             bundle_root=bundle_root,
-            source=assemble_manifest.source,
-            bibliographic=assemble_manifest.bibliographic,
-            acquisition=assemble_manifest.acquisition,
-            pages=assemble_manifest.pages,
-            merge_policy=assemble_manifest.merge_policy,
+            assemble_manifest=assemble_manifest,
         )
+    except click.UsageError:
+        raise
     except (OSError, ValidationError, ValueError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
 
@@ -779,6 +858,121 @@ def assemble_document(bundle_root: Path, manifest: Path) -> None:
     click.echo(f"pages: {len(bundle.pages)}")
     click.echo(f"manifest: {bundle_root / 'manifest.json'}")
     click.echo(f"document_bundle: {bundle_root / DOCUMENT_BUNDLE_JSON}")
+
+
+def _assemble_manifest_from_run(  # noqa: PLR0913
+    *,
+    bundle_root: Path,
+    run_dirs: list[Path],
+    source_json: Path | None,
+    bibliographic_json: Path | None,
+    acquisition_json: Path | None,
+    merge_policy_path: Path | None,
+    write_manifest: Path | None,
+) -> AssembleManifest:
+    """
+    Build an assemble manifest from prepare/run artifact trees.
+
+    Keyword Args:
+        bundle_root: Bundle root receiving copied witnesses and pages.
+        run_dirs: Runner output directories to scan.
+        source_json: SourceDescriptor JSON path.
+        bibliographic_json: BibliographicProvenance JSON path.
+        acquisition_json: AcquisitionProvenance JSON path.
+        merge_policy_path: MergePolicy JSON path.
+        write_manifest: Optional path to persist built manifest JSON.
+
+    Returns:
+        Validated assemble manifest ready for orchestration.
+
+    Raises:
+        click.UsageError: When required ``from_run`` options are missing.
+        OSError: When optional manifest output cannot be written.
+
+    Side Effects:
+        Copies witness bytes into ``bundle_root`` and may write manifest JSON.
+
+    """
+    if not run_dirs:
+        msg = "--run-dir is required with --from-run."
+        raise click.UsageError(msg)
+    required_paths = (
+        (source_json, "--source-json"),
+        (bibliographic_json, "--bibliographic-json"),
+        (acquisition_json, "--acquisition-json"),
+        (merge_policy_path, "--merge-policy"),
+    )
+    for path, option_name in required_paths:
+        if path is None:
+            msg = f"{option_name} is required with --from-run."
+            raise click.UsageError(msg)
+
+    if (
+        source_json is None
+        or bibliographic_json is None
+        or acquisition_json is None
+        or merge_policy_path is None
+    ):
+        msg = "Provenance JSON paths are required with --from-run."
+        raise click.UsageError(msg)
+
+    source = SourceDescriptor.model_validate_json(
+        source_json.read_text(encoding="utf-8")
+    )
+    bibliographic = BibliographicProvenance.model_validate_json(
+        bibliographic_json.read_text(encoding="utf-8")
+    )
+    acquisition = AcquisitionProvenance.model_validate_json(
+        acquisition_json.read_text(encoding="utf-8")
+    )
+    merge_policy = MergePolicy.model_validate_json(
+        merge_policy_path.read_text(encoding="utf-8")
+    )
+    assemble_manifest = AssembleManifestBuilder().build(
+        bundle_root=bundle_root,
+        run_dirs=run_dirs,
+        source=source,
+        bibliographic=bibliographic,
+        acquisition=acquisition,
+        merge_policy=merge_policy,
+    )
+    if write_manifest is not None:
+        write_manifest.write_text(
+            assemble_manifest.model_dump_json(indent=2) + "\n",
+            encoding="utf-8",
+        )
+    return assemble_manifest
+
+
+def _run_assemble_orchestrator(
+    *,
+    bundle_root: Path,
+    assemble_manifest: AssembleManifest,
+) -> DocumentBundle:
+    """
+    Adapt, merge, and write one document bundle from a manifest.
+
+    Keyword Args:
+        bundle_root: Filesystem root for relative paths and bundle output.
+        assemble_manifest: Pages, provenance, and merge policy to assemble.
+
+    Returns:
+        Assembled document bundle after on-disk write.
+
+    """
+    orchestrator = AssembleOrchestrator(
+        adapter=WitnessAdaptationService(),
+        merge=AbstainingMergeService(),
+        bundles=BundleLayoutService(),
+    )
+    return orchestrator.assemble_document(
+        bundle_root=bundle_root,
+        source=assemble_manifest.source,
+        bibliographic=assemble_manifest.bibliographic,
+        acquisition=assemble_manifest.acquisition,
+        pages=assemble_manifest.pages,
+        merge_policy=assemble_manifest.merge_policy,
+    )
 
 
 @cli.command("inspect-bundle")

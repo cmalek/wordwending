@@ -90,8 +90,8 @@
     "semantic_hash": "35004847858157e37de280d0cdb7a682"
   },
   "tests/test_cli_commands.py": {
-    "mtime": 1786137701.9528635,
-    "ast_hash": "e421fb57b550c6d59996306a68eb373d",
+    "mtime": 1786146067.8252947,
+    "ast_hash": "92ce63daf2c65154dcd393f9b77c9833",
     "semantic_hash": ""
   },
   "tests/test_cli_utils.py": {
@@ -775,8 +775,8 @@
     "semantic_hash": ""
   },
   "wordwending/cli/cli.py": {
-    "mtime": 1786142947.7809,
-    "ast_hash": "f6d2c7b8351ee5a98662d3c71cb9626b",
+    "mtime": 1786146099.4505444,
+    "ast_hash": "28aad55b191eb66141214a464dda8c01",
     "semantic_hash": ""
   },
   "wordwending/cli/utils.py": {
