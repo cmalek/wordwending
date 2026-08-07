@@ -1,0 +1,12 @@
+{
+  "profile_id": "diplomatic-page-v1",
+  "version": "1.0.0",
+  "whitespace_significant": true,
+  "punctuation_significant": true,
+  "case_sensitive": true,
+  "line_breaks_significant": true,
+  "tokenizer_pattern": "\\w+(?:['’]\\w+)*|[^\\w\\s]",
+  "region_iou_threshold": 0.5,
+  "exclude_illegible": true,
+  "unknown_style_is_incorrect": true
+}
