@@ -28,7 +28,10 @@ from wordwending.models import (
     SpanRecord,
     WitnessReference,
 )
-from wordwending.services.merge_review import MergeFlagReviewService
+from wordwending.services.merge_review import (
+    _MERGE_FLAG_DIMENSION,
+    MergeFlagReviewService,
+)
 from wordwending.services.review_markup import HumanMarkupService
 
 
@@ -212,6 +215,11 @@ def test_merge_flag_types_map_to_dimension_packets(
     task = by_type[expected_task_type]
     assert task.dimensions == [expected_dimension]
     assert task.target_object_ids == targets
+
+
+def test_merge_flag_dimension_map_is_exhaustive() -> None:
+    """Every MergeFlagType has a Spec 0005 dimension mapping entry."""
+    assert set(_MERGE_FLAG_DIMENSION) == set(MergeFlagType)
 
 
 def test_text_disagreement_on_note_routes_to_adjudication(page: BundlePage) -> None:

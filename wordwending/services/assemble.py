@@ -33,9 +33,6 @@ from wordwending.services.witness_adaptation import (  # noqa: TC001
     WitnessAdaptationService,
 )
 
-#: Projects Spec 0009 merge flags into Spec 0002 evaluation families / Spec 0005 tasks.
-_MERGE_FLAG_REVIEW = MergeFlagReviewService()
-
 #: Spec 0002 witness family used for olmOCR text artifacts under pages/.
 _TEXT_WITNESS_KIND = "text"
 #: Stable relative path for loadable DocumentBundle JSON at bundle root.
@@ -56,6 +53,8 @@ class AssembleOrchestrator:
         adapter: Converts persisted raw witness artifacts into PassWitnessPage.
         merge: Abstaining merge of adapted witnesses into BundlePage graphs.
         bundles: Spec 0002 document-bundle tree writer.
+        merge_flag_review: Projects merge flags into evaluation families and
+            Spec 0005 review packets; defaults to a fresh service instance.
 
     """
 
@@ -65,6 +64,7 @@ class AssembleOrchestrator:
         adapter: WitnessAdaptationService,
         merge: AbstainingMergeService,
         bundles: BundleLayoutService,
+        merge_flag_review: MergeFlagReviewService | None = None,
     ) -> None:
         """
         Initialize assemble collaborators.
@@ -73,6 +73,8 @@ class AssembleOrchestrator:
             adapter: Witness adaptation service (orchestrator owns adapt).
             merge: Abstaining merge service for single-page merge.
             bundles: Bundle layout service for document-bundle write.
+            merge_flag_review: Merge-flag projection service; constructed when
+                omitted.
 
         """
         #: Converts persisted raw witness artifacts into PassWitnessPage graphs.
@@ -81,6 +83,8 @@ class AssembleOrchestrator:
         self._merge = merge
         #: Spec 0002 document-bundle tree writer.
         self._bundles = bundles
+        #: Projects Spec 0009 merge flags into evaluation families / Spec 0005 tasks.
+        self._merge_flag_review = merge_flag_review or MergeFlagReviewService()
 
     def assemble_document(  # noqa: PLR0913
         self,
@@ -126,6 +130,7 @@ class AssembleOrchestrator:
         execution = _AssembleExecution(
             adapter=self._adapter,
             merge=self._merge,
+            merge_flag_review=self._merge_flag_review,
             bundle_root=bundle_root,
             merge_policy=merge_policy,
         )
@@ -157,6 +162,7 @@ class _AssembleExecution:
     Args:
         adapter: Witness adaptation service for this assemble run.
         merge: Abstaining merge service for this assemble run.
+        merge_flag_review: Merge-flag projection service for this run.
         bundle_root: Filesystem root for relative path resolution.
         merge_policy: Versioned merge precedence and thresholds.
 
@@ -167,6 +173,7 @@ class _AssembleExecution:
         *,
         adapter: WitnessAdaptationService,
         merge: AbstainingMergeService,
+        merge_flag_review: MergeFlagReviewService,
         bundle_root: Path,
         merge_policy: MergePolicy,
     ) -> None:
@@ -176,6 +183,7 @@ class _AssembleExecution:
         Keyword Args:
             adapter: Witness adaptation service for this assemble run.
             merge: Abstaining merge service for this assemble run.
+            merge_flag_review: Merge-flag projection service for this run.
             bundle_root: Filesystem root for relative path resolution.
             merge_policy: Versioned merge precedence and thresholds.
 
@@ -184,6 +192,8 @@ class _AssembleExecution:
         self._adapter = adapter
         #: Abstaining merge service for this assemble run.
         self._merge = merge
+        #: Merge-flag projection service for this assemble run.
+        self._merge_flag_review = merge_flag_review
         #: Filesystem root for relative path resolution and write inputs.
         self._bundle_root = bundle_root
         #: Versioned merge precedence and thresholds for this run.
@@ -238,7 +248,7 @@ class _AssembleExecution:
             raw_refs_by_id=raw_refs_by_id,
             resolved_artifacts=resolved_by_id,
         )
-        page = _MERGE_FLAG_REVIEW.project_onto_page(page, merge_result.flags)
+        page = self._merge_flag_review.project_onto_page(page, merge_result.flags)
         self._accumulate_page(
             page_request=page_request,
             page=page,

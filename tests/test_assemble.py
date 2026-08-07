@@ -15,6 +15,10 @@ from wordwending.models import (
     AcquisitionProvenance,
     BibliographicProvenance,
     CoordinateSpace,
+    MergeFlag,
+    MergeFlagType,
+    MergePageInput,
+    MergePageResult,
     MergePolicy,
     PageClass,
     PreparationMode,
@@ -96,13 +100,35 @@ def _merge_policy(*, runners: list[str] | None = None) -> MergePolicy:
     )
 
 
-def _orchestrator() -> AssembleOrchestrator:
+def _orchestrator(*, merge: AbstainingMergeService | None = None) -> AssembleOrchestrator:
     """Build AssembleOrchestrator with real assemble collaborators."""
     return AssembleOrchestrator(
         adapter=WitnessAdaptationService(),
-        merge=AbstainingMergeService(),
+        merge=merge or AbstainingMergeService(),
         bundles=BundleLayoutService(),
     )
+
+
+class _MergeWithExtraFlags:
+    """Wrap merge and append synthetic flags for assemble projection tests."""
+
+    def __init__(
+        self,
+        inner: AbstainingMergeService,
+        extra_flags: list[MergeFlag],
+    ) -> None:
+        self._inner = inner
+        self._extra_flags = extra_flags
+
+    def merge_page(
+        self,
+        page_input: MergePageInput,
+        policy: MergePolicy,
+    ) -> MergePageResult:
+        result = self._inner.merge_page(page_input, policy)
+        return result.model_copy(
+            update={"flags": [*result.flags, *self._extra_flags]}
+        )
 
 
 def _stage_bundle_inputs(bundle_root: Path) -> tuple[Path, Path]:
@@ -213,6 +239,64 @@ def test_assemble_document_multi_witness_disagreement_persists_flags(
     assert any(
         flag.flag_type == "text_disagreement"
         for flag in bundle.pages[0].evaluation_summary.text.flags
+    )
+
+
+def test_assemble_document_projects_non_text_merge_flags(
+    tmp_path: Path,
+) -> None:
+    """Assemble routes typography/structure merge flags into non-text families."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    witness_path, _image_path = _stage_bundle_inputs(bundle_root)
+    page = AssemblePageRequest(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        raw_witnesses=[
+            RawWitnessRef(
+                witness_id="wit-1",
+                runner_id="olmocr",
+                artifact_paths=[witness_path.relative_to(bundle_root).as_posix()],
+                coordinate_space=_coordinate_space(),
+            )
+        ],
+    )
+    merge = _MergeWithExtraFlags(
+        AbstainingMergeService(),
+        extra_flags=[
+            MergeFlag(
+                flag_id="m-typo",
+                flag_type=MergeFlagType.TYPOGRAPHY_CONFLICT,
+                target_object_ids=["span-1"],
+                message="typography conflict on span-1",
+            ),
+            MergeFlag(
+                flag_id="m-struct",
+                flag_type=MergeFlagType.STRUCTURE_SCAFFOLD_CONFLICT,
+                target_object_ids=["region-1"],
+                message="structure conflict on region-1",
+            ),
+        ],
+    )
+
+    bundle = _orchestrator(merge=merge).assemble_document(
+        bundle_root=bundle_root,
+        source=_source(),
+        bibliographic=_bibliographic(),
+        acquisition=_acquisition(),
+        pages=[page],
+        merge_policy=_merge_policy(),
+    )
+
+    summary = bundle.pages[0].evaluation_summary
+    assert any(
+        flag.flag_type == str(MergeFlagType.TYPOGRAPHY_CONFLICT)
+        for flag in summary.style.typography.flags
+    )
+    assert any(
+        flag.flag_type == str(MergeFlagType.STRUCTURE_SCAFFOLD_CONFLICT)
+        for flag in summary.structure.flags
     )
 
 
