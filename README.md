@@ -97,9 +97,16 @@ guide on Read the Docs.
 | `eval-cohorts` | Summarize page evaluations into fixed cohort views |
 | `assemble` | Adapt raw witnesses, merge, and write a document bundle tree |
 | `inspect-bundle` | Summarize an assembled bundle (manifests, pages, witnesses) |
+| `review apply` | Append overlay review events and materialize overlay state |
+| `review materialize` | Replay append-only review history into current overlay state |
 | `export` | Derive bundle / RAG / Markdown exports from a DocumentBundle |
 
-There is no review CLI yet (Wave D). Multi-witness merge inspect is Wave C.
+Multi-witness assemble (olmOCR + kraken) and review overlays ship on the current
+spine. Spec 0004 Phase 4 full bullets are met on fixture-backed pages; Phase 5
+(bake-off), Phase 6 (PassRunner Protocol), and Phase 10 (ops hardening) are not
+complete. See the
+[from source to Markdown](https://wordwending.readthedocs.io/en/latest/runbook/from_source_to_markdown.html)
+runbook for honest gaps.
 
 ## Common Use Cases
 

@@ -34,11 +34,15 @@ Command            Role
 ``run``            Execute prepared artifacts against one hosted olmOCR runner
 ``eval``           Score one predicted page against gold annotations
 ``eval-cohorts``   Summarize page evaluations into fixed cohort views
+``assemble``       Adapt witnesses, merge, and write a document bundle tree
+``inspect-bundle`` Summarize an assembled bundle on disk
+``review apply``   Append overlay review events to a bundle page
+``review materialize`` Replay overlay history into current state
 ``export``         Derive bundle / RAG / Markdown exports from a DocumentBundle
 =================  ===========================================================
 
-There is no assemble/merge or review CLI yet. Building a ``DocumentBundle`` from
-prepare/run outputs remains manual or deferred; see the e2e guide.
+``assemble``, multi-witness merge (olmOCR + kraken), and ``review`` ship today.
+See :doc:`/runbook/from_source_to_markdown` for the full spine and remaining gaps.
 
 Minimal export (when you already have a DocumentBundle)
 -------------------------------------------------------

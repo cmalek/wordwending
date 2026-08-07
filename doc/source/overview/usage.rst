@@ -13,6 +13,8 @@ Getting help
    wordwending --help
    wordwending prepare --help
    wordwending run --help
+   wordwending assemble --help
+   wordwending review --help
    wordwending export --help
 
 Command structure
@@ -119,6 +121,57 @@ Summarize a JSON array of page evaluation records into fixed cohort views.
 
    wordwending eval-cohorts records.json --output-json cohorts.json
 
+assemble
+^^^^^^^^
+
+Adapt raw witness artifacts, merge (single- or multi-witness), and write a
+``DocumentBundle`` tree from an operator ``AssembleManifest`` JSON.
+
+.. code-block:: bash
+
+   wordwending assemble \
+     --bundle-root ./bundle-root \
+     --manifest manifest.json
+
+Paths inside the manifest are relative posix strings resolved against
+``--bundle-root``. Multi-witness pages list olmOCR and kraken (or other
+supported runner) artifact paths; merge flags persist for review.
+
+inspect-bundle
+^^^^^^^^^^^^^^
+
+Summarize an assembled bundle: manifests, pages, witnesses, merge flags, and
+overlay paths.
+
+.. code-block:: bash
+
+   wordwending inspect-bundle --bundle-root ./bundle-root
+
+review apply
+^^^^^^^^^^^^
+
+Append ``PageOverlay`` review events to a bundle page and materialize overlay
+state from the full append-only history.
+
+.. code-block:: bash
+
+   wordwending review apply \
+     --bundle-root ./bundle-root \
+     --overlay page-overlay.json \
+     --page-id PAGE_ID
+
+review materialize
+^^^^^^^^^^^^^^^^^^
+
+Replay ``overlays/review_events.jsonl`` into ``overlays/current_state.json``
+for one page.
+
+.. code-block:: bash
+
+   wordwending review materialize \
+     --bundle-root ./bundle-root \
+     --page-id PAGE_ID
+
 export
 ^^^^^^
 
@@ -135,12 +188,12 @@ Artifacts include ``exports/document.md``, ``exports/bundle.json``,
 What is not a CLI yet
 ---------------------
 
-- Assembling / merging prepare+run outputs into a ``DocumentBundle``
-- Review / overlay acceptance workflows
+- Standalone ``merge`` (merge runs inside ``assemble``)
+- Auto-generated ``AssembleManifest`` from prepare/run output trees
+- Single orchestrated prepare → run → assemble → review → export run
+- Phase 5 bake-off, Phase 6 PassRunner Protocol, Phase 10 operational hardening
 
-Those gaps are documented in :doc:`/runbook/from_source_to_markdown`. Do not
-invent assemble or review commands; use fixtures or manual assembly when you
-need ``export`` today.
+Those gaps are documented in :doc:`/runbook/from_source_to_markdown`.
 
 Configuration
 -------------

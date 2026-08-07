@@ -47,6 +47,8 @@ Supporting commands:
 - ``wordwending run`` — stage 2: OCR runner passes and raw witness artifacts
 - ``wordwending assemble`` — stage 3: manifest-driven bundle assembly
 - ``wordwending inspect-bundle`` — summarize an assembled bundle on disk
+- ``wordwending review apply`` — append overlay review events to a bundle page
+- ``wordwending review materialize`` — replay overlay history into current state
 - ``wordwending version`` — confirm installed CLI
 - ``wordwending settings`` — inspect effective configuration
 - ``wordwending eval`` — score one page against gold
@@ -59,7 +61,7 @@ Stage 3: Assemble from Prepare/Run Outputs
 
 After ``run`` completes, raw witness artifacts live under the bundle root
 (typically ``witnesses/...`` relative paths recorded in the run manifest).
-Wave A does **not** auto-scan the tree: the operator writes an
+Assemble does **not** auto-scan the tree: the operator writes an
 ``AssembleManifest`` JSON listing each page's prepared image and relative
 witness paths, then runs:
 
@@ -75,6 +77,12 @@ is the loadable ``DocumentBundle`` input for ``wordwending export``; use
 .. code-block:: bash
 
    wordwending inspect-bundle --bundle-root path/to/bundle-root
+
+Multi-witness merge (olmOCR + kraken) runs on the same assemble path: list
+two or more witness artifact paths per page in the manifest. ``run`` supports
+both ``olmocr`` and ``kraken`` hosted runners; assemble adapts each witness,
+merges through ``AbstainingMergeService``, and persists merge flags. Use
+``inspect-bundle`` to inspect disagreement flags before review.
 
 Provisional Path: Export When You Have a DocumentBundle
 =======================================================
@@ -96,24 +104,40 @@ Under ``bundle-root``, ``export`` writes at least:
 This is the **provisional machine path**: Markdown reflects the bundle as
 assembled, without human overlay acceptance.
 
-Corrected Path (Conceptual)
-===========================
+Corrected Path: Review Overlays
+===============================
 
 Philological work continues after the first machine bundle. Human corrections
 belong in overlays and review tasks, not in-place edits to raw OCR text.
 
-Conceptual workflow (no dedicated review CLI yet):
+Operator workflow:
 
-1. Inspect prepared images and raw witnesses first (:doc:`/runbook/operator_notes`).
+1. Inspect prepared images, raw witnesses, and merge flags
+   (:doc:`/runbook/operator_notes`, ``inspect-bundle``).
 2. Apply review concepts from :doc:`/architecture/spec_0005_human_markup`
-   (diplomatic text, typography, note linkage, trust states).
-3. Record accepted changes through overlay services
-   ``wordwending.services.review_markup`` and ``wordwending.services.review_overlay``.
-4. Rebuild the page graph and ``DocumentBundle`` with accepted overlay updates.
+   (diplomatic text, typography, note linkage, trust states). Merge flags from
+   multi-witness assemble project into Spec 0005 review task packets where
+   models exist.
+3. Prepare a ``PageOverlay`` JSON with review events (Spec 0014).
+4. Append events and materialize overlay state:
+
+.. code-block:: bash
+
+   wordwending review apply \
+     --bundle-root path/to/bundle-root \
+     --overlay path/to/page-overlay.json \
+     --page-id PAGE_ID
+
+   wordwending review materialize \
+     --bundle-root path/to/bundle-root \
+     --page-id PAGE_ID
+
 5. Run ``wordwending export`` again to regenerate ``exports/document.md``.
 
-Until review commands ship, overlay application and bundle rebuild may require
-library-level or manual steps.
+Append-only overlay history is preserved under ``overlays/review_events.jsonl``;
+``review materialize`` rebuilds ``overlays/current_state.json`` from that log.
+Full graph rebase after source-run changes remains a later workflow (Spec 0004
+Phase 8 exit).
 
 What Markdown Is and Is Not
 ===========================
@@ -128,20 +152,44 @@ Per :doc:`/architecture/spec_0006_exports_and_retrieval`:
 
 .. _what-is-missing:
 
+Spec 0004 Phase 4 Status
+==========================
+
+On the current spine, Spec 0004 Phase 4 **full bullets are met** for a
+representative page traveling end to end without hand-edited ``DocumentBundle``
+JSON:
+
+- **Two real hosted runners on assemble** — olmOCR (provisional text) and kraken
+  (``HuggingFaceKrakenRunner``) adapt through ``wordwending assemble`` with
+  multi-witness merge and flag persistence
+- **Raw witnesses preserved** — exact runner response bytes under the bundle tree
+- **Derived page graph** — region/line/span/note scaffold via merge on assemble
+- **Score, review tasks, overlay, export** — ``eval`` / ``eval-cohorts``;
+  merge flags → Spec 0005 review packets; ``review apply`` / ``review materialize``;
+  ``export`` for JSON and Markdown
+
+This is **not** a claim that Spec 0004 Phase 5 (candidate bake-off), Phase 6
+(PassRunner Protocol extract), or Phase 10 (operational hardening) are complete.
+Kraken geometry on the spine is conservative/text-first until Phase 7 alignment
+exit matures coordinate-rich merge.
+
 What Is Missing
 ===============
 
-These pieces are planned but **not** available as operator CLI today:
+These pieces are planned but **not** available or **not complete** today:
 
-- **Merge CLI** — combining competing runner passes into one bundle graph
-  (Wave A assemble accepts one witness per page; multi-witness merge inspect
-  is Wave C)
-- **Review CLI** — driving ``review_markup`` / ``review_overlay`` tasks from the
-  shell (Wave D)
-
-When review CLI lands, this guide will be updated; until then, use
-``assemble`` and ``inspect-bundle`` for bundle materialization and treat
-corrected output as a conceptual target requiring library-level overlay work.
+- **Standalone merge CLI** — merge runs inside ``assemble``; there is no separate
+  ``wordwending merge`` command
+- **Auto manifest** — assemble requires an operator-written ``AssembleManifest``;
+  the CLI does not scan prepare/run output trees automatically
+- **Full DocumentRunOrchestrator** — prepare → run → assemble → review → export
+  is staged by separate commands, not one orchestrated run id
+- **Phase 5 bake-off** — reproducible candidate matrix and held-out comparison
+  (Wave F; do not mark Phase 5 COMPLETE yet)
+- **Phase 6 PassRunner Protocol** — common runner interface extracted after bake-off
+  evidence (Wave G; Fake runners are test doubles only)
+- **Phase 10 operations** — resumability, deployment health, cost controls beyond
+  basic inspect (Wave H; do not mark Phase 10 COMPLETE yet)
 
 Related Runbooks
 ================

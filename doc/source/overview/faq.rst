@@ -17,8 +17,8 @@ Is this production-ready?
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 No. Treat it as research software: commands and bundle-assembly paths change.
-Gaps (especially assemble/merge and review) are documented rather than hidden.
-See :doc:`/runbook/from_source_to_markdown`.
+Remaining gaps (bake-off, PassRunner Protocol, ops hardening) are documented
+rather than hidden. See :doc:`/runbook/from_source_to_markdown`.
 
 Installation
 ------------
@@ -35,6 +35,7 @@ What commands exist?
 ^^^^^^^^^^^^^^^^^^^^
 
 ``version``, ``settings``, ``prepare``, ``run``, ``eval``, ``eval-cohorts``,
+``assemble``, ``inspect-bundle``, ``review apply``, ``review materialize``,
 and ``export``. Details: :doc:`usage`.
 
 Where is the end-to-end guide?
@@ -45,9 +46,16 @@ Where is the end-to-end guide?
 Is there an assemble / merge / review CLI?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Not yet. Assembling a ``DocumentBundle`` from prepare/run outputs and accepting
-overlays remains deferred. Do not expect ``wordwending assemble`` or similar today.
-``export`` assumes you already have a valid ``DocumentBundle`` JSON.
+Yes, with honest limits:
+
+- ``assemble`` adapts raw witnesses, merges (including olmOCR + kraken multi-witness),
+  and writes a ``DocumentBundle`` tree from an operator ``AssembleManifest``
+- ``inspect-bundle`` summarizes the assembled tree, including merge flags
+- ``review apply`` and ``review materialize`` drive append-only overlay acceptance
+
+There is no standalone ``merge`` command (merge runs inside ``assemble``) and no
+single orchestrated prepare→export run yet. Spec 0004 Phase 5/6/10 exits are not
+complete. See :doc:`/runbook/from_source_to_markdown`.
 
 Is Markdown the source of truth?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -51,8 +51,9 @@ does **not** round-trip the stable ``Word``/``span-*`` ids required by ADR 0008.
 Phase 1 stopped at that cost gate.
 
 **Follow-up decision (Wave B):** the v1 human correction boundary is a custom
-``wordwending review`` CLI, not eScriptorium. The CLI ships in Wave D; this note
-records the chosen boundary only.
+``wordwending review`` CLI, not eScriptorium. The CLI shipped in Wave D
+(``review apply``, ``review materialize``); this note records the chosen
+boundary.
 
 Implications:
 
@@ -80,3 +81,17 @@ References
 - :doc:`spec_0005_human_markup`
 - :doc:`spec_0014_review_overlay_schema`
 - Wave plan: ``docs/superpowers/plans/2026-08-07-v1-spine-and-phase-completion.md``
+
+Spec 0004 Phase 4 Status (2026-08-07)
+======================================
+
+After Waves A, C, and D, Spec 0004 Phase 4 **full bullets are met** on the
+fixture-backed spine: olmOCR + kraken witnesses adapt through ``assemble``,
+multi-witness merge persists flags, merge flags project to Spec 0005 review
+packets, operators apply overlays via ``wordwending review``, and ``eval`` /
+``export`` follow without hand-edited ``DocumentBundle`` JSON.
+
+**Not claimed:** Phase 5 COMPLETE (bake-off), Phase 6 COMPLETE (PassRunner
+Protocol), Phase 10 COMPLETE (operational hardening). Kraken on the spine is a
+provisional second hosted adapter with conservative geometry until Phase 7
+alignment exit matures coordinate-rich merge.
