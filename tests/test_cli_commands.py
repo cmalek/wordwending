@@ -16,6 +16,7 @@ from wordwending.models import (
     EvaluationCohortReport,
     PageOverlay,
     PreparationResult,
+    ReviewTaskType,
 )
 from wordwending.models.runner_execution import RunnerThroughputSummary
 from wordwending.services.bundle_layout import BundleLayoutService
@@ -1075,6 +1076,56 @@ class TestCLIReview:
 
         assert result.exit_code != 0
         assert "does not match" in result.output
+
+    def test_review_apply_rejects_unknown_task_object_ids(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """Apply fails when overlay tasks reference ids absent from the page."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        self._stage_minimal_bundle(bundle_root, tmp_path)
+        overlay = PageOverlay.model_validate_json(
+            self._OVERLAY_FIXTURE.read_text(encoding="utf-8")
+        )
+        text_task = next(
+            task
+            for task in overlay.review_tasks
+            if task.task_type == ReviewTaskType.TEXT
+        )
+        bad_task = text_task.model_copy(
+            update={"target_object_ids": ["span-does-not-exist"]}
+        )
+        # Drop events so PageOverlay binding checks do not fire first; the
+        # apply path must still reject unknown task targets against the page.
+        bad_overlay = overlay.model_copy(
+            update={
+                "review_tasks": [bad_task],
+                "review_events": [],
+                "current_state": [],
+            }
+        )
+        overlay_path = tmp_path / "bad-overlay.json"
+        overlay_path.write_text(
+            bad_overlay.model_dump_json(),
+            encoding="utf-8",
+        )
+
+        result = runner.invoke(
+            cli,
+            [
+                "review",
+                "apply",
+                "--bundle-root",
+                str(bundle_root),
+                "--overlay",
+                str(overlay_path),
+                "--page-id",
+                "page-0001",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "unknown" in result.output
 
     def test_review_materialize_rejects_unknown_page_id(
         self, runner, tmp_path: Path
