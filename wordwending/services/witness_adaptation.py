@@ -22,6 +22,68 @@ from wordwending.models import (
 )
 
 
+def _extract_openai_chat_completion_lines(
+    raw_bytes: bytes,
+    *,
+    engine_label: str,
+) -> list[str]:
+    """
+    Extract newline-split assistant content from chat.completion bytes.
+
+    Shared by olmOCR and kraken adapters: both persist OpenAI-compatible
+    ``chat.completion`` JSON (ADR 0004). Strategies remain keyed by
+    ``runner_id`` even though the wire shape is the same family.
+
+    Args:
+        raw_bytes: Exact JSON bytes persisted for one runner witness.
+
+    Keyword Args:
+        engine_label: Human-readable engine name for error messages.
+
+    Returns:
+        Diplomatic text lines split on newlines.
+
+    Raises:
+        ValueError: If the payload is not a chat.completion with assistant
+            content.
+        TypeError: If required JSON fields have the wrong types.
+
+    """
+    try:
+        payload: Any = json.loads(raw_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        msg = f"{engine_label} witness must be UTF-8 JSON chat.completion bytes"
+        raise ValueError(msg) from exc
+    if not isinstance(payload, dict):
+        msg = (
+            f"{engine_label} witness must be a JSON object with object=chat.completion"
+        )
+        raise TypeError(msg)
+    if payload.get("object") != "chat.completion":
+        msg = f"{engine_label} witness must have object=chat.completion"
+        raise ValueError(msg)
+    choices = payload.get("choices")
+    if not isinstance(choices, list) or not choices:
+        msg = "chat.completion witness requires a non-empty choices list"
+        raise ValueError(msg)
+    first = choices[0]
+    if not isinstance(first, dict):
+        msg = "chat.completion choices[0] must be an object"
+        raise TypeError(msg)
+    message = first.get("message")
+    if not isinstance(message, dict):
+        msg = "chat.completion choices[0].message must be an object"
+        raise TypeError(msg)
+    content = message.get("content")
+    if not isinstance(content, str):
+        msg = "chat.completion assistant content must be a string"
+        raise TypeError(msg)
+    lines = content.splitlines()
+    while lines and lines[-1] == "":
+        lines.pop()
+    return lines
+
+
 class OlmocrChatCompletionAdapter:
     """
     Parse exact olmOCR chat.completion JSON bytes into diplomatic text lines.
@@ -47,37 +109,42 @@ class OlmocrChatCompletionAdapter:
             TypeError: If required JSON fields have the wrong types.
 
         """
-        try:
-            payload: Any = json.loads(raw_bytes.decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            msg = "olmOCR witness must be UTF-8 JSON chat.completion bytes"
-            raise ValueError(msg) from exc
-        if not isinstance(payload, dict):
-            msg = "olmOCR witness must be a JSON object with object=chat.completion"
-            raise TypeError(msg)
-        if payload.get("object") != "chat.completion":
-            msg = "olmOCR witness must have object=chat.completion"
-            raise ValueError(msg)
-        choices = payload.get("choices")
-        if not isinstance(choices, list) or not choices:
-            msg = "chat.completion witness requires a non-empty choices list"
-            raise ValueError(msg)
-        first = choices[0]
-        if not isinstance(first, dict):
-            msg = "chat.completion choices[0] must be an object"
-            raise TypeError(msg)
-        message = first.get("message")
-        if not isinstance(message, dict):
-            msg = "chat.completion choices[0].message must be an object"
-            raise TypeError(msg)
-        content = message.get("content")
-        if not isinstance(content, str):
-            msg = "chat.completion assistant content must be a string"
-            raise TypeError(msg)
-        lines = content.splitlines()
-        while lines and lines[-1] == "":
-            lines.pop()
-        return lines
+        return _extract_openai_chat_completion_lines(
+            raw_bytes,
+            engine_label="olmOCR",
+        )
+
+
+class KrakenChatCompletionAdapter:
+    """
+    Parse exact kraken chat.completion JSON bytes into diplomatic text lines.
+
+    This adapter reads the persisted OpenAI-compatible payload written by
+    ``HuggingFaceKrakenRunner`` (ADR 0004 / C1). Geometry is provisional
+    text-only; coordinate-rich fields are not present in the current
+    provisional HF response shape.
+    """
+
+    def extract_lines(self, raw_bytes: bytes) -> list[str]:
+        """
+        Extract newline-split assistant content from chat.completion bytes.
+
+        Args:
+            raw_bytes: Exact JSON bytes persisted for one kraken witness.
+
+        Returns:
+            Diplomatic text lines split on newlines.
+
+        Raises:
+            ValueError: If the payload is not a chat.completion with assistant
+                content.
+            TypeError: If required JSON fields have the wrong types.
+
+        """
+        return _extract_openai_chat_completion_lines(
+            raw_bytes,
+            engine_label="kraken",
+        )
 
 
 class WitnessAdaptationService:
@@ -87,12 +154,23 @@ class WitnessAdaptationService:
     Wave A geometry is provisional text-only: one full-page BODY region and
     one line/span per newline. Paths are used as given (absolute or
     cwd-relative); callers resolve bundle-relative paths before adapt.
+    Strategies are keyed by ``runner_id`` (``olmocr``, ``kraken``).
     """
 
     def __init__(self) -> None:
-        """Initialize with the olmOCR chat.completion parsing strategy."""
+        """Initialize with runner_id-keyed chat.completion parsing strategies."""
         #: Parser for persisted olmOCR OpenAI-compatible chat.completion JSON.
         self._olmocr = OlmocrChatCompletionAdapter()
+        #: Parser for persisted kraken OpenAI-compatible chat.completion JSON.
+        self._kraken = KrakenChatCompletionAdapter()
+        #: Strategy lookup keyed by logical ``runner_id``.
+        self._strategies: dict[
+            str,
+            OlmocrChatCompletionAdapter | KrakenChatCompletionAdapter,
+        ] = {
+            "olmocr": self._olmocr,
+            "kraken": self._kraken,
+        }
 
     def adapt_page(
         self,
@@ -109,7 +187,7 @@ class WitnessAdaptationService:
         Keyword Args:
             prepared_page: Prepared page this witness aligns to.
             witness_id: Witness artifact identifier for provenance.
-            runner_id: Runner identifier for provenance (caller-supplied).
+            runner_id: Runner identifier selecting the adaptation strategy.
             artifact_paths: Existing absolute or cwd-relative path strings;
                 resolve vs bundle_root at the call site before adapt.
             coordinate_space: Coordinate space for provisional geometry.
@@ -118,17 +196,22 @@ class WitnessAdaptationService:
             Merge-ready page fragment with provisional text-only geometry.
 
         Raises:
-            ValueError: If ``artifact_paths`` is empty or the artifact is not
-                a chat.completion payload.
+            ValueError: If ``artifact_paths`` is empty, ``runner_id`` is
+                unsupported, or the artifact is not a chat.completion payload.
             FileNotFoundError: If a path cannot be read.
 
         """
         if not artifact_paths:
             msg = "artifact_paths must contain at least one witness path"
             raise ValueError(msg)
+        strategy = self._strategies.get(runner_id)
+        if strategy is None:
+            supported = ", ".join(sorted(self._strategies))
+            msg = f"unsupported runner_id {runner_id!r}; supported: {supported}"
+            raise ValueError(msg)
         raw_bytes = Path(artifact_paths[0]).read_bytes()
         try:
-            lines = self._olmocr.extract_lines(raw_bytes)
+            lines = strategy.extract_lines(raw_bytes)
         except TypeError as exc:
             raise ValueError(str(exc)) from exc
         return self._build_provisional_page(

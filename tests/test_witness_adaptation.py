@@ -1,5 +1,5 @@
 # Copyright (C) 2026 Chris Malek.
-"""Tests for olmOCR chat.completion witness adaptation into PassWitnessPage."""
+"""Tests for runner_id-keyed chat.completion witness adaptation."""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ from wordwending.services.witness_adaptation import WitnessAdaptationService
 
 _FIXTURES = Path(__file__).parent / "fixtures" / "assemble"
 _FIXTURE = _FIXTURES / "olmocr-chat-completion-v1.json"
+_KRAKEN_FIXTURE = _FIXTURES / "kraken-chat-completion-v1.json"
 _MANIFEST_FIXTURE = _FIXTURES / "manifest-v1.json"
 
 
@@ -121,9 +122,7 @@ def test_adapt_page_stable_ids_across_rebuilds(tmp_path: Path) -> None:
         coordinate_space=space,
     )
 
-    assert [r.region_id for r in first.regions] == [
-        r.region_id for r in second.regions
-    ]
+    assert [r.region_id for r in first.regions] == [r.region_id for r in second.regions]
     assert [line.line_id for line in first.lines] == [
         line.line_id for line in second.lines
     ]
@@ -289,3 +288,104 @@ def test_adapt_page_strips_trailing_newline_empty_line(tmp_path: Path) -> None:
     assert len(page.spans) == 2
     assert page.spans[0].text_diplomatic == "Line one of diplomatic text."
     assert page.spans[1].text_diplomatic == "Line two of diplomatic text."
+
+
+def test_adapt_page_builds_provisional_graph_for_kraken(tmp_path: Path) -> None:
+    """C1-shaped kraken chat.completion yields non-empty provisional graph."""
+    witness_path = tmp_path / "kraken-witness.json"
+    shutil.copy(_KRAKEN_FIXTURE, witness_path)
+    prepared = _prepared_page()
+    service = WitnessAdaptationService()
+
+    page = service.adapt_page(
+        prepared_page=prepared,
+        witness_id="wit-kraken-1",
+        runner_id="kraken",
+        artifact_paths=[str(witness_path)],
+        coordinate_space=_coordinate_space(),
+    )
+
+    assert page.witness_id == "wit-kraken-1"
+    assert page.runner_id == "kraken"
+    assert page.prepared_page_id == "prepared-page-1"
+    assert len(page.regions) == 1
+    assert page.regions[0].region_kind is RegionKind.BODY
+    assert page.regions[0].region_id == "prepared-page-1:r0"
+    assert len(page.lines) == 2
+    assert len(page.spans) == 2
+    assert page.lines[0].line_id == "prepared-page-1:l0"
+    assert page.lines[1].line_id == "prepared-page-1:l1"
+    assert page.spans[0].span_id == "prepared-page-1:s0"
+    assert page.spans[1].span_id == "prepared-page-1:s1"
+    assert page.spans[0].text_diplomatic == "Kraken line one of diplomatic text."
+    assert page.spans[1].text_diplomatic == "Kraken line two of diplomatic text."
+
+
+def test_adapt_page_stable_ids_for_kraken_across_rebuilds(tmp_path: Path) -> None:
+    """Kraken adapt_page rebuilds keep ADR 0008 stable ids and diplomatic text."""
+    witness_path = tmp_path / "kraken-witness.json"
+    shutil.copy(_KRAKEN_FIXTURE, witness_path)
+    prepared = _prepared_page()
+    space = _coordinate_space()
+    artifact_paths = [str(witness_path)]
+
+    first = WitnessAdaptationService().adapt_page(
+        prepared_page=prepared,
+        witness_id="wit-kraken-1",
+        runner_id="kraken",
+        artifact_paths=artifact_paths,
+        coordinate_space=space,
+    )
+    second = WitnessAdaptationService().adapt_page(
+        prepared_page=prepared,
+        witness_id="wit-kraken-1",
+        runner_id="kraken",
+        artifact_paths=artifact_paths,
+        coordinate_space=space,
+    )
+
+    assert [r.region_id for r in first.regions] == [r.region_id for r in second.regions]
+    assert [line.line_id for line in first.lines] == [
+        line.line_id for line in second.lines
+    ]
+    assert [span.span_id for span in first.spans] == [
+        span.span_id for span in second.spans
+    ]
+    assert [span.text_diplomatic for span in first.spans] == [
+        span.text_diplomatic for span in second.spans
+    ]
+
+
+def test_adapt_page_rejects_unsupported_runner_id(tmp_path: Path) -> None:
+    """Unknown runner_id is rejected before parsing strategy selection."""
+    witness_path = tmp_path / "witness.json"
+    shutil.copy(_FIXTURE, witness_path)
+    service = WitnessAdaptationService()
+    with pytest.raises(ValueError, match=r"unsupported runner_id"):
+        service.adapt_page(
+            prepared_page=_prepared_page(),
+            witness_id="wit-1",
+            runner_id="not-a-runner",
+            artifact_paths=[str(witness_path)],
+            coordinate_space=_coordinate_space(),
+        )
+
+
+def test_adapt_page_rejects_non_chat_completion_json_for_kraken(
+    tmp_path: Path,
+) -> None:
+    """Kraken strategy rejects non-chat.completion JSON with a clear ValueError."""
+    witness_path = tmp_path / "bad-kraken.json"
+    witness_path.write_text(
+        json.dumps({"object": "not.chat.completion", "choices": []}),
+        encoding="utf-8",
+    )
+    service = WitnessAdaptationService()
+    with pytest.raises(ValueError, match=r"chat\.completion"):
+        service.adapt_page(
+            prepared_page=_prepared_page(),
+            witness_id="wit-kraken-1",
+            runner_id="kraken",
+            artifact_paths=[str(witness_path)],
+            coordinate_space=_coordinate_space(),
+        )
