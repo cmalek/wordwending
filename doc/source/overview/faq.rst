@@ -59,8 +59,9 @@ Yes, with honest limits:
   are not auto-emitted by assemble)
 
 There is no standalone ``merge`` command (merge runs inside ``assemble``) and no
-single orchestrated prepare→export run yet. Spec 0004 Phase 5/6/10 exits are not
-complete. See :doc:`/runbook/from_source_to_markdown`.
+single orchestrated prepare→export run yet. Spec 0004 Phase 6 (PassRunner Protocol
++ registry) is COMPLETE; Phase 5 and Phase 10 exits are not. See
+:doc:`/runbook/from_source_to_markdown`.
 
 Is Markdown the source of truth?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
