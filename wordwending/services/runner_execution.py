@@ -24,11 +24,7 @@ from wordwending.services.runner_batching import RunnerBatchPlanner  # noqa: TC0
 from wordwending.services.runner_packaging import RunnerInputPackager  # noqa: TC001
 
 if TYPE_CHECKING:
-    from wordwending.services.kraken_runner import HuggingFaceKrakenRunner
-    from wordwending.services.olmocr_runner import HuggingFaceOlmocrRunner
-
-    #: Hosted adapter classes accepted until Wave G extracts PassRunner.
-    HostedRunner = HuggingFaceOlmocrRunner | HuggingFaceKrakenRunner
+    from wordwending.services.pass_runner import PassRunner
 
 #: Persisted runner-batch schema version written under ``output_dir/batches/``.
 RUNNER_BATCH_SCHEMA_VERSION = "1.0.0"
@@ -117,7 +113,7 @@ class RunnerExecutionOrchestrator:
         *,
         planner: RunnerBatchPlanner,
         packager: RunnerInputPackager,
-        runner: HostedRunner,
+        runner: PassRunner,
         run_id: str,
         document_id: str,
         bundle_root: Path,
@@ -519,7 +515,7 @@ class RunnerExecutionService:
         self,
         planner: RunnerBatchPlanner,
         packager: RunnerInputPackager,
-        runner: HostedRunner,
+        runner: PassRunner,
     ) -> None:
         """
         Bind batch planning, packaging, and hosted runner collaborators.

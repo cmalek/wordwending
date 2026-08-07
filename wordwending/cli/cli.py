@@ -58,7 +58,9 @@ from .review import review
 from .utils import console, print_error, print_info
 
 
-def _hosted_runner_class(runner_id: str) -> type:
+def _hosted_runner_class(
+    runner_id: str,
+) -> type[HuggingFaceOlmocrRunner | HuggingFaceKrakenRunner]:
     """
     Resolve one hosted runner class from ``runner_id`` without a registry.
 
@@ -73,7 +75,9 @@ def _hosted_runner_class(runner_id: str) -> type:
 
     """
     # Built at call time so tests can patch the module-level class names.
-    hosted_runner_by_id = {
+    hosted_runner_by_id: dict[
+        str, type[HuggingFaceOlmocrRunner] | type[HuggingFaceKrakenRunner]
+    ] = {
         "olmocr": HuggingFaceOlmocrRunner,
         "kraken": HuggingFaceKrakenRunner,
     }

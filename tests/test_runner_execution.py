@@ -23,6 +23,7 @@ from wordwending.models.ocr import (
 )
 from wordwending.models.runner_execution import (
     HostedInvocationResult,
+    PackagedRunnerInput,
     PlannedRunnerBatch,
     RetryMode,
     RunnerExecutionPolicy,
@@ -142,7 +143,7 @@ class FakeOlmocrRunner:
     def invoke(
         self,
         batch: PlannedRunnerBatch,
-        packaged: object,
+        packaged: PackagedRunnerInput,
         output_dir: Path,
     ) -> HostedInvocationResult:
         _ = packaged, output_dir
@@ -189,7 +190,7 @@ def execution_service(  # noqa: PLR0913
     return RunnerExecutionService(
         RunnerBatchPlanner(),
         RunnerInputPackager(),
-        fake,  # type: ignore[arg-type]
+        fake,
     )
 
 
