@@ -5,10 +5,14 @@ from __future__ import annotations
 
 from pydantic import Field
 
+from wordwending.models.merge import MergePolicy  # noqa: TC001
 from wordwending.models.ocr import (
+    AcquisitionProvenance,
+    BibliographicProvenance,
     CoordinateSpace,
     PreparedPage,
     SchemaModel,
+    SourceDescriptor,
 )
 
 
@@ -42,3 +46,18 @@ class AssemblePageRequest(SchemaModel):
     prepared_page: PreparedPage
     #: Raw witness refs to adapt before merge (Wave A: exactly one).
     raw_witnesses: list[RawWitnessRef] = Field(min_length=1)
+
+
+class AssembleManifest(SchemaModel):
+    """Operator manifest for ``wordwending assemble`` (relative paths)."""
+
+    #: Source identity for the input artifact(s).
+    source: SourceDescriptor
+    #: Bibliographic metadata kept with the document.
+    bibliographic: BibliographicProvenance
+    #: Acquisition metadata kept with the document.
+    acquisition: AcquisitionProvenance
+    #: Versioned merge precedence and thresholds.
+    merge_policy: MergePolicy
+    #: Per-page prepared inputs and raw witness refs (min one page).
+    pages: list[AssemblePageRequest] = Field(min_length=1)

@@ -30,10 +30,13 @@ from ..models import (
     PreparedArtifactRef,
     RunnerReference,
 )
+from ..models.assemble import AssembleManifest
 from ..models.runner_execution import RunnerExecutionPolicy
+from ..services.assemble import AssembleOrchestrator
 from ..services.bundle_layout import BundleLayoutService
 from ..services.evaluation import EvaluationService
 from ..services.evaluation_cohorts import EvaluationCohortService
+from ..services.merge import AbstainingMergeService
 from ..services.olmocr_runner import HuggingFaceOlmocrRunner
 from ..services.preparation import (
     PageClassifier,
@@ -45,6 +48,7 @@ from ..services.runner_batching import RunnerBatchPlanner
 from ..services.runner_execution import RunnerExecutionService
 from ..services.runner_packaging import RunnerInputPackager
 from ..services.source_acquisition import SourceAcquisitionService
+from ..services.witness_adaptation import WitnessAdaptationService
 from ..settings import Settings
 from .utils import console, print_error, print_info
 
@@ -707,3 +711,99 @@ def export_document(document_bundle: Path, bundle_root: Path) -> None:
     if exports.document_markdown_path is not None:
         click.echo(f"markdown: {bundle_root / exports.document_markdown_path}")
     click.echo(f"bundle_json: {bundle_root / exports.bundle_json_path}")
+
+
+@cli.command("assemble")
+@click.option(
+    "--bundle-root",
+    required=True,
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Filesystem root for witness paths and the written bundle tree.",
+)
+@click.option(
+    "--manifest",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="AssembleManifest JSON with relative witness and image paths.",
+)
+def assemble_document(bundle_root: Path, manifest: Path) -> None:
+    """
+    Adapt raw witnesses, merge, and write a Spec 0002 document bundle.
+
+    Args:
+        bundle_root: Filesystem root for relative paths and bundle output.
+        manifest: AssembleManifest JSON describing pages and witness refs.
+
+    Side Effects:
+        Writes document and page manifests, graphs, witnesses, and images
+        under ``bundle_root``.
+
+    Raises:
+        click.ClickException: When manifest validation or assemble fails.
+
+    """
+    try:
+        assemble_manifest = AssembleManifest.model_validate_json(
+            manifest.read_text(encoding="utf-8")
+        )
+        orchestrator = AssembleOrchestrator(
+            adapter=WitnessAdaptationService(),
+            merge=AbstainingMergeService(),
+            bundles=BundleLayoutService(),
+        )
+        bundle = orchestrator.assemble_document(
+            bundle_root=bundle_root,
+            source=assemble_manifest.source,
+            bibliographic=assemble_manifest.bibliographic,
+            acquisition=assemble_manifest.acquisition,
+            pages=assemble_manifest.pages,
+            merge_policy=assemble_manifest.merge_policy,
+        )
+    except (OSError, ValidationError, ValueError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(f"document_id: {bundle.document_id}")
+    click.echo(f"pages: {len(bundle.pages)}")
+    click.echo(f"manifest: {bundle_root / 'manifest.json'}")
+
+
+@cli.command("inspect-bundle")
+@click.option(
+    "--bundle-root",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Filesystem root for one assembled document bundle tree.",
+)
+def inspect_bundle(bundle_root: Path) -> None:
+    """
+    Print an honest summary of one assembled document bundle.
+
+    Args:
+        bundle_root: Filesystem root for one document bundle tree.
+
+    Raises:
+        click.ClickException: When the bundle root is missing or corrupt.
+
+    """
+    layout = BundleLayoutService()
+    try:
+        doc_manifest = layout.read_document_manifest(bundle_root)
+    except (OSError, ValidationError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(f"document_id: {doc_manifest.document_id}")
+    click.echo(f"page_count: {doc_manifest.page_count}")
+    click.echo(f"bundle_schema_version: {doc_manifest.bundle_schema_version}")
+    for page_number in range(1, doc_manifest.page_count + 1):
+        try:
+            page_manifest = layout.read_page_manifest(bundle_root, page_number)
+        except (OSError, ValidationError, ValueError) as exc:
+            raise click.ClickException(str(exc)) from exc
+        click.echo(f"page_id: {page_manifest.page_id}")
+        click.echo(f"page_number: {page_manifest.page_number}")
+        click.echo(f"graph: {page_manifest.graph_artifact_path}")
+        for witness in page_manifest.witness_artifacts:
+            click.echo(
+                f"witness: {witness.witness_id} runner={witness.runner_id} "
+                f"path={witness.artifact_path}"
+            )

@@ -1,0 +1,56 @@
+{
+  "source": {
+    "source_id": "src-1",
+    "source_type": "single-image",
+    "source_label": "page.png",
+    "original_path": "sources/page.png",
+    "page_count": 1
+  },
+  "bibliographic": {
+    "title": "Assemble Sample",
+    "authors": ["Author"]
+  },
+  "acquisition": {
+    "acquisition_kind": "local-scan",
+    "acquired_from": "local"
+  },
+  "merge_policy": {
+    "policy_id": "merge-v1",
+    "version": "1.0.0",
+    "runner_text_precedence": ["olmocr"],
+    "structure_scaffold_runner_ids": ["olmocr"]
+  },
+  "pages": [
+    {
+      "page_id": "page-0001",
+      "page_number": 1,
+      "prepared_page": {
+        "prepared_page_id": "prepared-page-1",
+        "preparation_mode": "full-page",
+        "page_class": "ordinary-prose",
+        "image_path": "prepared/page.png",
+        "source_artifact_id": "source-1",
+        "image_checksum": "sha256:image",
+        "preparation_recipe_id": "prep-v1",
+        "preparation_recipe_digest": "digest-prep-v1",
+        "coordinate_space": {
+          "space_id": "prepared-page-1",
+          "width_px": 200,
+          "height_px": 300
+        }
+      },
+      "raw_witnesses": [
+        {
+          "witness_id": "wit-1",
+          "runner_id": "olmocr",
+          "artifact_paths": ["raw/witnesses/olmocr-chat-completion-v1.json"],
+          "coordinate_space": {
+            "space_id": "prepared-page-1",
+            "width_px": 200,
+            "height_px": 300
+          }
+        }
+      ]
+    }
+  ]
+}

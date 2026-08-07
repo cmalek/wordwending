@@ -4,14 +4,23 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 from unittest.mock import patch
 
 from PIL import Image, ImageDraw
 
 from wordwending.cli.cli import cli
-from wordwending.models import EvaluationCohortReport, PreparationResult
+from wordwending.models import (
+    DocumentBundle,
+    DocumentEvaluationSummary,
+    EvaluationCohortReport,
+    ExportSummary,
+    PreparationResult,
+    RunMetadata,
+)
 from wordwending.models.runner_execution import RunnerThroughputSummary
+from wordwending.services.bundle_layout import BundleLayoutService
 from wordwending.settings import Settings
 
 
@@ -618,6 +627,176 @@ class TestCLIExport:
         assert "bundle-root" in output
         assert "missing option" in output
         assert "no such command" not in output
+
+
+class TestCLIAssemble:
+    """Test assemble and inspect-bundle commands."""
+
+    _WITNESS_FIXTURE = Path("tests/fixtures/assemble/olmocr-chat-completion-v1.json")
+    _MANIFEST_FIXTURE = Path("tests/fixtures/assemble/manifest-v1.json")
+
+    def _stage_bundle_inputs(self, bundle_root: Path) -> None:
+        """Copy witness fixture and prepared image under bundle_root."""
+        witnesses_dir = bundle_root / "raw" / "witnesses"
+        witnesses_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy(self._WITNESS_FIXTURE, witnesses_dir / "olmocr-chat-completion-v1.json")
+
+        image_dir = bundle_root / "prepared"
+        image_dir.mkdir(parents=True, exist_ok=True)
+        (image_dir / "page.png").write_bytes(b"fake-png-bytes")
+
+    def _document_bundle_json_from_root(self, bundle_root: Path) -> Path:
+        """Build a DocumentBundle JSON file from an assembled bundle tree."""
+        layout = BundleLayoutService()
+        doc_manifest = layout.read_document_manifest(bundle_root)
+        pages = [
+            layout.read_page_graph(bundle_root, page_number)
+            for page_number in range(1, doc_manifest.page_count + 1)
+        ]
+        bundle = DocumentBundle(
+            document_id=doc_manifest.document_id,
+            bundle_schema_version=doc_manifest.bundle_schema_version,
+            source=doc_manifest.source,
+            bibliographic_provenance=doc_manifest.bibliographic_provenance,
+            acquisition_provenance=doc_manifest.acquisition_provenance,
+            run=RunMetadata(
+                run_id=f"run-{doc_manifest.document_id}",
+                run_timestamp_utc=doc_manifest.run_timestamp_utc,
+                preparation_recipe_id="prep-v1",
+                config_digest=doc_manifest.config_digest,
+                runner_set=doc_manifest.runner_set,
+                bundle_schema_version=doc_manifest.bundle_schema_version,
+            ),
+            pages=pages,
+            evaluation_summary=DocumentEvaluationSummary(),
+            exports=ExportSummary(bundle_json_path="exports/bundle.json"),
+        )
+        bundle_json = bundle_root / "document-bundle.json"
+        bundle_json.write_text(bundle.model_dump_json(indent=2), encoding="utf-8")
+        return bundle_json
+
+    def test_assemble_writes_bundle_tree(self, runner, tmp_path: Path) -> None:
+        """Assemble materializes Spec 0002 bundle tree from manifest."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        self._stage_bundle_inputs(bundle_root)
+
+        result = runner.invoke(
+            cli,
+            [
+                "assemble",
+                "--bundle-root",
+                str(bundle_root),
+                "--manifest",
+                str(self._MANIFEST_FIXTURE),
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert (bundle_root / "manifest.json").exists()
+        assert (bundle_root / "pages" / "page-0001" / "graph" / "page_graph.json").exists()
+        assert "doc-src-1" in result.output
+        assert "pages: 1" in result.output
+
+    def test_assemble_then_export_writes_document_markdown(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """Assemble followed by export produces exports/document.md."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        self._stage_bundle_inputs(bundle_root)
+
+        assemble_result = runner.invoke(
+            cli,
+            [
+                "assemble",
+                "--bundle-root",
+                str(bundle_root),
+                "--manifest",
+                str(self._MANIFEST_FIXTURE),
+            ],
+        )
+        assert assemble_result.exit_code == 0
+
+        bundle_json = self._document_bundle_json_from_root(bundle_root)
+        export_result = runner.invoke(
+            cli,
+            ["export", str(bundle_json), "--bundle-root", str(bundle_root)],
+        )
+
+        assert export_result.exit_code == 0
+        assert (bundle_root / "exports" / "document.md").exists()
+
+    def test_inspect_bundle_shows_page_info(self, runner, tmp_path: Path) -> None:
+        """inspect-bundle prints document and page summary."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        self._stage_bundle_inputs(bundle_root)
+        assemble_result = runner.invoke(
+            cli,
+            [
+                "assemble",
+                "--bundle-root",
+                str(bundle_root),
+                "--manifest",
+                str(self._MANIFEST_FIXTURE),
+            ],
+        )
+        assert assemble_result.exit_code == 0
+
+        result = runner.invoke(
+            cli,
+            ["inspect-bundle", "--bundle-root", str(bundle_root)],
+        )
+
+        assert result.exit_code == 0
+        assert "doc-src-1" in result.output
+        assert "page-0001" in result.output
+        assert "page_number: 1" in result.output
+        assert "olmocr" in result.output
+
+    def test_assemble_rejects_missing_bundle_root(self, runner, tmp_path: Path) -> None:
+        """Assemble fails when bundle root does not exist."""
+        missing_root = tmp_path / "missing"
+        result = runner.invoke(
+            cli,
+            [
+                "assemble",
+                "--bundle-root",
+                str(missing_root),
+                "--manifest",
+                str(self._MANIFEST_FIXTURE),
+            ],
+        )
+        assert result.exit_code != 0
+
+    def test_assemble_rejects_invalid_manifest(self, runner, tmp_path: Path) -> None:
+        """Assemble fails when manifest JSON is invalid."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        bad_manifest = tmp_path / "bad-manifest.json"
+        bad_manifest.write_text("{not valid", encoding="utf-8")
+
+        result = runner.invoke(
+            cli,
+            [
+                "assemble",
+                "--bundle-root",
+                str(bundle_root),
+                "--manifest",
+                str(bad_manifest),
+            ],
+        )
+        assert result.exit_code != 0
+
+    def test_inspect_bundle_rejects_missing_root(self, runner, tmp_path: Path) -> None:
+        """inspect-bundle fails when bundle root is missing."""
+        missing_root = tmp_path / "missing"
+        result = runner.invoke(
+            cli,
+            ["inspect-bundle", "--bundle-root", str(missing_root)],
+        )
+        assert result.exit_code != 0
 
 
 class TestCLIErrorHandling:

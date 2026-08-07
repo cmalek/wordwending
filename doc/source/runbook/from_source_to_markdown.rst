@@ -36,8 +36,8 @@ The intended end-to-end spine:
    preparation recipe
 2. **run** (``wordwending run``) — execute OCR runner passes; preserve raw witness
    artifacts
-3. **merge / assemble** — combine passes into a ``DocumentBundle`` (not yet a
-   CLI; see :ref:`what-is-missing`)
+3. **assemble** (``wordwending assemble``) — adapt raw witnesses, merge, and
+   write a ``DocumentBundle`` tree from an operator manifest
 4. **export** (``wordwending export``) — derive bundle JSON, RAG JSONL, and Markdown
    from an accepted ``DocumentBundle``
 
@@ -45,12 +45,35 @@ Supporting commands:
 
 - ``wordwending prepare`` — stage 1: PDF or page images to prepared page images
 - ``wordwending run`` — stage 2: OCR runner passes and raw witness artifacts
+- ``wordwending assemble`` — stage 3: manifest-driven bundle assembly
+- ``wordwending inspect-bundle`` — summarize an assembled bundle on disk
 - ``wordwending version`` — confirm installed CLI
 - ``wordwending settings`` — inspect effective configuration
 - ``wordwending eval`` — score one page against gold
 - ``wordwending eval-cohorts`` — batch evaluation across held-out slices
 
 For stage theory and engineering detail, see :doc:`/runbook/ocr_process`.
+
+Stage 3: Assemble from Prepare/Run Outputs
+============================================
+
+After ``run`` completes, raw witness artifacts live under the bundle root
+(typically ``witnesses/...`` relative paths recorded in the run manifest).
+Wave A does **not** auto-scan the tree: the operator writes an
+``AssembleManifest`` JSON listing each page's prepared image and relative
+witness paths, then runs:
+
+.. code-block:: bash
+
+   wordwending assemble --bundle-root path/to/bundle-root --manifest path/to/manifest.json
+
+Paths inside the manifest are **relative posix strings** resolved against
+``--bundle-root``. After assemble, use ``inspect-bundle`` to verify the
+written tree:
+
+.. code-block:: bash
+
+   wordwending inspect-bundle --bundle-root path/to/bundle-root
 
 Provisional Path: Export When You Have a DocumentBundle
 =======================================================
@@ -88,8 +111,8 @@ Conceptual workflow (no dedicated review CLI yet):
 4. Rebuild the page graph and ``DocumentBundle`` with accepted overlay updates.
 5. Run ``wordwending export`` again to regenerate ``exports/document.md``.
 
-Until review and assemble commands ship, overlay application and bundle
-rebuild may require library-level or manual steps.
+Until review commands ship, overlay application and bundle rebuild may require
+library-level or manual steps.
 
 What Markdown Is and Is Not
 ===========================
@@ -109,15 +132,15 @@ What Is Missing
 
 These pieces are planned but **not** available as operator CLI today:
 
-- **Assemble ``B*``** — orchestration from prepare/run outputs to a materialized
-  ``DocumentBundle`` on disk
 - **Merge CLI** — combining competing runner passes into one bundle graph
+  (Wave A assemble accepts one witness per page; multi-witness merge inspect
+  is Wave C)
 - **Review CLI** — driving ``review_markup`` / ``review_overlay`` tasks from the
-  shell
+  shell (Wave D)
 
-When assemble and review CLIs land, this guide will be updated; until then, use
-the provisional export path above and treat corrected output as a conceptual
-target.
+When review CLI lands, this guide will be updated; until then, use
+``assemble`` and ``inspect-bundle`` for bundle materialization and treat
+corrected output as a conceptual target requiring library-level overlay work.
 
 Related Runbooks
 ================

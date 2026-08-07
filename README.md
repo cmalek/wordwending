@@ -95,9 +95,11 @@ guide on Read the Docs.
 | `run` | Execute prepared artifacts against one hosted olmOCR runner |
 | `eval` | Score one predicted page against gold annotations |
 | `eval-cohorts` | Summarize page evaluations into fixed cohort views |
+| `assemble` | Adapt raw witnesses, merge, and write a document bundle tree |
+| `inspect-bundle` | Summarize an assembled bundle (manifests, pages, witnesses) |
 | `export` | Derive bundle / RAG / Markdown exports from a DocumentBundle |
 
-There is no assemble/merge or review CLI yet.
+There is no review CLI yet (Wave D). Multi-witness merge inspect is Wave C.
 
 ## Common Use Cases
 
