@@ -8,15 +8,21 @@ from pathlib import Path
 
 import pytest
 
+from wordwending.cli.cli import cli
 from wordwending.models import (
     BundlePage,
+    BundlePaths,
     CoordinateSpace,
     DocumentBundle,
+    EvaluationFamilySummary,
+    EvaluationFlag,
+    FlagSeverity,
     LineRecord,
     NoteKind,
     NoteRecord,
     ObjectProvenance,
     PageClass,
+    PageEvaluationSummary,
     PageOverlay,
     PreparationMode,
     PreparedPage,
@@ -30,6 +36,7 @@ from wordwending.models import (
     SpanRecord,
     WitnessReference,
 )
+from wordwending.models.merge import MergeFlagType
 from wordwending.services.bundle_layout import BundleLayoutService
 from wordwending.services.review_cli import ReviewCliService
 from wordwending.services.review_overlay import ReviewOverlayService
@@ -178,6 +185,28 @@ def _overlay_with_tasks(tasks: list[ReviewTask]) -> PageOverlay:
     )
 
 
+def _eval_flag(
+    flag_type: str,
+    target_object_ids: list[str],
+    *,
+    flag_id: str = "eval-1",
+) -> EvaluationFlag:
+    """Return one evaluation flag for pending-task regeneration fixtures."""
+    return EvaluationFlag(
+        flag_id=flag_id,
+        flag_type=flag_type,
+        severity=FlagSeverity.WARNING,
+        message=f"{flag_type} on {target_object_ids}",
+        target_object_ids=target_object_ids,
+    )
+
+
+def _write_page_graph(bundle_root: Path, page: BundlePage) -> None:
+    """Overwrite one bundle page graph artifact on disk."""
+    graph_path = BundlePaths(bundle_root).page_graph(page.page_number)
+    graph_path.write_text(page.model_dump_json(indent=2), encoding="utf-8")
+
+
 def _stage_minimal_bundle(bundle_root: Path, tmp_path: Path) -> None:
     """Write a minimal Spec 0002 bundle tree under ``bundle_root``."""
     inputs = tmp_path / "inputs"
@@ -305,3 +334,128 @@ def test_apply_rejects_unknown_task_object_ids(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="unknown"):
         service.apply(bundle_root, bad_overlay, page_id="page-0001")
+
+
+def test_issue_rebuilds_pending_tasks_from_evaluation_flags(
+    tmp_path: Path,
+) -> None:
+    """Issue regenerates pending_tasks.json from the page evaluation flags."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_minimal_bundle(bundle_root, tmp_path)
+    layout = BundleLayoutService()
+    page = layout.read_page_graph(bundle_root, 1)
+    flagged = page.model_copy(
+        update={
+            "graph_revision": "graph-v0",
+            "evaluation_summary": PageEvaluationSummary(
+                text=EvaluationFamilySummary(
+                    flags=[
+                        _eval_flag(
+                            str(MergeFlagType.TEXT_DISAGREEMENT),
+                            ["span-1"],
+                        )
+                    ]
+                )
+            ),
+        }
+    )
+    _write_page_graph(bundle_root, flagged)
+    service = ReviewCliService(
+        layout=layout,
+        replay=ReviewOverlayService(),
+    )
+
+    result = service.issue(bundle_root, "page-0001", run_id="run-test")
+
+    assert result.page_id == "page-0001"
+    assert result.task_count == 1
+    tasks = layout.read_pending_review_tasks(bundle_root, 1)
+    assert len(tasks) == 1
+    assert tasks[0].task_type == ReviewTaskType.TEXT
+    assert tasks[0].target_object_ids == ["span-1"]
+    assert tasks[0].base_run_id == "run-test"
+    assert tasks[0].base_graph_revision == "graph-v0"
+
+
+def test_issue_writes_empty_pending_tasks_when_no_flags(
+    tmp_path: Path,
+) -> None:
+    """Issue writes an empty pending_tasks.json list when flags are absent."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_minimal_bundle(bundle_root, tmp_path)
+    layout = BundleLayoutService()
+    page = layout.read_page_graph(bundle_root, 1)
+    cleared = page.model_copy(
+        update={"evaluation_summary": PageEvaluationSummary()}
+    )
+    _write_page_graph(bundle_root, cleared)
+    service = ReviewCliService(
+        layout=layout,
+        replay=ReviewOverlayService(),
+    )
+
+    result = service.issue(bundle_root, "page-0001", run_id="run-test")
+
+    assert result.task_count == 0
+    assert layout.read_pending_review_tasks(bundle_root, 1) == []
+
+
+def test_issue_rejects_unknown_page_id(tmp_path: Path) -> None:
+    """Issue fails when the bundle has no matching page id."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_minimal_bundle(bundle_root, tmp_path)
+    service = ReviewCliService(
+        layout=BundleLayoutService(),
+        replay=ReviewOverlayService(),
+    )
+
+    with pytest.raises(ValueError, match="page-9999"):
+        service.issue(bundle_root, "page-9999", run_id="run-test")
+
+
+def test_review_issue_cli_echoes_task_count(runner, tmp_path: Path) -> None:
+    """CLI review issue writes pending tasks and echoes the task count."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_minimal_bundle(bundle_root, tmp_path)
+    layout = BundleLayoutService()
+    page = layout.read_page_graph(bundle_root, 1)
+    flagged = page.model_copy(
+        update={
+            "evaluation_summary": PageEvaluationSummary(
+                text=EvaluationFamilySummary(
+                    flags=[
+                        _eval_flag(
+                            str(MergeFlagType.TEXT_DISAGREEMENT),
+                            ["span-1"],
+                        )
+                    ]
+                )
+            ),
+        }
+    )
+    _write_page_graph(bundle_root, flagged)
+
+    result = runner.invoke(
+        cli,
+        [
+            "review",
+            "issue",
+            "--bundle-root",
+            str(bundle_root),
+            "--page-id",
+            "page-0001",
+            "--run-id",
+            "run-cli-test",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "page_id: page-0001" in result.output
+    assert "tasks: 1" in result.output
+    tasks = layout.read_pending_review_tasks(bundle_root, 1)
+    assert len(tasks) == 1
+    assert tasks[0].base_run_id == "run-cli-test"

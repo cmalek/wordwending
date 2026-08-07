@@ -16,7 +16,7 @@ from wordwending.services.review_overlay import ReviewOverlayService
 
 @click.group()
 def review() -> None:
-    """Apply and materialize human review overlays on document bundles."""
+    """Apply, materialize, and regenerate human review overlays on bundles."""
 
 
 @review.command("apply")
@@ -101,3 +101,48 @@ def review_materialize(bundle_root: Path, page_id: str) -> None:
 
     click.echo(f"page_id: {result.page_id}")
     click.echo(f"states: {len(result.states)}")
+
+
+@review.command("issue")
+@click.option(
+    "--bundle-root",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Filesystem root for one assembled document bundle tree.",
+)
+@click.option("--page-id", required=True, help="Stable page identifier to update.")
+@click.option(
+    "--run-id",
+    default=None,
+    help=(
+        "Execution run identifier stamped onto regenerated tasks; defaults to "
+        "document-bundle.json run id when present, else run-review-issue."
+    ),
+)
+def review_issue(bundle_root: Path, page_id: str, run_id: str | None) -> None:
+    """
+    Regenerate pending review tasks from one page's evaluation flags.
+
+    Args:
+        bundle_root: Filesystem root for one document bundle tree.
+        page_id: Stable page identifier whose evaluation flags drive the queue.
+        run_id: Optional run id stamped onto each regenerated task.
+
+    Side Effects:
+        Overwrites ``overlays/pending_tasks.json`` for the page.
+
+    Raises:
+        click.ClickException: When the page is missing or I/O fails.
+
+    """
+    service = ReviewCliService(
+        layout=BundleLayoutService(),
+        replay=ReviewOverlayService(),
+    )
+    try:
+        result = service.issue(bundle_root, page_id, run_id=run_id)
+    except (OSError, ValidationError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(f"page_id: {result.page_id}")
+    click.echo(f"tasks: {result.task_count}")

@@ -10,6 +10,7 @@ from pydantic import TypeAdapter
 
 from wordwending.models import (
     BundlePage,
+    DocumentBundle,
     OverlayState,
     PageOverlay,
     ReviewEvent,
@@ -17,7 +18,9 @@ from wordwending.models import (
     ReviewTask,
     ReviewTaskType,
 )
+from wordwending.services.assemble import DOCUMENT_BUNDLE_JSON
 from wordwending.services.bundle_layout import BundleLayoutService  # noqa: TC001
+from wordwending.services.review_markup import HumanMarkupService
 from wordwending.services.review_overlay import ReviewOverlayService  # noqa: TC001
 
 #: Parses one JSONL review-event payload into a validated event model.
@@ -30,6 +33,12 @@ _SCOPE_LABELS: dict[ReviewScope, str] = {
     ReviewScope.NOTE: "note ids",
     ReviewScope.PAGE: "page ids",
 }
+#: Review guideline family stamped onto CLI-issued Spec 0005 packets.
+_REVIEW_GUIDELINE_ID = "review-v1"
+#: Review guideline revision stamped onto CLI-issued Spec 0005 packets.
+_REVIEW_GUIDELINE_VERSION = "1.0.0"
+#: Default run id when ``review issue`` has no ``--run-id`` and no bundle JSON.
+_DEFAULT_ISSUE_RUN_ID = "run-review-issue"
 
 
 @dataclass(frozen=True)
@@ -60,9 +69,22 @@ class ReviewMaterializeResult:
     states: list[OverlayState]
 
 
+@dataclass(frozen=True)
+class ReviewIssueResult:
+    """
+    Outcome of regenerating pending review tasks from evaluation flags.
+
+    """
+
+    #: Stable page identifier whose pending queue was rewritten.
+    page_id: str
+    #: Count of Spec 0005 review tasks written to ``pending_tasks.json``.
+    task_count: int
+
+
 class ReviewCliService:
     """
-    Orchestrate review apply / materialize for document bundle pages.
+    Orchestrate review apply / materialize / issue for document bundle pages.
 
     Keeps Click handlers thin: load args, call this service, echo or raise.
     Append-only ``review_events.jsonl`` behavior is preserved (ADR 0008).
@@ -171,6 +193,51 @@ class ReviewCliService:
         )
         self.layout.write_overlay_state(bundle_root, page_number, states)
         return ReviewMaterializeResult(page_id=page_id, states=states)
+
+    def issue(
+        self,
+        bundle_root: Path,
+        page_id: str,
+        *,
+        run_id: str | None = None,
+    ) -> ReviewIssueResult:
+        """
+        Rebuild pending review tasks from one page's evaluation flags.
+
+        Args:
+            bundle_root: Filesystem root for one document bundle tree.
+            page_id: Stable page identifier whose flags drive the queue.
+
+        Keyword Args:
+            run_id: Machine run stamped onto each task; defaults from bundle
+                ``document-bundle.json`` when present, else ``run-review-issue``.
+
+        Returns:
+            Page id and task count for operator reporting.
+
+        Side Effects:
+            Overwrites ``overlays/pending_tasks.json`` for the page.
+
+        Raises:
+            ValueError: If the bundle has no page matching ``page_id``.
+            OSError: If bundle reads or writes fail.
+            ValidationError: If stored page graph JSON fails model validation.
+
+        """
+        page_number = self._resolve_page_number(bundle_root, page_id)
+        page = self.layout.read_page_graph(bundle_root, page_number)
+        resolved_run_id = self._resolve_issue_run_id(bundle_root, run_id)
+        markup = HumanMarkupService(
+            _REVIEW_GUIDELINE_ID,
+            _REVIEW_GUIDELINE_VERSION,
+        )
+        tasks = markup.build_review_tasks(
+            page,
+            run_id=resolved_run_id,
+            graph_revision=page.graph_revision,
+        )
+        self.layout.write_pending_review_tasks(bundle_root, page_number, tasks)
+        return ReviewIssueResult(page_id=page_id, task_count=len(tasks))
 
     def validate_overlay_tasks(
         self,
@@ -311,6 +378,32 @@ class ReviewCliService:
                 return page_number
         msg = f"bundle has no page with page_id {page_id!r}"
         raise ValueError(msg)
+
+    def _resolve_issue_run_id(
+        self,
+        bundle_root: Path,
+        run_id: str | None,
+    ) -> str:
+        """
+        Resolve the run id stamped onto regenerated pending review tasks.
+
+        Args:
+            bundle_root: Filesystem root for one document bundle tree.
+            run_id: Explicit operator override from ``--run-id`` when set.
+
+        Returns:
+            Run id for ``ReviewTask.base_run_id``.
+
+        """
+        if run_id is not None:
+            return run_id
+        doc_bundle_path = bundle_root / DOCUMENT_BUNDLE_JSON
+        if doc_bundle_path.is_file():
+            bundle = DocumentBundle.model_validate_json(
+                doc_bundle_path.read_text(encoding="utf-8")
+            )
+            return bundle.run.run_id
+        return _DEFAULT_ISSUE_RUN_ID
 
     def _append_new_review_events(
         self,
