@@ -270,8 +270,9 @@ What is not a CLI yet
   ``bakeoff-matrix-v1.json`` from recorded predictions; cost/license/
   operability scoring and full held-out corpus remain deferred)
 - Spec 0004 **Phase 10 NOT COMPLETE** — **ops skeleton only** (``run`` resume
-  ledger + ``inspect-bundle`` checksum verification). Deferred Spec exit:
-  HF deploy/ops, quotas, cost controls, corpus regression gates, operator
+  ledger, ``inspect-bundle`` checksum verification, and ``endpoints``
+  ``up``/``down``/``status`` lifecycle CLI). Deferred Spec exit: HF
+  deploy/ops, quotas, cost controls, corpus regression gates, operator
   calibration monitoring. (Phase 6 PassRunner Protocol + registry is COMPLETE.)
 
 Those gaps are documented in :doc:`/runbook/from_source_to_markdown`.

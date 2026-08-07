@@ -199,6 +199,15 @@ def test_endpoints_status_prints_rows(
     assert fake_service.status_calls == [["olmocr"]]
 
 
+def test_endpoints_up_rejects_missing_huggingface_api_key(runner) -> None:
+    with patch("wordwending.cli.cli.Settings") as mock_settings:
+        mock_settings.return_value = Settings()
+        result = runner.invoke(cli, ["endpoints", "up", "--runner", "olmocr"])
+
+    assert result.exit_code != 0
+    assert "huggingface_api_key" in result.output
+
+
 def test_endpoints_unknown_runner_exits_nonzero(
     runner,
     configured_settings: Settings,
