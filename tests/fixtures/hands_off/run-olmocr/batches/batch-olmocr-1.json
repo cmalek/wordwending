@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0.0",
+  "batch_id": "batch-olmocr-1",
+  "run_id": "run-olmocr",
+  "document_id": "doc-hands-off",
+  "execution_policy_id": "olmocr-policy-v1",
+  "runner": {
+    "runner_id": "olmocr",
+    "runner_version": null,
+    "model_name": null,
+    "model_revision": null,
+    "hardware_class": null,
+    "runtime_name": null,
+    "runtime_revision": null,
+    "config_digest": null,
+    "prompt_digest": null
+  },
+  "capability": {
+    "accepted_input_kinds": [
+      "image",
+      "pdf"
+    ],
+    "preferred_input_kind": "pdf",
+    "supports_multi_item_batching": true,
+    "batch_unit_kind": "page",
+    "packaging_strategy": "image-to-pdf"
+  },
+  "packaging_artifact_id": null,
+  "batch_size": 1,
+  "items": [
+    {
+      "item_id": "item-1",
+      "source_page_id": "page-0001",
+      "prepared_unit_id": null,
+      "artifact_id": "prepared-page-1"
+    }
+  ],
+  "started_at_utc": "2026-08-07T12:00:00Z",
+  "finished_at_utc": "2026-08-07T12:01:00Z",
+  "retry_of_batch_id": null,
+  "retry_strategy": null,
+  "result_status": "succeeded",
+  "failure_item_ids": [],
+  "output_artifacts": [
+    {
+      "artifact_id": "wit-olmocr-page-0001",
+      "artifact_kind": "text",
+      "artifact_path": "witnesses/batch-olmocr-1/item-1.json",
+      "media_type": "application/json",
+      "batch_item_ids": [
+        "item-1"
+      ]
+    }
+  ],
+  "warnings": [],
+  "warmup": false,
+  "request_ids": []
+}

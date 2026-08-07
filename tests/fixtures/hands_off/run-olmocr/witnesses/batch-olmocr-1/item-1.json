@@ -1,0 +1,14 @@
+{
+  "id": "chatcmpl-assemble-fixture",
+  "object": "chat.completion",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Line one of diplomatic text.\nLine two of diplomatic text."
+      },
+      "finish_reason": "stop"
+    }
+  ]
+}

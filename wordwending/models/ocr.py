@@ -1197,6 +1197,8 @@ class BundlePage(SchemaModel):
     )
     #: Review events applied to this page or its children.
     review_event_ids: list[str] = Field(default_factory=list)
+    #: Accepted page-graph revision; binds review tasks/overlays (ADR 0008).
+    graph_revision: str = "graph-v0"
 
     @model_validator(mode="after")
     def validate_graph_references(self) -> BundlePage:  # noqa: PLR0912, PLR0915
