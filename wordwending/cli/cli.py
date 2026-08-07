@@ -36,6 +36,7 @@ from ..services.assemble import DOCUMENT_BUNDLE_JSON, AssembleOrchestrator
 from ..services.bundle_layout import BundleLayoutService
 from ..services.evaluation import EvaluationService
 from ..services.evaluation_cohorts import EvaluationCohortService
+from ..services.kraken_runner import HuggingFaceKrakenRunner
 from ..services.merge import AbstainingMergeService
 from ..services.olmocr_runner import HuggingFaceOlmocrRunner
 from ..services.preparation import (
@@ -51,6 +52,33 @@ from ..services.source_acquisition import SourceAcquisitionService
 from ..services.witness_adaptation import WitnessAdaptationService
 from ..settings import Settings
 from .utils import console, print_error, print_info
+
+
+def _hosted_runner_class(runner_id: str) -> type:
+    """
+    Resolve one hosted runner class from ``runner_id`` without a registry.
+
+    Args:
+        runner_id: Stable logical runner id from ``RunnerReference``.
+
+    Returns:
+        Hosted runner class for ``runner_id``.
+
+    Raises:
+        click.ClickException: If ``runner_id`` is not supported.
+
+    """
+    # Built at call time so tests can patch the module-level class names.
+    hosted_runner_by_id = {
+        "olmocr": HuggingFaceOlmocrRunner,
+        "kraken": HuggingFaceKrakenRunner,
+    }
+    runner_cls = hosted_runner_by_id.get(runner_id)
+    if runner_cls is None:
+        supported = ", ".join(sorted(hosted_runner_by_id))
+        msg = f"unsupported runner_id {runner_id!r}; supported: {supported}"
+        raise click.ClickException(msg)
+    return runner_cls
 
 
 @click.group()
@@ -141,9 +169,7 @@ def show_settings(ctx: click.Context):
     if output_format == "json":
         click.echo(json.dumps(settings_dump))
     elif output_format == "table":
-        table = Table(
-            title="Settings", show_header=True, header_style="bold magenta"
-        )
+        table = Table(title="Settings", show_header=True, header_style="bold magenta")
         table.add_column("Setting Name", style="cyan")
         table.add_column("Value", style="green")
 
@@ -404,6 +430,7 @@ def prepare_pages(  # noqa: PLR0913, PLR0917
     click.echo(f"warnings: {warning_count}")
     click.echo(f"output: {output_dir}")
 
+
 def _load_preparation_recipe(recipe: Path) -> PreparationRecipe:
     """
     Load and validate a preparation recipe JSON file.
@@ -586,7 +613,7 @@ def run_runner(  # noqa: PLR0913, PLR0917
     document_id: str,
 ) -> None:
     """
-    Execute prepared artifacts against one hosted olmOCR runner.
+    Execute prepared artifacts against one hosted runner (olmOCR or kraken).
 
     Args:
         ctx: Click context object.
@@ -618,6 +645,8 @@ def run_runner(  # noqa: PLR0913, PLR0917
     except (OSError, ValidationError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
 
+    runner_cls = _hosted_runner_class(runner.runner_id)
+
     settings: Settings = ctx.obj["settings"]
     api_key = settings.huggingface_api_key
     token = api_key.get_secret_value() if api_key is not None else None
@@ -637,7 +666,7 @@ def run_runner(  # noqa: PLR0913, PLR0917
     output_dir.mkdir(parents=True, exist_ok=True)
     client = httpx.Client()
     try:
-        hosted_runner = HuggingFaceOlmocrRunner(
+        hosted_runner = runner_cls(
             runner=runner,
             policy=execution_policy,
             endpoint_url=str(endpoint_url),
@@ -702,9 +731,7 @@ def export_document(document_bundle: Path, bundle_root: Path) -> None:
         bundle = DocumentBundle.model_validate_json(
             document_bundle.read_text(encoding="utf-8")
         )
-        exported = BundleLayoutService().write_document_exports(
-            bundle, bundle_root
-        )
+        exported = BundleLayoutService().write_document_exports(bundle, bundle_root)
     except (OSError, ValidationError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
     exports = exported.exports

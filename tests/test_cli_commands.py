@@ -165,7 +165,9 @@ class TestCLIEval:
 class TestCLIPrepare:
     """Test the prepare command."""
 
-    def test_prepare_command_writes_reproducible_metadata(self, runner, tmp_path) -> None:
+    def test_prepare_command_writes_reproducible_metadata(
+        self, runner, tmp_path
+    ) -> None:
         source = tmp_path / "page.png"
         Image.new("L", (600, 800), "white").save(source)
         output = tmp_path / "bundle"
@@ -214,9 +216,7 @@ class TestCLIPrepare:
             "binarize_mode": "otsu",
         }
         gray_recipe.write_text(json.dumps(gray_payload, indent=2), encoding="utf-8")
-        binary_recipe.write_text(
-            json.dumps(binary_payload, indent=2), encoding="utf-8"
-        )
+        binary_recipe.write_text(json.dumps(binary_payload, indent=2), encoding="utf-8")
 
         result = runner.invoke(
             cli,
@@ -258,9 +258,7 @@ class TestCLIPrepare:
             "binarize_mode": "otsu",
         }
         gray_recipe.write_text(json.dumps(gray_payload, indent=2), encoding="utf-8")
-        binary_recipe.write_text(
-            json.dumps(binary_payload, indent=2), encoding="utf-8"
-        )
+        binary_recipe.write_text(json.dumps(binary_payload, indent=2), encoding="utf-8")
 
         result = runner.invoke(
             cli,
@@ -348,9 +346,7 @@ class TestCLIPrepare:
         assert second["preparation_choice_source"] == "operator"
         assert second["assessment"]["page_class_source"] == "operator"
 
-    def test_prepare_rejects_overrides_with_global_mode(
-        self, runner, tmp_path
-    ) -> None:
+    def test_prepare_rejects_overrides_with_global_mode(self, runner, tmp_path) -> None:
         source = tmp_path / "page.png"
         Image.new("L", (600, 800), "white").save(source)
         output = tmp_path / "bundle"
@@ -436,12 +432,16 @@ def test_eval_cohorts_writes_all_fixed_views(runner, tmp_path: Path) -> None:
     assert report.by_page_class_and_runner
 
 
-def _runner_reference_json() -> str:
+def _runner_reference_json(*, runner_id: str = "olmocr") -> str:
+    model_names = {
+        "olmocr": "allenai/olmOCR",
+        "kraken": "mittagessen/kraken",
+    }
     return json.dumps(
         {
-            "runner_id": "olmocr",
+            "runner_id": runner_id,
             "runner_version": "0.4.27",
-            "model_name": "allenai/olmOCR",
+            "model_name": model_names.get(runner_id, f"example/{runner_id}"),
             "model_revision": "model-revision",
             "hardware_class": "nvidia-l40s",
             "runtime_name": "huggingface-endpoint",
@@ -452,7 +452,7 @@ def _runner_reference_json() -> str:
     )
 
 
-def _run_cli_args(tmp_path: Path) -> list[str]:
+def _run_cli_args(tmp_path: Path, *, runner_id: str = "olmocr") -> list[str]:
     prepared = tmp_path / "prepared.json"
     prepared.write_text(
         Path("tests/fixtures/runner/prepared-inputs.json").read_text(),
@@ -464,7 +464,7 @@ def _run_cli_args(tmp_path: Path) -> list[str]:
         encoding="utf-8",
     )
     runner_ref = tmp_path / "runner.json"
-    runner_ref.write_text(_runner_reference_json(), encoding="utf-8")
+    runner_ref.write_text(_runner_reference_json(runner_id=runner_id), encoding="utf-8")
     bundle = tmp_path / "bundle"
     bundle.mkdir()
     output = tmp_path / "output"
@@ -565,6 +565,89 @@ class TestCLIRun:
         assert "failed_items: 1" in result.output
         assert "failed item" in result.output.lower()
 
+    @patch("wordwending.cli.cli.RunnerExecutionService.run")
+    @patch("wordwending.cli.cli.HuggingFaceKrakenRunner")
+    def test_run_selects_kraken_runner_by_runner_id(
+        self,
+        mock_kraken_cls,
+        mock_run,
+        runner,
+        tmp_path,
+    ) -> None:
+        mock_run.return_value = (
+            [],
+            RunnerThroughputSummary(
+                measured_item_count=0,
+                failed_item_count=0,
+                measured_duration_seconds=0.0,
+                items_per_second=0.0,
+            ),
+        )
+        mock_kraken_cls.return_value = mock_kraken_cls
+        configured = Settings(
+            huggingface_api_key="hf_test_token",
+            huggingface_model_endpoints={
+                "olmocr-production": "https://example.endpoints.huggingface.cloud/v1",
+            },
+        )
+        with patch("wordwending.cli.cli.Settings", return_value=configured):
+            result = runner.invoke(
+                cli,
+                _run_cli_args(tmp_path, runner_id="kraken"),
+            )
+
+        assert result.exit_code == 0
+        mock_kraken_cls.assert_called_once()
+        assert mock_kraken_cls.call_args.kwargs["runner"].runner_id == "kraken"
+
+    @patch("wordwending.cli.cli.RunnerExecutionService.run")
+    @patch("wordwending.cli.cli.HuggingFaceOlmocrRunner")
+    def test_run_selects_olmocr_runner_by_runner_id(
+        self,
+        mock_olmocr_cls,
+        mock_run,
+        runner,
+        tmp_path,
+    ) -> None:
+        mock_run.return_value = (
+            [],
+            RunnerThroughputSummary(
+                measured_item_count=0,
+                failed_item_count=0,
+                measured_duration_seconds=0.0,
+                items_per_second=0.0,
+            ),
+        )
+        mock_olmocr_cls.return_value = mock_olmocr_cls
+        configured = Settings(
+            huggingface_api_key="hf_test_token",
+            huggingface_model_endpoints={
+                "olmocr-production": "https://example.endpoints.huggingface.cloud/v1",
+            },
+        )
+        with patch("wordwending.cli.cli.Settings", return_value=configured):
+            result = runner.invoke(cli, _run_cli_args(tmp_path, runner_id="olmocr"))
+
+        assert result.exit_code == 0
+        mock_olmocr_cls.assert_called_once()
+        assert mock_olmocr_cls.call_args.kwargs["runner"].runner_id == "olmocr"
+
+    def test_run_rejects_unsupported_runner_id(self, runner, tmp_path) -> None:
+        configured = Settings(
+            huggingface_api_key="hf_test_token",
+            huggingface_model_endpoints={
+                "olmocr-production": "https://example.endpoints.huggingface.cloud/v1",
+            },
+        )
+        with patch("wordwending.cli.cli.Settings", return_value=configured):
+            result = runner.invoke(
+                cli,
+                _run_cli_args(tmp_path, runner_id="unknown-engine"),
+            )
+
+        assert result.exit_code != 0
+        assert "unsupported runner_id" in result.output
+
 
 class TestCLIExport:
     """Test the export command."""
@@ -631,7 +714,9 @@ class TestCLIAssemble:
         """Copy witness fixture and prepared image under bundle_root."""
         witnesses_dir = bundle_root / "raw" / "witnesses"
         witnesses_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy(self._WITNESS_FIXTURE, witnesses_dir / "olmocr-chat-completion-v1.json")
+        shutil.copy(
+            self._WITNESS_FIXTURE, witnesses_dir / "olmocr-chat-completion-v1.json"
+        )
 
         image_dir = bundle_root / "prepared"
         image_dir.mkdir(parents=True, exist_ok=True)
@@ -657,10 +742,14 @@ class TestCLIAssemble:
         assert result.exit_code == 0
         assert (bundle_root / "manifest.json").exists()
         assert (bundle_root / "document-bundle.json").exists()
-        assert (bundle_root / "pages" / "page-0001" / "graph" / "page_graph.json").exists()
+        assert (
+            bundle_root / "pages" / "page-0001" / "graph" / "page_graph.json"
+        ).exists()
         assert "doc-src-1" in result.output
         assert "pages: 1" in result.output
-        assert f"document_bundle: {bundle_root / 'document-bundle.json'}" in result.output
+        assert (
+            f"document_bundle: {bundle_root / 'document-bundle.json'}" in result.output
+        )
 
     def test_assemble_then_export_writes_document_markdown(
         self, runner, tmp_path: Path

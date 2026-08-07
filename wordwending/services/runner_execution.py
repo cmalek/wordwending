@@ -24,7 +24,11 @@ from wordwending.services.runner_batching import RunnerBatchPlanner  # noqa: TC0
 from wordwending.services.runner_packaging import RunnerInputPackager  # noqa: TC001
 
 if TYPE_CHECKING:
+    from wordwending.services.kraken_runner import HuggingFaceKrakenRunner
     from wordwending.services.olmocr_runner import HuggingFaceOlmocrRunner
+
+    #: Hosted adapter classes accepted until Wave G extracts PassRunner.
+    HostedRunner = HuggingFaceOlmocrRunner | HuggingFaceKrakenRunner
 
 #: Persisted runner-batch schema version written under ``output_dir/batches/``.
 RUNNER_BATCH_SCHEMA_VERSION = "1.0.0"
@@ -44,9 +48,7 @@ def _retry_batch_id(original_batch_id: str, failure_item_ids: list[str]) -> str:
         Stable ``batch-<hex>`` retry identifier.
 
     """
-    material = (
-        f"{original_batch_id}\nretry-1\n" + ",".join(sorted(failure_item_ids))
-    )
+    material = f"{original_batch_id}\nretry-1\n" + ",".join(sorted(failure_item_ids))
     return "batch-" + hashlib.sha256(material.encode("utf-8")).hexdigest()
 
 
@@ -115,7 +117,7 @@ class RunnerExecutionOrchestrator:
         *,
         planner: RunnerBatchPlanner,
         packager: RunnerInputPackager,
-        runner: HuggingFaceOlmocrRunner,
+        runner: HostedRunner,
         run_id: str,
         document_id: str,
         bundle_root: Path,
@@ -517,7 +519,7 @@ class RunnerExecutionService:
         self,
         planner: RunnerBatchPlanner,
         packager: RunnerInputPackager,
-        runner: HuggingFaceOlmocrRunner,
+        runner: HostedRunner,
     ) -> None:
         """
         Bind batch planning, packaging, and hosted runner collaborators.
