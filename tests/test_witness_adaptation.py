@@ -157,3 +157,90 @@ def test_adapt_page_rejects_non_chat_completion_json(tmp_path: Path) -> None:
             artifact_paths=[str(witness_path)],
             coordinate_space=_coordinate_space(),
         )
+
+
+def _write_chat_completion(
+    tmp_path: Path,
+    *,
+    content: str | int,
+    filename: str = "witness.json",
+) -> Path:
+    """Write a minimal chat.completion witness artifact for adaptation tests."""
+    witness_path = tmp_path / filename
+    witness_path.write_text(
+        json.dumps(
+            {
+                "object": "chat.completion",
+                "choices": [{"message": {"role": "assistant", "content": content}}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return witness_path
+
+
+def test_adapt_page_raises_value_error_for_wrong_json_field_types(
+    tmp_path: Path,
+) -> None:
+    """Wrong JSON field types surface as ValueError, not TypeError."""
+    witness_path = _write_chat_completion(tmp_path, content=123)
+    service = WitnessAdaptationService()
+    with pytest.raises(ValueError, match="content must be a string"):
+        service.adapt_page(
+            prepared_page=_prepared_page(),
+            witness_id="wit-1",
+            runner_id="olmocr",
+            artifact_paths=[str(witness_path)],
+            coordinate_space=_coordinate_space(),
+        )
+
+
+def test_adapt_page_raises_value_error_for_corrupt_json(tmp_path: Path) -> None:
+    """Corrupt JSON bytes are rejected as invalid witness payloads."""
+    witness_path = tmp_path / "corrupt.json"
+    witness_path.write_bytes(b"{not valid json")
+    service = WitnessAdaptationService()
+    with pytest.raises(ValueError, match=r"UTF-8 JSON chat\.completion"):
+        service.adapt_page(
+            prepared_page=_prepared_page(),
+            witness_id="wit-1",
+            runner_id="olmocr",
+            artifact_paths=[str(witness_path)],
+            coordinate_space=_coordinate_space(),
+        )
+
+
+def test_adapt_page_raises_value_error_for_invalid_utf8(tmp_path: Path) -> None:
+    """Invalid UTF-8 bytes are rejected as invalid witness payloads."""
+    witness_path = tmp_path / "invalid-utf8.json"
+    witness_path.write_bytes(b"\xff\xfe")
+    service = WitnessAdaptationService()
+    with pytest.raises(ValueError, match=r"UTF-8 JSON chat\.completion"):
+        service.adapt_page(
+            prepared_page=_prepared_page(),
+            witness_id="wit-1",
+            runner_id="olmocr",
+            artifact_paths=[str(witness_path)],
+            coordinate_space=_coordinate_space(),
+        )
+
+
+def test_adapt_page_strips_trailing_newline_empty_line(tmp_path: Path) -> None:
+    """Trailing newline must not produce an extra empty line/span."""
+    witness_path = _write_chat_completion(
+        tmp_path,
+        content="Line one of diplomatic text.\nLine two of diplomatic text.\n",
+    )
+    service = WitnessAdaptationService()
+    page = service.adapt_page(
+        prepared_page=_prepared_page(),
+        witness_id="wit-1",
+        runner_id="olmocr",
+        artifact_paths=[str(witness_path)],
+        coordinate_space=_coordinate_space(),
+    )
+
+    assert len(page.lines) == 2
+    assert len(page.spans) == 2
+    assert page.spans[0].text_diplomatic == "Line one of diplomatic text."
+    assert page.spans[1].text_diplomatic == "Line two of diplomatic text."

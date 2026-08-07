@@ -74,7 +74,10 @@ class OlmocrChatCompletionAdapter:
         if not isinstance(content, str):
             msg = "chat.completion assistant content must be a string"
             raise TypeError(msg)
-        return content.split("\n")
+        lines = content.splitlines()
+        while lines and lines[-1] == "":
+            lines.pop()
+        return lines
 
 
 class WitnessAdaptationService:
@@ -124,7 +127,10 @@ class WitnessAdaptationService:
             msg = "artifact_paths must contain at least one witness path"
             raise ValueError(msg)
         raw_bytes = Path(artifact_paths[0]).read_bytes()
-        lines = self._olmocr.extract_lines(raw_bytes)
+        try:
+            lines = self._olmocr.extract_lines(raw_bytes)
+        except TypeError as exc:
+            raise ValueError(str(exc)) from exc
         return self._build_provisional_page(
             prepared_page=prepared_page,
             witness_id=witness_id,
