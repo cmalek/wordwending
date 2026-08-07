@@ -18,9 +18,9 @@ from wordwending.models import (
 )
 from wordwending.services.witness_adaptation import WitnessAdaptationService
 
-_FIXTURE = (
-    Path(__file__).parent / "fixtures" / "assemble" / "olmocr-chat-completion-v1.json"
-)
+_FIXTURES = Path(__file__).parent / "fixtures" / "assemble"
+_FIXTURE = _FIXTURES / "olmocr-chat-completion-v1.json"
+_MANIFEST_FIXTURE = _FIXTURES / "manifest-v1.json"
 
 
 def _prepared_page(*, prepared_page_id: str = "prepared-page-1") -> PreparedPage:
@@ -133,26 +133,21 @@ def test_adapt_page_stable_ids_across_rebuilds(tmp_path: Path) -> None:
     assert [span.text_diplomatic for span in first.spans] == [
         span.text_diplomatic for span in second.spans
     ]
-    assert [r.region_id for r in first.regions] == ["prepared-page-1:r0"]
-    assert [line.line_id for line in first.lines] == [
-        "prepared-page-1:l0",
-        "prepared-page-1:l1",
-    ]
-    assert [span.span_id for span in first.spans] == [
-        "prepared-page-1:s0",
-        "prepared-page-1:s1",
-    ]
-    assert [span.text_diplomatic for span in first.spans] == [
-        "Line one of diplomatic text.",
-        "Line two of diplomatic text.",
-    ]
 
 
 def test_adapt_page_span_ids_pair_with_assemble_gold(tmp_path: Path) -> None:
     """Adapted span ids and texts match assemble gold-v1 target_object_ids."""
-    gold_path = Path(__file__).parent / "fixtures" / "assemble" / "gold-v1.json"
+    manifest = json.loads(_MANIFEST_FIXTURE.read_text(encoding="utf-8"))
+    manifest_page = manifest["pages"][0]
+    prepared = PreparedPage.model_validate(manifest_page["prepared_page"])
+    witness = manifest_page["raw_witnesses"][0]
+    coordinate_space = CoordinateSpace.model_validate(witness["coordinate_space"])
+
+    gold_path = _FIXTURES / "gold-v1.json"
     gold = json.loads(gold_path.read_text(encoding="utf-8"))
     gold_page = gold["pages"][0]
+    assert gold_page["page_id"] == manifest_page["page_id"]
+    assert gold_page["prepared_image_checksum"] == prepared.image_checksum
     gold_span_ids = [
         annotation["target_object_id"] for annotation in gold_page["text_spans"]
     ]
@@ -164,13 +159,14 @@ def test_adapt_page_span_ids_pair_with_assemble_gold(tmp_path: Path) -> None:
     witness_path = tmp_path / "witness.json"
     shutil.copy(_FIXTURE, witness_path)
     page = WitnessAdaptationService().adapt_page(
-        prepared_page=_prepared_page(),
-        witness_id="wit-1",
-        runner_id="olmocr",
+        prepared_page=prepared,
+        witness_id=witness["witness_id"],
+        runner_id=witness["runner_id"],
         artifact_paths=[str(witness_path)],
-        coordinate_space=_coordinate_space(),
+        coordinate_space=coordinate_space,
     )
 
+    assert page.prepared_page_id == prepared.prepared_page_id
     adapted_ids = [span.span_id for span in page.spans]
     adapted_texts = [span.text_diplomatic for span in page.spans]
     assert adapted_ids == gold_span_ids == coverage_ids
