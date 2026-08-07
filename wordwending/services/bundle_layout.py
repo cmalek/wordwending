@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import shutil
 from collections.abc import Mapping  # noqa: TC003
+from hashlib import sha256
 from itertools import chain
 from pathlib import Path
 from typing import Any
@@ -124,6 +125,20 @@ def _relative_path(root: Path, path: Path) -> str:
 
     """
     return path.relative_to(root).as_posix()
+
+
+def _sha256_label(payload: bytes) -> str:
+    """
+    Return the canonical digest label for ``payload``.
+
+    Args:
+        payload: Raw artifact bytes.
+
+    Returns:
+        ``sha256:<hex>`` digest label.
+
+    """
+    return f"sha256:{sha256(payload).hexdigest()}"
 
 
 def _collect_page_flags(summary: PageEvaluationSummary) -> list[dict[str, object]]:
@@ -561,8 +576,12 @@ class BundleLayoutService:
         )
         graph_updates: dict[str, object] = {"witnesses": rewritten_witnesses}
         if prepared_image_path is not None:
+            destination = root / prepared_image_path
             graph_updates["prepared_page"] = page.prepared_page.model_copy(
-                update={"image_path": prepared_image_path}
+                update={
+                    "image_path": prepared_image_path,
+                    "image_checksum": _sha256_label(destination.read_bytes()),
+                }
             )
         page_for_graph = page.model_copy(update=graph_updates)
         graph_path = paths.page_graph(page_number)

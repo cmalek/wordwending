@@ -51,6 +51,9 @@ assemble writes `pages/page-0001/graph/page_graph.json`.
 | `gold-v1.json` | Partial text gold keyed to adapted span ids |
 | `metric-profile-v1.json` | Eval profile for Wave A exit |
 
+Manifest `prepared_page.image_checksum` may use a placeholder (`sha256:image`);
+assemble reseals it from on-disk prepared image bytes when writing the bundle.
+
 ## Consumers
 
 - `tests/test_witness_adaptation.py` — adapt identity + gold span pairing

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 from datetime import UTC, datetime
@@ -160,6 +161,48 @@ def _stage_multi_witness_bundle_inputs(bundle_root: Path) -> None:
     image_dir = bundle_root / "prepared"
     image_dir.mkdir(parents=True, exist_ok=True)
     (image_dir / "page.png").write_bytes(b"fake-png-bytes")
+
+
+def test_assemble_document_seals_prepared_image_checksum_from_bytes(
+    tmp_path: Path,
+) -> None:
+    """Assemble records sha256 of prepared image bytes, not manifest placeholders."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    witness_path, image_path = _stage_bundle_inputs(bundle_root)
+    expected = f"sha256:{hashlib.sha256(image_path.read_bytes()).hexdigest()}"
+    page = AssemblePageRequest(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),  # placeholder image_checksum
+        raw_witnesses=[
+            RawWitnessRef(
+                witness_id="wit-1",
+                runner_id="olmocr",
+                artifact_paths=[witness_path.relative_to(bundle_root).as_posix()],
+                coordinate_space=_coordinate_space(),
+            )
+        ],
+    )
+
+    bundle = _orchestrator().assemble_document(
+        bundle_root=bundle_root,
+        source=_source(),
+        bibliographic=_bibliographic(),
+        acquisition=_acquisition(),
+        pages=[page],
+        merge_policy=_merge_policy(),
+    )
+
+    assert bundle.pages[0].prepared_page.image_checksum == expected
+    graph_path = bundle_root / "pages" / "page-0001" / "graph" / "page_graph.json"
+    graph = json.loads(graph_path.read_text(encoding="utf-8"))
+    assert graph["prepared_page"]["image_checksum"] == expected
+    copied = bundle_root / graph["prepared_page"]["image_path"]
+    assert copied.is_file()
+    assert (
+        f"sha256:{hashlib.sha256(copied.read_bytes()).hexdigest()}" == expected
+    )
 
 
 def test_raw_witness_ref_paths_are_relative_posix_strings() -> None:

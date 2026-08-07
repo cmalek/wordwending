@@ -925,10 +925,10 @@ class TestCLIAssemble:
         assert "page_number: 1" in result.output
         assert "olmocr" in result.output
 
-    def test_inspect_bundle_reports_checksum_fail_for_placeholder_digest(
+    def test_inspect_bundle_reports_checksum_ok_after_assemble(
         self, runner, tmp_path: Path
     ) -> None:
-        """inspect-bundle surfaces FAIL when recorded digests do not match bytes."""
+        """inspect-bundle surfaces OK after assemble seals prepared-image digests."""
         bundle_root = tmp_path / "bundle"
         bundle_root.mkdir()
         self._stage_bundle_inputs(bundle_root)
@@ -951,7 +951,8 @@ class TestCLIAssemble:
 
         assert result.exit_code == 0
         assert "checksum:" in result.output
-        assert " FAIL " in result.output
+        assert " OK" in result.output
+        assert " FAIL " not in result.output
         assert "pages/page-0001/image/page.png" in result.output
 
     def test_inspect_bundle_reports_checksum_ok_for_matching_bundle(

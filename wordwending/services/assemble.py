@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from hashlib import sha256
 from pathlib import Path
 
 from wordwending.models import (
@@ -356,7 +357,6 @@ class _AssembleExecution:
             self.preparation_recipe_id = (
                 page_request.prepared_page.preparation_recipe_id
             )
-        self.bundle_pages.append(page)
         for witness_id, resolved_path in resolved_by_id.items():
             self.witness_files[witness_id] = resolved_path
             runner_id = raw_refs_by_id[witness_id].runner_id
@@ -368,6 +368,16 @@ class _AssembleExecution:
         )
         if image_path is not None:
             self.page_images[page_request.page_id] = image_path
+            page = page.model_copy(
+                update={
+                    "prepared_page": page.prepared_page.model_copy(
+                        update={
+                            "image_checksum": _sha256_label(image_path.read_bytes()),
+                        }
+                    )
+                }
+            )
+        self.bundle_pages.append(page)
 
     def build_document_bundle(
         self,
@@ -413,6 +423,20 @@ class _AssembleExecution:
             evaluation_summary=DocumentEvaluationSummary(),
             exports=ExportSummary(bundle_json_path="exports/bundle.json"),
         )
+
+
+def _sha256_label(payload: bytes) -> str:
+    """
+    Return the canonical digest label for ``payload``.
+
+    Args:
+        payload: Raw artifact bytes.
+
+    Returns:
+        ``sha256:<hex>`` digest label.
+
+    """
+    return f"sha256:{sha256(payload).hexdigest()}"
 
 
 def _resolve_against_bundle_root(bundle_root: Path, path_str: str) -> Path:
