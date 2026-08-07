@@ -287,9 +287,9 @@ class _AssembleExecution:
         """
         Project merge flags onto pages and build Spec 0005 pending tasks.
 
-        Replaces ``bundle_pages`` with projected graphs. Tasks are built from
-        the pre-projection pages so ``MergeFlagReviewService.build_review_tasks``
-        does not double-append evaluation flags.
+        Replaces ``bundle_pages`` with projected graphs. Each page is projected
+        once; review tasks are built from that projected graph via
+        ``HumanMarkupService``.
 
         Keyword Args:
             run_id: Deterministic assemble run id stamped onto each task.
@@ -307,16 +307,13 @@ class _AssembleExecution:
         for page, flags in zip(
             self.bundle_pages, self.page_merge_flags, strict=True
         ):
-            tasks = self._merge_flag_review.build_review_tasks(
-                page,
-                flags,
-                markup=markup,
+            projected = self._merge_flag_review.project_onto_page(page, flags)
+            tasks = markup.build_review_tasks(
+                projected,
                 run_id=run_id,
                 graph_revision=page.graph_revision,
             )
-            projected_pages.append(
-                self._merge_flag_review.project_onto_page(page, flags)
-            )
+            projected_pages.append(projected)
             pending_by_page.append(tasks)
         self.bundle_pages = projected_pages
         return pending_by_page
