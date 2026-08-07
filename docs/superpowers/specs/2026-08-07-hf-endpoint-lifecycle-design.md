@@ -1,7 +1,8 @@
 # Hugging Face Endpoint Lifecycle Design
 
 **Date:** 2026-08-07  
-**Status:** Approved for planning (pending human review of this file)  
+**Status:** Approved; implementation plan at
+``docs/superpowers/plans/2026-08-07-hf-endpoint-lifecycle.md``  
 **Branch context:** Phase 10 ops slice after Waves A–H spine  
 **Approach:** In-repo `EndpointLifecycleService` over `huggingface_hub` Inference Endpoints API (Approach A)
 
