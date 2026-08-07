@@ -24,6 +24,7 @@ Read in this order:
    adr_0008_stable_ids_and_review_history
    adr_0009_ocrd_page_escriptorium
    ../adr/adr_0010_structured_output_boundary
+   ../adr/adr_0011_hf_endpoint_lifecycle
 
 .. toctree::
    :maxdepth: 1
