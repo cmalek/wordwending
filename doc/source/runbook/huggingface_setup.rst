@@ -5,11 +5,13 @@ Hugging Face Setup
 .. note::
 
    **Ops skeleton only; Spec 0004 Phase 10 exit deferred.** Wave H ships
-   ``run`` resume-ledger scaffolding and ``inspect-bundle`` checksum
-   verification. This runbook still describes the *intended* Hugging Face
-   deploy/ops path (endpoints, health, secrets, quotas, cold starts, cost
-   controls). Those items are **not** claimed complete under the current plan.
-   See :doc:`/runbook/from_source_to_markdown`.
+   ``run`` resume-ledger scaffolding, ``inspect-bundle`` checksum
+   verification, and ``wordwending endpoints up|down|status`` lifecycle CLI
+   (plus optional ``--ensure-endpoints`` on ``run``/``bakeoff``). This
+   runbook still describes the *intended* Hugging Face deploy/ops path
+   (health, quotas, cold-start queueing, cost controls). Those items are
+   **not** claimed complete under the current plan. Do **not** mark Phase 10
+   COMPLETE. See :doc:`/runbook/from_source_to_markdown`.
 
 Purpose
 =======
@@ -111,10 +113,12 @@ In the Inference Endpoints UI:
 8. Review displayed hourly cost and set the project budget/alert before Create.
 9. Create the endpoint and wait with a finite deployment timeout.
 
-The official CLI/API can automate the same lifecycle. Keep endpoint creation
-configuration under version control without secret values. The API's
-``revision``, hardware, replica, scale-to-zero, custom-image, and secret fields
-must match the reviewed deployment record.
+The official Hugging Face ``hf endpoints`` CLI/API can automate the same
+lifecycle when you need an escape hatch outside ``wordwending``. Prefer
+``wordwending endpoints up`` for catalog-driven create/resume (see section 9).
+Keep endpoint creation configuration under version control without secret
+values. The API's ``revision``, hardware, replica, scale-to-zero,
+custom-image, and secret fields must match the reviewed deployment record.
 
 6. Prove Readiness and Correctness
 ==================================
@@ -173,13 +177,72 @@ typography, reading order, or note linkage does not win.
 9. Operate and Shut Down
 ========================
 
+Preferred path — ``wordwending endpoints`` lifecycle CLI
+--------------------------------------------------------
+
+**Spec 0004 Phase 10 is NOT COMPLETE.** The commands below are shipped ops
+scaffolding, not Spec exit evidence.
+
+Bring catalogued runners up, inspect them, or spin them down:
+
+.. code-block:: bash
+
+   wordwending endpoints up [--runner olmocr] [--runner kraken]
+   wordwending endpoints status [--runner RUNNER]
+   wordwending endpoints down [--runner RUNNER]            # pause (default)
+   wordwending endpoints down [--runner RUNNER] --delete   # destroy remote
+
+Or ensure endpoints inline before ``run`` / ``bakeoff``:
+
+.. code-block:: bash
+
+   wordwending run ... --ensure-endpoints
+   wordwending bakeoff ... --ensure-endpoints
+
+``up``, ``status``, and ``--ensure-endpoints`` call ``pause_idle`` first: runners
+idle longer than ``huggingface_endpoint_idle_minutes`` (default 30) are **paused**
+so stale sessions do not block fresh ensure operations.
+
+**Pause vs delete:** ``endpoints down`` **pauses** by default (recoverable,
+lower cost than running). Pass ``--delete`` only when you intend to destroy the
+remote endpoint.
+
+**Scale-to-zero and local idle:** catalog entries set Hugging Face
+``scale_to_zero=True`` when creating endpoints. The local session ledger at
+``huggingface_endpoint_ledger_path`` (default
+``~/.config/wordwending/endpoint-session-ledger.json``) records ``last_used_at_utc``;
+the idle watchdog **pauses only** — it never auto-deletes.
+
+**Catalog pins:** lifecycle reads ``huggingface_endpoint_catalog`` (or built-in
+defaults for ``olmocr`` and ``kraken``). Operators must replace placeholder
+``repository``, immutable ``revision``, ``namespace``, and hardware fields with
+real pinned values before live Hugging Face deployment. The default kraken entry
+uses a placeholder repository name; reject moving tags such as ``main`` or
+``latest``.
+
+**Secrets:** only ``Settings.huggingface_api_key`` (TOML or ``WORDWENDING_*``).
+Never store tokens in catalog JSON, the ledger, git, or bundle provenance.
+Ephemeral HTTPS URLs overlay ``huggingface_model_endpoints`` in-process only.
+
+Escape hatch — Hugging Face ``hf endpoints`` CLI
+------------------------------------------------
+
+When you need UI/API parity outside the product CLI, the official Hugging Face
+``hf endpoints`` commands remain valid. Keep the same pin discipline
+(repository + immutable revision + hardware) and record provenance in your
+deployment record.
+
+General operate/shut-down checklist
+-----------------------------------
+
 Before a corpus run, verify endpoint revision, state, quota, queue depth, budget,
 and one smoke fixture. During the run, watch endpoint logs/analytics, failure
 rates, cold starts, latency, GPU utilization, and rejected requests.
 
-After a finite research run, pause the endpoint or verify scale-to-zero occurred.
-Retain run/batch records and raw witnesses according to artifact policy. Revoke
-temporary tokens and rotate any credential exposed to output or logs.
+After a finite research run, pause the endpoint (``wordwending endpoints down``)
+or verify scale-to-zero occurred. Retain run/batch records and raw witnesses
+according to artifact policy. Revoke temporary tokens and rotate any credential
+exposed to output or logs.
 
 Required Run Provenance
 =======================

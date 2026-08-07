@@ -92,10 +92,14 @@ Execute prepared artifacts against one hosted olmOCR or kraken runner. Requires
 Successful batches are recorded under
 ``<bundle-root>/runner-resume-ledger.json``. A later ``run`` against the same
 bundle skips those batch ids unless ``--force`` is set. Missing or corrupt
-ledger files are treated as empty. Together with ``inspect-bundle`` checksum
-verification, this is the Wave H **ops skeleton only** — Spec 0004 **Phase 10
-is NOT COMPLETE** (HF deploy/ops, quotas, cost controls, corpus regression
-gates, and operator calibration monitoring remain deferred).
+ledger files are treated as empty. Pass ``--ensure-endpoints`` to pause idle
+catalogued endpoints, ensure the runner's endpoint is ready, and overlay HTTPS
+URLs for this invocation (requires ``huggingface_api_key`` and a catalog entry
+for the runner). Together with ``inspect-bundle`` checksum verification and
+``wordwending endpoints`` lifecycle commands, this is the Wave H **ops skeleton
+only** — Spec 0004 **Phase 10 is NOT COMPLETE** (HF deploy/ops, quotas, cost
+controls, corpus regression gates, and operator calibration monitoring remain
+deferred).
 
 .. code-block:: bash
 
@@ -106,7 +110,8 @@ gates, and operator calibration monitoring remain deferred).
      --output-dir ./run-out \
      --run-id RUN_ID \
      --document-id DOC_ID \
-     [--force]
+     [--force] \
+     [--ensure-endpoints]
 
 eval
 ^^^^
@@ -167,8 +172,11 @@ bakeoff
 
 Score **recorded** candidate predictions into ``bakeoff-matrix-v1.json`` using
 ``EvaluationService`` metrics. Schema targets real candidates (``olmocr`` +
-``kraken``). Spec 0004 **Phase 5 is NOT COMPLETE** — cost/license/operability
-scoring and full held-out corpus remain deferred.
+``kraken``). Pass ``--ensure-endpoints`` to pause idle catalogued endpoints,
+ensure bake-off candidates are ready, and overlay HTTPS URLs before scoring
+(fail-closed on lifecycle errors; Fake/plumbing candidates are never ensured).
+Spec 0004 **Phase 5 is NOT COMPLETE** — cost/license/operability scoring and
+full held-out corpus remain deferred.
 
 .. code-block:: bash
 
@@ -176,7 +184,8 @@ scoring and full held-out corpus remain deferred.
      --bundle-root ./bakeoff-root \
      --manifest bakeoff-manifest.json \
      --profile metric-profile-v1.json \
-     --output-dir ./bakeoff-out
+     --output-dir ./bakeoff-out \
+     [--ensure-endpoints]
 
 review apply
 ^^^^^^^^^^^^

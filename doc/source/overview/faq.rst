@@ -19,9 +19,11 @@ Is this production-ready?
 No. Treat it as research software: commands and bundle-assembly paths change.
 **Phase 6** (PassRunner Protocol + registry) is **COMPLETE**. **Phase 5**
 (bake-off) and **Phase 10** (operational hardening) are **NOT COMPLETE**.
-Wave H ships an **ops skeleton only** (``run`` resume ledger +
-``inspect-bundle`` checksum verification); Spec Phase 10 exit remains deferred.
-See :doc:`/runbook/from_source_to_markdown`.
+Wave H ships an **ops skeleton only** (``run`` resume ledger,
+``inspect-bundle`` checksum verification, and ``wordwending endpoints``
+``up``/``down``/``status`` lifecycle CLI with optional ``--ensure-endpoints``
+on ``run``/``bakeoff``); Spec Phase 10 exit remains deferred. See
+:doc:`/runbook/from_source_to_markdown`.
 
 Installation
 ------------
@@ -38,7 +40,8 @@ What commands exist?
 ^^^^^^^^^^^^^^^^^^^^
 
 ``version``, ``settings``, ``prepare``, ``run``, ``eval``, ``eval-cohorts``,
-``assemble``, ``inspect-bundle``, ``bakeoff``, ``review apply``,
+``assemble``, ``inspect-bundle``, ``bakeoff``, ``endpoints up``,
+``endpoints down``, ``endpoints status``, ``review apply``,
 ``review materialize``, and ``export``. Details: :doc:`usage`.
 
 Where is the end-to-end guide?
@@ -80,6 +83,39 @@ How do I configure Hugging Face for ``run``?
 Set ``huggingface_api_key`` and ``huggingface_model_endpoints`` in TOML or
 ``WORDWENDING_*`` env vars. See :doc:`configuration` and
 :doc:`/runbook/huggingface_setup`.
+
+How do I spin Hugging Face endpoints up and down?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**Spec 0004 Phase 10 is NOT COMPLETE** — lifecycle CLI is ops scaffolding only.
+
+Preferred path:
+
+.. code-block:: bash
+
+   wordwending endpoints up [--runner olmocr] [--runner kraken]
+   wordwending endpoints status [--runner RUNNER]
+   wordwending endpoints down [--runner RUNNER]            # pause (default)
+   wordwending endpoints down [--runner RUNNER] --delete   # destroy remote
+
+``up`` and ``status`` pause endpoints idle longer than
+``huggingface_endpoint_idle_minutes`` before ensuring fresh sessions. Catalog
+entries configure Hugging Face scale-to-zero; the local ledger at
+``huggingface_endpoint_ledger_path`` (default
+``~/.config/wordwending/endpoint-session-ledger.json``) tracks
+``last_used_at_utc`` and the idle watchdog **pauses only** (never auto-deletes).
+
+For a single ``run`` or ``bakeoff`` without a separate ``endpoints up``:
+
+.. code-block:: bash
+
+   wordwending run ... --ensure-endpoints
+   wordwending bakeoff ... --ensure-endpoints
+
+Replace default catalog placeholders (``repository``, immutable ``revision``,
+``namespace``, hardware) before live deployment. Secrets live only in
+``huggingface_api_key``. The Hugging Face ``hf endpoints`` CLI remains an
+escape hatch — see :doc:`/runbook/huggingface_setup`.
 
 How do I change output format?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
