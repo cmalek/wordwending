@@ -53,15 +53,6 @@ def profile() -> MetricProfile:
     return MetricProfile.model_validate_json(_PROFILE_PATH.read_text(encoding="utf-8"))
 
 
-def _provenance(*, runner_id: str = "olmocr") -> ObjectProvenance:
-    """Return valid single-page object provenance."""
-    return ObjectProvenance(
-        source_page_id=_PAGE_ID,
-        witness_ids=["wit-1"],
-        runner_ids=[runner_id],
-    )
-
-
 def _box(x0: float, y0: float, x1: float, y1: float) -> BoundingBox:
     """Build one axis-aligned box in the fixture prepared-page space."""
     return BoundingBox(
@@ -73,11 +64,15 @@ def _box(x0: float, y0: float, x1: float, y1: float) -> BoundingBox:
     )
 
 
-def _prediction(*, text: str, runner_id: str) -> BundlePage:
+def _prediction(*, text: str, runner_id: str, page_id: str = _PAGE_ID) -> BundlePage:
     """Build one minimal BundlePage prediction for bake-off scoring."""
-    provenance = _provenance(runner_id=runner_id)
+    provenance = ObjectProvenance(
+        source_page_id=page_id,
+        witness_ids=["wit-1"],
+        runner_ids=[runner_id],
+    )
     return BundlePage(
-        page_id=_PAGE_ID,
+        page_id=page_id,
         page_number=1,
         prepared_page=PreparedPage(
             prepared_page_id="prepared-page-1",
@@ -100,7 +95,7 @@ def _prediction(*, text: str, runner_id: str) -> BundlePage:
                 runner_id=runner_id,
                 witness_kind="text",
                 artifact_path="witness.json",
-                page_id=_PAGE_ID,
+                page_id=page_id,
             )
         ],
         regions=[
@@ -283,6 +278,97 @@ def test_run_records_failure_without_score_families() -> None:
     assert cell.score_families is None
     assert cell.latency_ms == 5000.0
     assert cell.page_class == PageClass.NOTE_HEAVY
+
+
+def test_run_records_evaluation_exception_as_cell_failure() -> None:
+    """Scoring exceptions become per-cell failures instead of aborting the run."""
+    gold = _gold(reference="hello")
+    real_evaluation = EvaluationService()
+
+    class _SelectiveRaisingEvaluation:
+        """Raise for olmocr only so the matrix run can continue."""
+
+        def evaluate_page(
+            self,
+            prediction: BundlePage,
+            gold: GoldPageAnnotation,
+            profile: MetricProfile,
+        ) -> PageEvaluationSummary:
+            if prediction.witnesses[0].runner_id == "olmocr":
+                msg = "metric profile mismatch"
+                raise RuntimeError(msg)
+            return real_evaluation.evaluate_page(prediction, gold, profile)
+
+    invoker = RecordedBakeoffInvoker(
+        {
+            ("olmocr", _PAGE_ID): BakeoffInvocationOutcome(
+                prediction=_prediction(text="hello", runner_id="olmocr"),
+                latency_ms=10.0,
+            ),
+            ("kraken", _PAGE_ID): BakeoffInvocationOutcome(
+                prediction=_prediction(text="hello", runner_id="kraken"),
+                latency_ms=20.0,
+            ),
+        }
+    )
+    service = BakeoffService(
+        evaluation=_SelectiveRaisingEvaluation(),  # type: ignore[arg-type]
+        invoker=invoker,
+    )
+    request = BakeoffRequest(
+        candidates=default_bakeoff_candidates(),
+        pages=[
+            BakeoffPageCase(
+                page_id=_PAGE_ID,
+                page_class=PageClass.ORDINARY_PROSE,
+                gold=gold,
+            )
+        ],
+    )
+
+    matrix = service.run(request, profile())
+
+    assert len(matrix.cells) == 2
+    by_runner = {cell.runner_id: cell for cell in matrix.cells}
+    assert by_runner["olmocr"].failure is not None
+    assert "metric profile mismatch" in by_runner["olmocr"].failure
+    assert by_runner["olmocr"].score_families is None
+    assert by_runner["olmocr"].latency_ms == 10.0
+    assert by_runner["kraken"].failure is None
+    assert by_runner["kraken"].score_families is not None
+
+
+def test_load_recorded_manifest_rejects_prediction_page_id_mismatch(
+    tmp_path: Path,
+) -> None:
+    """Loaded prediction BundlePage.page_id must match the prediction ref."""
+    gold = _gold(reference="hello")
+    gold_path = tmp_path / "gold-page.json"
+    gold_path.write_text(gold.model_dump_json(), encoding="utf-8")
+    mismatched = _prediction(text="hello", runner_id="olmocr", page_id="other-page")
+    prediction_path = tmp_path / "olmocr-page.json"
+    prediction_path.write_text(mismatched.model_dump_json(), encoding="utf-8")
+    manifest = BakeoffManifest(
+        candidates=[BakeoffCandidate(runner_id="olmocr", license_placeholder="TBD")],
+        pages=[
+            {
+                "page_id": _PAGE_ID,
+                "page_class": PageClass.ORDINARY_PROSE,
+                "gold_path": gold_path.name,
+            }
+        ],
+        predictions=[
+            {
+                "runner_id": "olmocr",
+                "page_id": _PAGE_ID,
+                "prediction_path": prediction_path.name,
+                "latency_ms": 11.0,
+            }
+        ],
+    )
+
+    with pytest.raises(ValueError, match="prediction page_id"):
+        BakeoffService.load_recorded_manifest(manifest, bundle_root=tmp_path)
 
 
 def test_write_matrix_writes_bakeoff_matrix_v1_json(tmp_path: Path) -> None:

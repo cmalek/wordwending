@@ -187,7 +187,8 @@ class BakeoffService:
 
         Raises:
             FileNotFoundError: If a resolved gold or prediction path is missing.
-            ValueError: If gold ``page_id`` does not match the page ref.
+            ValueError: If gold or prediction ``page_id`` does not match the
+                corresponding manifest ref.
 
         """
         pages: list[BakeoffPageCase] = []
@@ -242,18 +243,23 @@ class BakeoffService:
             page_id=page.page_id,
         )
         if outcome.failure is not None or outcome.prediction is None:
-            return BakeoffMatrixCell(
-                runner_id=candidate.runner_id,
-                page_id=page.page_id,
-                page_class=page.page_class,
-                score_families=None,
+            return _cell_from_failure(
+                candidate,
+                page,
                 latency_ms=outcome.latency_ms,
                 failure=outcome.failure or "missing prediction",
-                license_placeholder=candidate.license_placeholder,
-                cost_placeholder=candidate.cost_placeholder,
-                operability_placeholder=candidate.operability_placeholder,
             )
-        summary = self._evaluation.evaluate_page(outcome.prediction, page.gold, profile)
+        try:
+            summary = self._evaluation.evaluate_page(
+                outcome.prediction, page.gold, profile
+            )
+        except Exception as exc:  # noqa: BLE001 - isolate scoring failures per cell
+            return _cell_from_failure(
+                candidate,
+                page,
+                latency_ms=outcome.latency_ms,
+                failure=f"evaluation failed: {exc}",
+            )
         return BakeoffMatrixCell(
             runner_id=candidate.runner_id,
             page_id=page.page_id,
@@ -265,6 +271,41 @@ class BakeoffService:
             cost_placeholder=candidate.cost_placeholder,
             operability_placeholder=candidate.operability_placeholder,
         )
+
+
+def _cell_from_failure(
+    candidate: BakeoffCandidate,
+    page: BakeoffPageCase,
+    *,
+    latency_ms: float | None,
+    failure: str,
+) -> BakeoffMatrixCell:
+    """
+    Build a matrix cell that records a per-cell failure without scores.
+
+    Args:
+        candidate: Runner candidate with deferred scoring placeholders.
+        page: Held-out page case for this cell.
+
+    Keyword Args:
+        latency_ms: Optional latency from the invoker.
+        failure: Human-readable failure message.
+
+    Returns:
+        Matrix cell with ``score_families`` unset and ``failure`` set.
+
+    """
+    return BakeoffMatrixCell(
+        runner_id=candidate.runner_id,
+        page_id=page.page_id,
+        page_class=page.page_class,
+        score_families=None,
+        latency_ms=latency_ms,
+        failure=failure,
+        license_placeholder=candidate.license_placeholder,
+        cost_placeholder=candidate.cost_placeholder,
+        operability_placeholder=candidate.operability_placeholder,
+    )
 
 
 def _resolve_against_root(bundle_root: Path, path_str: str) -> Path:
@@ -301,6 +342,7 @@ def _outcome_from_prediction_ref(
 
     Raises:
         FileNotFoundError: If the prediction path is missing when required.
+        ValueError: If prediction ``page_id`` does not match the prediction ref.
 
     """
     if prediction_ref.failure is not None:
@@ -312,6 +354,12 @@ def _outcome_from_prediction_ref(
     prediction = BundlePage.model_validate_json(
         prediction_path.read_text(encoding="utf-8")
     )
+    if prediction.page_id != prediction_ref.page_id:
+        msg = (
+            f"prediction page_id {prediction.page_id!r} does not match "
+            f"manifest page_id {prediction_ref.page_id!r}"
+        )
+        raise ValueError(msg)
     return BakeoffInvocationOutcome(
         prediction=prediction,
         latency_ms=prediction_ref.latency_ms,
