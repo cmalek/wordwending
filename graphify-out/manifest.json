@@ -730,13 +730,13 @@
     "semantic_hash": ""
   },
   "tests/fixtures/export_models/document-bundle-v1.json": {
-    "mtime": 1785859301.1553173,
-    "ast_hash": "d97f519431d784ffbf9fe1757379321e",
+    "mtime": 1786145833.4912467,
+    "ast_hash": "27319cfc1a52241fd308c3f76c82b910",
     "semantic_hash": ""
   },
   "tests/fixtures/export_models/document-bundle-v1.schema.json": {
-    "mtime": 1785859301.1557033,
-    "ast_hash": "485ce2790fd789d4059fa6315d6b9c19",
+    "mtime": 1786145833.4904373,
+    "ast_hash": "462d921e0c17503145a0a581269cd0f7",
     "semantic_hash": ""
   },
   "tests/fixtures/export_models/rag-document-v1.json": {
@@ -1230,13 +1230,13 @@
     "semantic_hash": ""
   },
   "tests/test_assemble_manifest.py": {
-    "mtime": 1786145601.811332,
-    "ast_hash": "f1fcd1742b3cafbbe2c116729778dc55",
+    "mtime": 1786145936.1753948,
+    "ast_hash": "089b2124c8a827c552d8306875b20f76",
     "semantic_hash": ""
   },
   "wordwending/services/assemble_manifest.py": {
-    "mtime": 1786145601.8114355,
-    "ast_hash": "728dde18d6d2aebf6a9a1c97eaa7c65f",
+    "mtime": 1786145861.525127,
+    "ast_hash": "b08642bdd463ff7d2b478941cb915785",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-08-07-hands-off-operator-path.md": {

@@ -388,7 +388,8 @@
       },
       "review_event_ids": [
         "evt-page-0001-1"
-      ]
+      ],
+      "graph_revision": "graph-v0"
     },
     {
       "page_id": "page-0002",
@@ -638,7 +639,8 @@
       },
       "review_event_ids": [
         "evt-page-0002-1"
-      ]
+      ],
+      "graph_revision": "graph-v0"
     }
   ],
   "evaluation_summary": {

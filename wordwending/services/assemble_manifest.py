@@ -66,7 +66,6 @@ class AssembleManifestBuilder:
         page_runner_artifacts: dict[str, dict[str, list[tuple[str, str]]]] = (
             defaultdict(lambda: defaultdict(list))
         )
-        batches_seen = 0
         for run_dir in run_dirs:
             batches_dir = run_dir / "batches"
             if batches_dir.is_dir():
@@ -74,12 +73,12 @@ class AssembleManifestBuilder:
             else:
                 batch_paths = []
             if not batch_paths:
-                continue
+                msg = f"no runner batch JSON found under run_dir {run_dir}/batches/"
+                raise ValueError(msg)
             for batch_path in batch_paths:
                 batch = RunnerExecutionBatch.model_validate_json(
                     batch_path.read_text(encoding="utf-8")
                 )
-                batches_seen += 1
                 if batch.result_status is BatchResultStatus.FAILED:
                     continue
                 self._ingest_batch(
@@ -89,9 +88,6 @@ class AssembleManifestBuilder:
                     page_runner_artifacts=page_runner_artifacts,
                 )
 
-        if batches_seen == 0:
-            msg = "no runner batch JSON found under run_dirs batches/"
-            raise ValueError(msg)
         if not page_runner_artifacts:
             msg = "no succeeded or partial batches produced page witnesses"
             raise ValueError(msg)
@@ -147,7 +143,8 @@ class AssembleManifestBuilder:
             page_runner_artifacts: Accumulator of page → runner → artifact refs.
 
         Raises:
-            ValueError: When an artifact path cannot be resolved under ``run_dir``.
+            ValueError: When an artifact path cannot be resolved under ``run_dir``,
+                or when ``batch_item_ids`` reference an unknown ``item_id``.
 
         Side Effects:
             Copies witness files under ``bundle_root/runs/<run_id>/``.
@@ -174,7 +171,11 @@ class AssembleManifestBuilder:
                     continue
                 item = items_by_id.get(item_id)
                 if item is None:
-                    continue
+                    msg = (
+                        f"unknown batch_item_id {item_id!r} in output_artifacts "
+                        f"for batch {batch.batch_id}"
+                    )
+                    raise ValueError(msg)
                 page_runner_artifacts[item.source_page_id][runner_id].append(
                     (artifact.artifact_id, dest_posix)
                 )
@@ -240,6 +241,7 @@ def _raw_witness_ref(
     if not artifacts:
         msg = f"page {page_id} has zero witnesses for runner {runner_id}"
         raise ValueError(msg)
+    # Single artifact → use its artifact_id; multiple → "{runner_id}-{page_id}".
     witness_id = artifacts[0][0] if len(artifacts) == 1 else f"{runner_id}-{page_id}"
     return RawWitnessRef(
         witness_id=witness_id,
