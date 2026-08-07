@@ -100,7 +100,7 @@ Prefer cohesive, human-comprehensible classes over loose function collections, e
 References:
 - `RunnerExecutionOrchestrator` in `wordwending/services/runner_execution.py` — per-run orchestration with mutable batch/throughput state, driving stateless collaborators like `RunnerBatchPlanner` and `RunnerInputPackager`
 - `MergeOrchestrator` in `wordwending/services/merge.py` — per-page mutable merge state and step runner, driving stateless collaborators like `TextNormalizer`
-- `AssembleOrchestrator` lands in Task A3 (not yet present)
+- `AssembleOrchestrator` in `wordwending/services/assemble.py` — adapt → merge → document-bundle write
 
 ## Documentation Contract (Required)
 
