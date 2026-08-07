@@ -16,7 +16,7 @@ from rich.table import Table
 
 import wordwending
 
-from ..exc import ConfigurationError
+from ..exc import ConfigurationError, EndpointLifecycleError
 from ..models import (
     BundlePage,
     ChecksumVerificationStatus,
@@ -55,7 +55,7 @@ from ..services.runner_packaging import RunnerInputPackager
 from ..services.source_acquisition import SourceAcquisitionService
 from ..services.witness_adaptation import WitnessAdaptationService
 from ..settings import Settings
-from .endpoints import endpoints
+from .endpoints import endpoints, ensure_and_overlay_settings
 from .review import review
 from .utils import console, print_error, print_info
 
@@ -589,6 +589,14 @@ class _PreparedInputsManifest(BaseModel):
     is_flag=True,
     help="Bypass the resume ledger and re-run completed batches.",
 )
+@click.option(
+    "--ensure-endpoints",
+    is_flag=True,
+    help=(
+        "Ensure the hosted Inference Endpoint for this runner is ready and "
+        "overlay its HTTPS URL onto in-process settings."
+    ),
+)
 @click.pass_context
 def run_runner(  # noqa: PLR0913, PLR0917
     ctx: click.Context,
@@ -600,6 +608,7 @@ def run_runner(  # noqa: PLR0913, PLR0917
     run_id: str,
     document_id: str,
     force: bool,
+    ensure_endpoints: bool,
 ) -> None:
     """
     Execute prepared artifacts against one hosted runner (olmOCR or kraken).
@@ -614,10 +623,14 @@ def run_runner(  # noqa: PLR0913, PLR0917
         run_id: Execution run identifier.
         document_id: Document identifier under processing.
         force: When ``True``, bypass the resume ledger and re-run batches.
+        ensure_endpoints: When ``True``, ensure the runner endpoint is ready
+            and overlay its HTTPS URL onto in-process settings.
 
     Side Effects:
         Writes runner inputs, batch records, witnesses, throughput JSON, and
         updates ``bundle_root/runner-resume-ledger.json`` for completed batches.
+        When ``ensure_endpoints`` is set, may create/resume remote endpoints and
+        rewrite the session ledger.
 
     Raises:
         click.ClickException: When inputs or settings fail validation.
@@ -642,49 +655,27 @@ def run_runner(  # noqa: PLR0913, PLR0917
         raise click.ClickException(str(exc)) from exc
 
     settings: Settings = ctx.obj["settings"]
-    api_key = settings.huggingface_api_key
-    token = api_key.get_secret_value() if api_key is not None else None
-    if not token:
-        msg = "missing settings value huggingface_api_key"
-        raise click.ClickException(msg)
-    endpoint_url = settings.huggingface_model_endpoints.get(
-        execution_policy.endpoint.endpoint_key
+    if ensure_endpoints:
+        settings = _overlay_ensure_endpoints(ctx, settings, [runner.runner_id])
+    token = _huggingface_token(settings)
+    endpoint_url = _resolve_hosted_endpoint_url(
+        settings,
+        runner_id=runner.runner_id,
+        endpoint_key=execution_policy.endpoint.endpoint_key,
     )
-    if endpoint_url is None:
-        msg = (
-            "missing Hugging Face endpoint for "
-            f"{execution_policy.endpoint.endpoint_key}"
-        )
-        raise click.ClickException(msg)
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-    client = httpx.Client()
-    try:
-        hosted_runner = runner_cls(
-            runner=runner,
-            policy=execution_policy,
-            endpoint_url=str(endpoint_url),
-            token=token,
-            client=client,
-        )
-        service = RunnerExecutionService(
-            RunnerBatchPlanner(),
-            RunnerInputPackager(),
-            hosted_runner,
-        )
-        batches, summary = service.run(
-            run_id,
-            document_id,
-            manifest.artifacts,
-            bundle_root,
-            output_dir,
-            force=force,
-        )
-    except (OSError, ValidationError, ValueError, ConfigurationError) as exc:
-        raise click.ClickException(str(exc)) from exc
-    finally:
-        client.close()
-
+    batches, summary = _invoke_hosted_run(
+        runner_cls=runner_cls,
+        runner=runner,
+        execution_policy=execution_policy,
+        endpoint_url=endpoint_url,
+        token=token,
+        run_id=run_id,
+        document_id=document_id,
+        artifacts=manifest.artifacts,
+        bundle_root=bundle_root,
+        output_dir=output_dir,
+        force=force,
+    )
     click.echo(f"batches: {len(batches)}")
     click.echo(f"failed_items: {summary.failed_item_count}")
     click.echo(f"items_per_second: {summary.items_per_second:.4f}")
@@ -860,11 +851,22 @@ def inspect_bundle(bundle_root: Path) -> None:
     type=click.Path(file_okay=False, path_type=Path),
     help="Directory that will receive bakeoff-matrix-v1.json.",
 )
-def bakeoff_matrix(
+@click.option(
+    "--ensure-endpoints",
+    is_flag=True,
+    help=(
+        "Ensure catalogued real bakeoff candidates (olmocr/kraken) are ready "
+        "and overlay HTTPS URLs onto in-process settings."
+    ),
+)
+@click.pass_context
+def bakeoff_matrix(  # noqa: PLR0913, PLR0917
+    ctx: click.Context,
     bundle_root: Path,
     manifest: Path,
     profile: Path,
     output_dir: Path,
+    ensure_endpoints: bool,
 ) -> None:
     """
     Score recorded candidate predictions into bakeoff-matrix-v1.json.
@@ -874,13 +876,18 @@ def bakeoff_matrix(
     scoring and full held-out corpus deferred).
 
     Args:
+        ctx: Click context object.
         bundle_root: Root for relative gold and prediction paths.
         manifest: BakeoffManifest JSON describing candidates and recordings.
         profile: MetricProfile JSON for EvaluationService.
         output_dir: Directory for the written matrix artifact.
+        ensure_endpoints: When ``True``, ensure catalogued real candidates and
+            overlay HTTPS URLs onto in-process settings before scoring.
 
     Side Effects:
-        Writes ``bakeoff-matrix-v1.json`` under ``output_dir``.
+        Writes ``bakeoff-matrix-v1.json`` under ``output_dir``. When
+        ``ensure_endpoints`` is set, may create/resume remote endpoints and
+        rewrite the session ledger.
 
     Raises:
         click.ClickException: When inputs fail validation or I/O fails.
@@ -890,6 +897,8 @@ def bakeoff_matrix(
         bakeoff_manifest = BakeoffManifest.model_validate_json(
             manifest.read_text(encoding="utf-8")
         )
+        if ensure_endpoints:
+            _ensure_catalogued_bakeoff_endpoints(ctx, bakeoff_manifest)
         metric_profile = MetricProfile.model_validate_json(
             profile.read_text(encoding="utf-8")
         )
@@ -902,13 +911,198 @@ def bakeoff_matrix(
         )
         matrix = service.run(request, metric_profile)
         matrix_path = service.write_matrix(matrix, output_dir)
-    except (OSError, ValidationError, ValueError, FileNotFoundError) as exc:
+    except (
+        OSError,
+        ValidationError,
+        ValueError,
+        FileNotFoundError,
+        ConfigurationError,
+        EndpointLifecycleError,
+    ) as exc:
         raise click.ClickException(str(exc)) from exc
 
     click.echo(f"matrix: {matrix_path}")
     click.echo(f"cells: {len(matrix.cells)}")
     click.echo(f"filename: {BAKEOFF_MATRIX_FILENAME}")
     click.echo("phase_5: NOT COMPLETE")
+
+
+def _overlay_ensure_endpoints(
+    ctx: click.Context,
+    settings: Settings,
+    runner_ids: list[str],
+) -> Settings:
+    """
+    Ensure runners and store an in-process Settings URL overlay on ``ctx``.
+
+    Args:
+        ctx: Click context carrying settings.
+        settings: Effective settings before overlay.
+        runner_ids: Catalogued runner identifiers to ensure.
+
+    Returns:
+        Settings copy with overlaid HTTPS endpoint URLs.
+
+    Raises:
+        click.ClickException: When configuration or lifecycle ensure fails.
+
+    """
+    try:
+        overlaid = ensure_and_overlay_settings(settings, runner_ids)
+    except (ConfigurationError, EndpointLifecycleError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    ctx.obj["settings"] = overlaid
+    return overlaid
+
+
+def _ensure_catalogued_bakeoff_endpoints(
+    ctx: click.Context,
+    bakeoff_manifest: BakeoffManifest,
+) -> None:
+    """
+    Ensure catalogued real bakeoff candidates and overlay HTTPS URLs.
+
+    Fake / non-catalog runners in the manifest are skipped.
+
+    Args:
+        ctx: Click context carrying settings.
+        bakeoff_manifest: Parsed bakeoff manifest with candidate runner ids.
+
+    Raises:
+        click.ClickException: When configuration or lifecycle ensure fails.
+
+    """
+    settings: Settings = ctx.obj["settings"]
+    catalog = {entry.runner_id for entry in settings.effective_endpoint_catalog()}
+    runner_ids = [
+        candidate.runner_id
+        for candidate in bakeoff_manifest.candidates
+        if candidate.runner_id in catalog
+    ]
+    _overlay_ensure_endpoints(ctx, settings, runner_ids)
+
+
+def _huggingface_token(settings: Settings) -> str:
+    """
+    Return the Hugging Face API token from settings.
+
+    Args:
+        settings: Effective application settings.
+
+    Returns:
+        Secret token string for hosted inference.
+
+    Raises:
+        click.ClickException: When ``huggingface_api_key`` is missing.
+
+    """
+    api_key = settings.huggingface_api_key
+    token = api_key.get_secret_value() if api_key is not None else None
+    if not token:
+        msg = "missing settings value huggingface_api_key"
+        raise click.ClickException(msg)
+    return token
+
+
+def _resolve_hosted_endpoint_url(
+    settings: Settings,
+    *,
+    runner_id: str,
+    endpoint_key: str,
+) -> str:
+    """
+    Resolve a hosted endpoint URL from overlay or configured endpoint key.
+
+    Prefers an in-process overlay keyed by ``runner_id``, then falls back to
+    the policy ``endpoint_key``.
+
+    Args:
+        settings: Effective settings possibly carrying a URL overlay.
+
+    Keyword Args:
+        runner_id: Stable hosted runner identifier.
+        endpoint_key: Policy endpoint key into ``huggingface_model_endpoints``.
+
+    Returns:
+        HTTPS endpoint URL string.
+
+    Raises:
+        click.ClickException: When neither key is present in settings.
+
+    """
+    endpoint_url = settings.huggingface_model_endpoints.get(runner_id)
+    if endpoint_url is None:
+        endpoint_url = settings.huggingface_model_endpoints.get(endpoint_key)
+    if endpoint_url is None:
+        msg = f"missing Hugging Face endpoint for {endpoint_key}"
+        raise click.ClickException(msg)
+    return str(endpoint_url)
+
+
+def _invoke_hosted_run(  # noqa: PLR0913
+    *,
+    runner_cls: type,
+    runner: RunnerReference,
+    execution_policy: RunnerExecutionPolicy,
+    endpoint_url: str,
+    token: str,
+    run_id: str,
+    document_id: str,
+    artifacts: list[PreparedArtifactRef],
+    bundle_root: Path,
+    output_dir: Path,
+    force: bool,
+) -> tuple:
+    """
+    Construct a hosted runner and execute one run.
+
+    Keyword Args:
+        runner_cls: Constructable hosted PassRunner class.
+        runner: Runner reference for the invocation.
+        execution_policy: Batching and endpoint policy.
+        endpoint_url: Ready HTTPS endpoint URL.
+        token: Hugging Face API token.
+        run_id: Execution run identifier.
+        document_id: Document identifier under processing.
+        artifacts: Prepared artifact refs to execute.
+        bundle_root: Bundle root containing prepared bytes.
+        output_dir: Destination directory for runner outputs.
+        force: When ``True``, bypass the resume ledger.
+
+    Returns:
+        Tuple of ``(batches, summary)`` from ``RunnerExecutionService.run``.
+
+    Raises:
+        click.ClickException: When execution fails validation or I/O.
+
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+    client = httpx.Client()
+    try:
+        hosted_runner = runner_cls(
+            runner=runner,
+            policy=execution_policy,
+            endpoint_url=endpoint_url,
+            token=token,
+            client=client,
+        )
+        service = RunnerExecutionService(
+            RunnerBatchPlanner(),
+            RunnerInputPackager(),
+            hosted_runner,
+        )
+        return service.run(
+            run_id,
+            document_id,
+            artifacts,
+            bundle_root,
+            output_dir,
+            force=force,
+        )
+    except (OSError, ValidationError, ValueError, ConfigurationError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    finally:
+        client.close()
 
 
 def _resolve_export_summary(bundle_root: Path) -> ExportSummary | None:

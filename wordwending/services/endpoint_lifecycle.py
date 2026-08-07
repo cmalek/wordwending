@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence  # noqa: TC003
+from collections.abc import Mapping, Sequence  # noqa: TC003
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -127,6 +127,32 @@ class EndpointLifecycleService:
             resumed_runner_ids=resumed,
             created_runner_ids=created,
         )
+
+    @staticmethod
+    def overlay_endpoints(
+        settings: Settings,
+        urls: Mapping[str, str],
+    ) -> Settings:
+        """
+        Return a Settings copy with HTTPS endpoint URLs overlaid by runner id.
+
+        Merges ``urls`` into ``huggingface_model_endpoints`` keyed by
+        ``runner_id``. Does not write ephemeral URLs to disk.
+
+        Args:
+            settings: Base settings to copy.
+            urls: Mapping of catalogued ``runner_id`` to ready HTTPS URL.
+
+        Returns:
+            New Settings instance with overlaid endpoint URLs.
+
+        """
+        merged = {
+            key: str(value)
+            for key, value in settings.huggingface_model_endpoints.items()
+        }
+        merged.update({runner_id: str(url) for runner_id, url in urls.items()})
+        return settings.model_copy(update={"huggingface_model_endpoints": merged})
 
     def down(
         self,

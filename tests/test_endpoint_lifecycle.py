@@ -384,5 +384,24 @@ def test_status_none_means_all_catalogued(tmp_path: Path) -> None:
     assert [row.runner_id for row in report.rows] == ["olmocr", "kraken"]
 
 
+def test_overlay_endpoints_merges_runner_urls_immutably() -> None:
+    base = Settings(
+        huggingface_model_endpoints={
+            "olmocr-production": "https://example.endpoints.huggingface.cloud/v1",
+        }
+    )
+    overlaid = EndpointLifecycleService.overlay_endpoints(
+        base,
+        {"olmocr": "https://ww-olmocr.endpoints.huggingface.cloud"},
+    )
+    assert "olmocr" not in base.huggingface_model_endpoints
+    assert str(overlaid.huggingface_model_endpoints["olmocr"]) == (
+        "https://ww-olmocr.endpoints.huggingface.cloud"
+    )
+    assert str(overlaid.huggingface_model_endpoints["olmocr-production"]).startswith(
+        "https://example.endpoints.huggingface.cloud"
+    )
+
+
 def test_fake_satisfies_endpoint_client_protocol() -> None:
     assert isinstance(FakeHfEndpointClient(), EndpointClient)

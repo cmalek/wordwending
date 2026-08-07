@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence  # noqa: TC003
 from typing import TYPE_CHECKING
 
 import click
@@ -41,6 +42,39 @@ def build_endpoint_lifecycle_service(settings: Settings) -> EndpointLifecycleSer
         client=client,
         ledger=ledger,
         settings=settings,
+    )
+
+
+def ensure_and_overlay_settings(
+    settings: Settings,
+    runner_ids: Sequence[str],
+) -> Settings:
+    """
+    Pause idle endpoints, ensure runners ready, and overlay HTTPS URLs.
+
+    Args:
+        settings: Effective application settings for this invocation.
+        runner_ids: Catalogued runner identifiers to ensure.
+
+    Returns:
+        Settings copy with ``huggingface_model_endpoints`` overlaid by
+        ready HTTPS URLs keyed by ``runner_id``.
+
+    Raises:
+        ConfigurationError: When the HF API key is missing.
+        EndpointLifecycleError: When ensure fails for any requested runner.
+
+    Side Effects:
+        May pause idle endpoints, create/resume remote endpoints, and rewrite
+        the session ledger. Does not persist ephemeral URLs into config files.
+
+    """
+    service = build_endpoint_lifecycle_service(settings)
+    service.pause_idle()
+    ensured = service.ensure_up(list(runner_ids))
+    return EndpointLifecycleService.overlay_endpoints(
+        settings,
+        ensured.urls_by_runner_id,
     )
 
 

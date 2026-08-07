@@ -4,18 +4,27 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
+from tests.test_cli_commands import _run_cli_args
 from wordwending.cli.cli import cli
 from wordwending.exc import EndpointLifecycleError
+from wordwending.models.bakeoff import (
+    BAKEOFF_MATRIX_FILENAME,
+    BakeoffManifest,
+    default_bakeoff_candidates,
+)
 from wordwending.models.endpoint_lifecycle import (
     EndpointDownResult,
     EndpointEnsureResult,
     EndpointStatusReport,
     EndpointStatusRow,
 )
+from wordwending.models.ocr import PageClass
+from wordwending.models.runner_execution import RunnerThroughputSummary
 from wordwending.settings import Settings
 
 
@@ -224,3 +233,99 @@ def test_endpoints_unknown_runner_exits_nonzero(
 
     assert result.exit_code != 0
     assert "unknown endpoint runner id" in result.output
+
+
+@patch("wordwending.cli.cli.RunnerExecutionService.run")
+@patch("wordwending.services.pass_runner_registry.HuggingFaceOlmocrRunner")
+def test_run_ensure_endpoints_overlays_url_before_invoke(
+    mock_olmocr_cls,
+    mock_run,
+    runner,
+    tmp_path: Path,
+    fake_service: FakeEndpointLifecycleService,
+) -> None:
+    """``--ensure-endpoints`` overlays HTTPS URL before hosted runner construction."""
+    overlay_url = "https://ww-olmocr.endpoints.huggingface.cloud"
+    mock_run.return_value = (
+        [],
+        RunnerThroughputSummary(
+            measured_item_count=0,
+            failed_item_count=0,
+            measured_duration_seconds=0.0,
+            items_per_second=0.0,
+        ),
+    )
+    mock_olmocr_cls.return_value = mock_olmocr_cls
+    configured = Settings(huggingface_api_key="hf_test_token")
+    with (
+        patch("wordwending.cli.cli.Settings", return_value=configured),
+        patch(
+            "wordwending.cli.endpoints.build_endpoint_lifecycle_service",
+            return_value=fake_service,
+        ),
+    ):
+        result = runner.invoke(
+            cli,
+            [*_run_cli_args(tmp_path, runner_id="olmocr"), "--ensure-endpoints"],
+        )
+
+    assert result.exit_code == 0, result.output
+    assert fake_service.pause_idle_calls == 1
+    assert fake_service.ensure_up_calls == [["olmocr"]]
+    mock_olmocr_cls.assert_called_once()
+    assert mock_olmocr_cls.call_args.kwargs["endpoint_url"] == overlay_url
+
+
+def test_bakeoff_ensure_endpoints_fail_closed_on_lifecycle_error(
+    runner,
+    tmp_path: Path,
+    configured_settings: Settings,
+) -> None:
+    """``bakeoff --ensure-endpoints`` aborts when lifecycle ensure fails."""
+    profile_src = Path("tests/fixtures/evaluation/metric-profile-v1.json")
+    profile_path = tmp_path / "profile.json"
+    profile_path.write_text(profile_src.read_text(encoding="utf-8"), encoding="utf-8")
+    gold_path = tmp_path / "gold-page.json"
+    gold_path.write_text("{}", encoding="utf-8")
+    manifest = BakeoffManifest(
+        candidates=default_bakeoff_candidates(),
+        pages=[
+            {
+                "page_id": "page-1",
+                "page_class": PageClass.ORDINARY_PROSE,
+                "gold_path": gold_path.name,
+            }
+        ],
+        predictions=[],
+    )
+    manifest_path = tmp_path / "bakeoff-manifest.json"
+    manifest_path.write_text(manifest.model_dump_json(), encoding="utf-8")
+    output_dir = tmp_path / "out"
+    exploding = ExplodingEndpointLifecycleService()
+
+    with (
+        patch("wordwending.cli.cli.Settings", return_value=configured_settings),
+        patch(
+            "wordwending.cli.endpoints.build_endpoint_lifecycle_service",
+            return_value=exploding,
+        ),
+    ):
+        result = runner.invoke(
+            cli,
+            [
+                "bakeoff",
+                "--bundle-root",
+                str(tmp_path),
+                "--manifest",
+                str(manifest_path),
+                "--profile",
+                str(profile_path),
+                "--output-dir",
+                str(output_dir),
+                "--ensure-endpoints",
+            ],
+        )
+
+    assert result.exit_code != 0
+    assert "unknown endpoint runner id" in result.output
+    assert not (output_dir / BAKEOFF_MATRIX_FILENAME).exists()
