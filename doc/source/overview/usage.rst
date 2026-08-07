@@ -149,6 +149,22 @@ overlay paths, and ``exports/*`` artifact paths when export has run.
 
    wordwending inspect-bundle --bundle-root ./bundle-root
 
+bakeoff
+^^^^^^^
+
+Score **recorded** candidate predictions into ``bakeoff-matrix-v1.json`` using
+``EvaluationService`` metrics. Schema targets real candidates (``olmocr`` +
+``kraken``). Spec 0004 **Phase 5 is NOT COMPLETE** — cost/license/operability
+scoring and full held-out corpus remain deferred.
+
+.. code-block:: bash
+
+   wordwending bakeoff \
+     --bundle-root ./bakeoff-root \
+     --manifest bakeoff-manifest.json \
+     --profile metric-profile-v1.json \
+     --output-dir ./bakeoff-out
+
 review apply
 ^^^^^^^^^^^^
 
@@ -195,7 +211,10 @@ What is not a CLI yet
 - Standalone ``merge`` (merge runs inside ``assemble``)
 - Auto-generated ``AssembleManifest`` from prepare/run output trees
 - Single orchestrated prepare → run → assemble → review → export run
-- Phase 5 bake-off, Phase 6 PassRunner Protocol, Phase 10 operational hardening
+- Spec 0004 **Phase 5 NOT COMPLETE** (``bakeoff`` harness writes
+  ``bakeoff-matrix-v1.json`` from recorded predictions; cost/license/
+  operability scoring and full held-out corpus remain deferred)
+- Phase 6 PassRunner Protocol, Phase 10 operational hardening
 
 Those gaps are documented in :doc:`/runbook/from_source_to_markdown`.
 

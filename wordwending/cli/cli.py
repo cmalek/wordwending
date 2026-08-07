@@ -32,8 +32,10 @@ from ..models import (
     RunnerReference,
 )
 from ..models.assemble import AssembleManifest
+from ..models.bakeoff import BAKEOFF_MATRIX_FILENAME, BakeoffManifest
 from ..models.runner_execution import RunnerExecutionPolicy
 from ..services.assemble import DOCUMENT_BUNDLE_JSON, AssembleOrchestrator
+from ..services.bakeoff import BakeoffService
 from ..services.bundle_layout import BundleLayoutService
 from ..services.evaluation import EvaluationService
 from ..services.evaluation_cohorts import EvaluationCohortService
@@ -842,6 +844,82 @@ def inspect_bundle(bundle_root: Path) -> None:
             )
         _echo_page_flags(bundle_root, page_manifest.evaluation_flags_path)
     _echo_export_paths(bundle_root)
+
+
+@cli.command("bakeoff")
+@click.option(
+    "--bundle-root",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Filesystem root for relative gold and prediction paths.",
+)
+@click.option(
+    "--manifest",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="BakeoffManifest JSON with recorded predictions (offline harness).",
+)
+@click.option(
+    "--profile",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="MetricProfile JSON for EvaluationService scoring.",
+)
+@click.option(
+    "--output-dir",
+    required=True,
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Directory that will receive bakeoff-matrix-v1.json.",
+)
+def bakeoff_matrix(
+    bundle_root: Path,
+    manifest: Path,
+    profile: Path,
+    output_dir: Path,
+) -> None:
+    """
+    Score recorded candidate predictions into bakeoff-matrix-v1.json.
+
+    Thin offline CLI over :class:`~wordwending.services.bakeoff.BakeoffService`.
+    Spec 0004 Phase 5 remains **NOT COMPLETE** (cost/license/operability
+    scoring and full held-out corpus deferred).
+
+    Args:
+        bundle_root: Root for relative gold and prediction paths.
+        manifest: BakeoffManifest JSON describing candidates and recordings.
+        profile: MetricProfile JSON for EvaluationService.
+        output_dir: Directory for the written matrix artifact.
+
+    Side Effects:
+        Writes ``bakeoff-matrix-v1.json`` under ``output_dir``.
+
+    Raises:
+        click.ClickException: When inputs fail validation or I/O fails.
+
+    """
+    try:
+        bakeoff_manifest = BakeoffManifest.model_validate_json(
+            manifest.read_text(encoding="utf-8")
+        )
+        metric_profile = MetricProfile.model_validate_json(
+            profile.read_text(encoding="utf-8")
+        )
+        request, invoker = BakeoffService.load_recorded_manifest(
+            bakeoff_manifest, bundle_root=bundle_root
+        )
+        service = BakeoffService(
+            evaluation=EvaluationService(),
+            invoker=invoker,
+        )
+        matrix = service.run(request, metric_profile)
+        matrix_path = service.write_matrix(matrix, output_dir)
+    except (OSError, ValidationError, ValueError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(f"matrix: {matrix_path}")
+    click.echo(f"cells: {len(matrix.cells)}")
+    click.echo(f"filename: {BAKEOFF_MATRIX_FILENAME}")
+    click.echo("phase_5: NOT COMPLETE")
 
 
 def _resolve_export_summary(bundle_root: Path) -> ExportSummary | None:

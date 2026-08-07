@@ -182,7 +182,9 @@ for a representative page traveling end to end without hand-edited
 
 This is **not** a claim that Spec 0004 Phase 5 (candidate bake-off), Phase 6
 (PassRunner Protocol extract), or Phase 10 (operational hardening) are complete.
-Spec 0004 Phase 4's **coordinate-rich second-runner** bullet remains
+**Phase 5 is explicitly NOT COMPLETE**: the Wave F harness exists, but Spec exit
+criteria (cost/license/operability scoring and full held-out corpus) remain
+deferred. Spec 0004 Phase 4's **coordinate-rich second-runner** bullet remains
 **deferred**: kraken on the spine uses conservative/text-first geometry until
 Phase 7 alignment exit matures coordinate-rich merge.
 
@@ -197,8 +199,13 @@ These pieces are planned but **not** available or **not complete** today:
   the CLI does not scan prepare/run output trees automatically
 - **Full DocumentRunOrchestrator** — prepare → run → assemble → review → export
   is staged by separate commands, not one orchestrated run id
-- **Phase 5 bake-off** — reproducible candidate matrix and held-out comparison
-  (Wave F; do not mark Phase 5 COMPLETE yet)
+- **Phase 5 bake-off — NOT COMPLETE** — Wave F ships an offline harness
+  (``BakeoffService`` / ``wordwending bakeoff``) that writes
+  ``bakeoff-matrix-v1.json`` for real schema candidates (``olmocr`` +
+  ``kraken``) using ``EvaluationService`` metrics plus latency/failure and
+  license/cost/operability **placeholders**. Deferred before any Phase 5
+  COMPLETE claim: cost/license/operability scoring, full corpus held-out
+  slices, and live bake-off evidence beyond recorded fixtures
 - **Phase 6 PassRunner Protocol** — common runner interface extracted after bake-off
   evidence (Wave G; Fake runners are test doubles only)
 - **Graph rebase / overlay → export** — ``review apply`` persists overlays, but

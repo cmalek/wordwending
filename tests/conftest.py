@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Chris Malek.
 """
 Test configuration and fixtures for the ai-coding project.
 
@@ -12,6 +13,14 @@ from unittest.mock import Mock
 import pytest
 from click.testing import CliRunner
 from rich.console import Console
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Register custom markers used by optional live/external tests."""
+    config.addinivalue_line(
+        "markers",
+        "integration: live Hugging Face / external endpoint tests",
+    )
 
 
 @pytest.fixture
