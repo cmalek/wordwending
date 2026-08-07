@@ -95,25 +95,29 @@ def test_adapt_page_builds_provisional_two_line_graph(tmp_path: Path) -> None:
 
 
 def test_adapt_page_stable_ids_across_rebuilds(tmp_path: Path) -> None:
-    """Same inputs produce identical region/line/span ids on rebuild."""
+    """
+    Two independent adapt_page calls yield identical ids and diplomatic texts.
+
+    ADR 0008 / A2 formula: ``{prepared_page_id}:r0``, ``:l{i}``, ``:s{i}``.
+    """
     witness_path = tmp_path / "witness.json"
     shutil.copy(_FIXTURE, witness_path)
     prepared = _prepared_page()
-    service = WitnessAdaptationService()
     space = _coordinate_space()
+    artifact_paths = [str(witness_path)]
 
-    first = service.adapt_page(
+    first = WitnessAdaptationService().adapt_page(
         prepared_page=prepared,
         witness_id="wit-1",
         runner_id="olmocr",
-        artifact_paths=[str(witness_path)],
+        artifact_paths=artifact_paths,
         coordinate_space=space,
     )
-    second = service.adapt_page(
+    second = WitnessAdaptationService().adapt_page(
         prepared_page=prepared,
         witness_id="wit-1",
         runner_id="olmocr",
-        artifact_paths=[str(witness_path)],
+        artifact_paths=artifact_paths,
         coordinate_space=space,
     )
 
@@ -126,6 +130,51 @@ def test_adapt_page_stable_ids_across_rebuilds(tmp_path: Path) -> None:
     assert [span.span_id for span in first.spans] == [
         span.span_id for span in second.spans
     ]
+    assert [span.text_diplomatic for span in first.spans] == [
+        span.text_diplomatic for span in second.spans
+    ]
+    assert [r.region_id for r in first.regions] == ["prepared-page-1:r0"]
+    assert [line.line_id for line in first.lines] == [
+        "prepared-page-1:l0",
+        "prepared-page-1:l1",
+    ]
+    assert [span.span_id for span in first.spans] == [
+        "prepared-page-1:s0",
+        "prepared-page-1:s1",
+    ]
+    assert [span.text_diplomatic for span in first.spans] == [
+        "Line one of diplomatic text.",
+        "Line two of diplomatic text.",
+    ]
+
+
+def test_adapt_page_span_ids_pair_with_assemble_gold(tmp_path: Path) -> None:
+    """Adapted span ids and texts match assemble gold-v1 target_object_ids."""
+    gold_path = Path(__file__).parent / "fixtures" / "assemble" / "gold-v1.json"
+    gold = json.loads(gold_path.read_text(encoding="utf-8"))
+    gold_page = gold["pages"][0]
+    gold_span_ids = [
+        annotation["target_object_id"] for annotation in gold_page["text_spans"]
+    ]
+    gold_texts = [
+        annotation["text_diplomatic"] for annotation in gold_page["text_spans"]
+    ]
+    coverage_ids = gold_page["coverage"][0]["target_object_ids"]
+
+    witness_path = tmp_path / "witness.json"
+    shutil.copy(_FIXTURE, witness_path)
+    page = WitnessAdaptationService().adapt_page(
+        prepared_page=_prepared_page(),
+        witness_id="wit-1",
+        runner_id="olmocr",
+        artifact_paths=[str(witness_path)],
+        coordinate_space=_coordinate_space(),
+    )
+
+    adapted_ids = [span.span_id for span in page.spans]
+    adapted_texts = [span.text_diplomatic for span in page.spans]
+    assert adapted_ids == gold_span_ids == coverage_ids
+    assert adapted_texts == gold_texts
 
 
 def test_adapt_page_rejects_empty_artifact_paths(tmp_path: Path) -> None:
