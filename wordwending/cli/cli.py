@@ -55,6 +55,7 @@ from ..services.runner_packaging import RunnerInputPackager
 from ..services.source_acquisition import SourceAcquisitionService
 from ..services.witness_adaptation import WitnessAdaptationService
 from ..settings import Settings
+from .endpoints import endpoints
 from .review import review
 from .utils import console, print_error, print_info
 
@@ -113,6 +114,7 @@ def cli(
 
 
 cli.add_command(review)
+cli.add_command(endpoints)
 
 
 @cli.command(name="version", help="Print some version info.")

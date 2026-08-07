@@ -15,6 +15,7 @@ Getting help
    wordwending run --help
    wordwending assemble --help
    wordwending review --help
+   wordwending endpoints --help
    wordwending export --help
 
 Command structure
@@ -201,6 +202,48 @@ for one page.
    wordwending review materialize \
      --bundle-root ./bundle-root \
      --page-id PAGE_ID
+
+endpoints up
+^^^^^^^^^^^^
+
+Ensure catalogued Hugging Face Inference Endpoints are ready and print HTTPS
+URLs. Requires ``huggingface_api_key`` (see :doc:`/overview/configuration`).
+``--runner`` may be repeated; omit it to target every catalogued runner
+(``olmocr``, ``kraken`` by default).
+
+Before ensuring endpoints, ``up`` calls the idle watchdog (``pause_idle``) as
+a safety net: runners idle longer than
+``huggingface_endpoint_idle_minutes`` are paused so stale sessions do not
+block fresh ensure operations. Spec 0004 **Phase 10 is NOT COMPLETE** — this
+is lifecycle CLI scaffolding only; full HF deploy/ops, quotas, cost controls,
+and corpus regression gates remain deferred.
+
+.. code-block:: bash
+
+   wordwending endpoints up [--runner olmocr] [--runner kraken]
+
+endpoints down
+^^^^^^^^^^^^^^
+
+Pause or delete catalogued endpoints and update the session ledger at
+``huggingface_endpoint_ledger_path`` (default
+``~/.config/wordwending/endpoint-session-ledger.json``). Pausing is the
+default; pass ``--delete`` to destroy remote endpoints instead.
+
+.. code-block:: bash
+
+   wordwending endpoints down [--runner RUNNER] [--delete]
+
+endpoints status
+^^^^^^^^^^^^^^^^
+
+Report remote Hugging Face status and ledger ``last_used_at_utc`` for
+catalogued runners. Like ``up``, ``status`` calls ``pause_idle`` first as a
+safety net for stale idle sessions.
+
+.. code-block:: bash
+
+   wordwending endpoints status [--runner RUNNER]
 
 export
 ^^^^^^
