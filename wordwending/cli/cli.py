@@ -32,7 +32,7 @@ from ..models import (
 )
 from ..models.assemble import AssembleManifest
 from ..models.runner_execution import RunnerExecutionPolicy
-from ..services.assemble import AssembleOrchestrator
+from ..services.assemble import DOCUMENT_BUNDLE_JSON, AssembleOrchestrator
 from ..services.bundle_layout import BundleLayoutService
 from ..services.evaluation import EvaluationService
 from ..services.evaluation_cohorts import EvaluationCohortService
@@ -735,8 +735,8 @@ def assemble_document(bundle_root: Path, manifest: Path) -> None:
         manifest: AssembleManifest JSON describing pages and witness refs.
 
     Side Effects:
-        Writes document and page manifests, graphs, witnesses, and images
-        under ``bundle_root``.
+        Writes document and page manifests, graphs, witnesses, images, and
+        ``document-bundle.json`` under ``bundle_root``.
 
     Raises:
         click.ClickException: When manifest validation or assemble fails.
@@ -765,6 +765,7 @@ def assemble_document(bundle_root: Path, manifest: Path) -> None:
     click.echo(f"document_id: {bundle.document_id}")
     click.echo(f"pages: {len(bundle.pages)}")
     click.echo(f"manifest: {bundle_root / 'manifest.json'}")
+    click.echo(f"document_bundle: {bundle_root / DOCUMENT_BUNDLE_JSON}")
 
 
 @cli.command("inspect-bundle")

@@ -287,6 +287,7 @@ def test_assemble_document_happy_path_writes_bundle_tree(tmp_path: Path) -> None
     assert any(ref.runner_id == "olmocr" for ref in bundle.run.runner_set)
 
     assert (bundle_root / "manifest.json").exists()
+    assert (bundle_root / "document-bundle.json").exists()
     assert (bundle_root / "pages" / "page-0001" / "graph" / "page_graph.json").exists()
     assert (bundle_root / "pages" / "page-0001" / "manifest.json").exists()
     witness_dir = bundle_root / "pages" / "page-0001" / "witnesses" / "text"

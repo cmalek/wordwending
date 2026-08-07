@@ -68,8 +68,9 @@ witness paths, then runs:
    wordwending assemble --bundle-root path/to/bundle-root --manifest path/to/manifest.json
 
 Paths inside the manifest are **relative posix strings** resolved against
-``--bundle-root``. After assemble, use ``inspect-bundle`` to verify the
-written tree:
+``--bundle-root``. After assemble, ``document-bundle.json`` at the bundle root
+is the loadable ``DocumentBundle`` input for ``wordwending export``; use
+``inspect-bundle`` to verify the written tree:
 
 .. code-block:: bash
 

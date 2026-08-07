@@ -33,6 +33,8 @@ from wordwending.services.witness_adaptation import (  # noqa: TC001
 
 #: Spec 0002 witness family used for olmOCR text artifacts under pages/.
 _TEXT_WITNESS_KIND = "text"
+#: Stable relative path for loadable DocumentBundle JSON at bundle root.
+DOCUMENT_BUNDLE_JSON = "document-bundle.json"
 
 
 class AssembleOrchestrator:
@@ -88,7 +90,9 @@ class AssembleOrchestrator:
 
         Side Effects:
             Writes Spec 0002 document-bundle tree under ``bundle_root`` via
-            ``BundleLayoutService.write_document_bundle``.
+            ``BundleLayoutService.write_document_bundle``, and writes loadable
+            ``DocumentBundle`` JSON at ``document-bundle.json`` under
+            ``bundle_root``.
 
         Keyword Args:
             bundle_root: Filesystem root for relative witness/image paths and
@@ -131,6 +135,11 @@ class AssembleOrchestrator:
             bundle_root,
             page_images=execution.page_images or None,
             witness_files=execution.witness_files or None,
+        )
+        bundle_json_path = bundle_root / DOCUMENT_BUNDLE_JSON
+        bundle_json_path.write_text(
+            bundle.model_dump_json(indent=2),
+            encoding="utf-8",
         )
         return bundle
 
