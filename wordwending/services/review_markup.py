@@ -15,6 +15,10 @@ from wordwending.models import (
     ReviewTask,
     ReviewTaskType,
 )
+from wordwending.services.merge_review import (
+    ADJUDICATION_ONLY,
+    merge_flag_review_dimension,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -821,6 +825,11 @@ class HumanMarkupService:
         """
         Route one flag's target ids into compatible or adjudication buckets.
 
+        Known Spec 0009 merge ``flag_type`` values override the evaluation
+        family dimension so misplaced merge flags still map to the correct
+        Spec 0005 packet. Types without a dimension packet collapse to
+        adjudication.
+
         Args:
             flag: Evaluation flag whose targets are classified.
             dimension: Family dimension that emitted the flag.
@@ -832,6 +841,17 @@ class HumanMarkupService:
             buckets: Mutable accumulator for grouped queue inputs.
 
         """
+        resolved = merge_flag_review_dimension(
+            flag.flag_type, family_dimension=dimension
+        )
+        if resolved is ADJUDICATION_ONLY:
+            buckets.needs_adjudication = True
+            buckets.adjudication_dimensions.add(dimension)
+            for object_id in flag.target_object_ids:
+                if object_id and object_id.strip():
+                    buckets.unknown.add(object_id)
+            return
+        dimension = resolved
         if not flag.target_object_ids:
             buckets.needs_adjudication = True
             buckets.adjudication_dimensions.add(dimension)

@@ -13,10 +13,7 @@ from wordwending.models import (
     BundlePage,
     DocumentBundle,
     DocumentEvaluationSummary,
-    EvaluationFlag,
     ExportSummary,
-    FlagSeverity,
-    MergeFlag,
     MergePageInput,
     MergePolicy,
     PassWitnessPage,
@@ -31,9 +28,13 @@ from wordwending.models.assemble import (  # noqa: TC001
 )
 from wordwending.services.bundle_layout import BundleLayoutService  # noqa: TC001
 from wordwending.services.merge import AbstainingMergeService  # noqa: TC001
+from wordwending.services.merge_review import MergeFlagReviewService
 from wordwending.services.witness_adaptation import (  # noqa: TC001
     WitnessAdaptationService,
 )
+
+#: Projects Spec 0009 merge flags into Spec 0002 evaluation families / Spec 0005 tasks.
+_MERGE_FLAG_REVIEW = MergeFlagReviewService()
 
 #: Spec 0002 witness family used for olmOCR text artifacts under pages/.
 _TEXT_WITNESS_KIND = "text"
@@ -46,9 +47,10 @@ class AssembleOrchestrator:
     Sequence adapt → merge → document-bundle write for one assemble pass.
 
     Multi-witness pages are supported. Merge flags from ``MergePageResult``
-    are projected into ``BundlePage.evaluation_summary`` so Spec 0002
-    ``evaluation/flags.json`` remains the inspectable sidecar (no second
-    flag schema).
+    are projected into the matching ``BundlePage.evaluation_summary`` families
+    (via ``MergeFlagReviewService``) so Spec 0002 ``evaluation/flags.json``
+    remains the inspectable sidecar and Spec 0005 review packets can be built
+    without a second flag schema.
 
     Args:
         adapter: Converts persisted raw witness artifacts into PassWitnessPage.
@@ -236,7 +238,7 @@ class _AssembleExecution:
             raw_refs_by_id=raw_refs_by_id,
             resolved_artifacts=resolved_by_id,
         )
-        page = _page_with_merge_flags(page, merge_result.flags)
+        page = _MERGE_FLAG_REVIEW.project_onto_page(page, merge_result.flags)
         self._accumulate_page(
             page_request=page_request,
             page=page,
@@ -440,56 +442,6 @@ def _resolve_prepared_image(bundle_root: Path, image_path: str) -> Path | None:
         return resolved
     return None
 
-
-def _evaluation_flags_from_merge(flags: list[MergeFlag]) -> list[EvaluationFlag]:
-    """
-    Project Spec 0009 merge flags into Spec 0002 evaluation flag payloads.
-
-    Args:
-        flags: Merge flags emitted for one page.
-
-    Returns:
-        Evaluation flags suitable for ``evaluation/flags.json`` via
-        ``PageEvaluationSummary``.
-
-    """
-    return [
-        EvaluationFlag(
-            flag_id=flag.flag_id,
-            flag_type=str(flag.flag_type),
-            severity=FlagSeverity.WARNING,
-            message=flag.message,
-            target_object_ids=list(flag.target_object_ids),
-        )
-        for flag in flags
-    ]
-
-
-def _page_with_merge_flags(page: BundlePage, flags: list[MergeFlag]) -> BundlePage:
-    """
-    Attach merge flags onto the page evaluation summary text family.
-
-    Args:
-        page: Accepted page graph after witness rewrite.
-        flags: Merge flags from ``MergePageResult``.
-
-    Returns:
-        Page whose ``evaluation_summary.text.flags`` includes projected merge
-        flags (unchanged when ``flags`` is empty).
-
-    """
-    if not flags:
-        return page
-    projected = _evaluation_flags_from_merge(flags)
-    text_summary = page.evaluation_summary.text.model_copy(
-        update={
-            "flags": [*page.evaluation_summary.text.flags, *projected],
-        }
-    )
-    evaluation_summary = page.evaluation_summary.model_copy(
-        update={"text": text_summary}
-    )
-    return page.model_copy(update={"evaluation_summary": evaluation_summary})
 
 
 def _bundle_ready_page(
