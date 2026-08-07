@@ -17,6 +17,10 @@ from pydantic_settings import (
 )
 
 from wordwending.exc import ConfigurationError
+from wordwending.models.endpoint_lifecycle import (
+    EndpointCatalogEntry,
+    default_endpoint_catalog,
+)
 
 
 class Settings(BaseSettings):
@@ -72,6 +76,36 @@ class Settings(BaseSettings):
     huggingface_model_endpoints: dict[str, AnyHttpUrl] = Field(
         default_factory=dict,
         description="Named Hugging Face endpoint URLs keyed by endpoint identifier",
+    )
+    #: Hugging Face Inference Endpoint namespace override for catalog entries.
+    huggingface_endpoint_namespace: str | None = Field(
+        default=None,
+        description="Hugging Face Inference Endpoint namespace override",
+    )
+    #: Minutes of inactivity before the idle watchdog pauses endpoints.
+    huggingface_endpoint_idle_minutes: int = Field(
+        default=30,
+        ge=1,
+        description="Idle minutes before endpoint lifecycle watchdog pauses",
+    )
+    #: Maximum seconds to wait for endpoint create or resume readiness.
+    huggingface_endpoint_wait_timeout_seconds: int = Field(
+        default=900,
+        ge=1,
+        description="Seconds to wait for endpoint readiness during ensure",
+    )
+    #: Optional path for the endpoint session ledger JSON file.
+    huggingface_endpoint_ledger_path: Path | None = Field(
+        default=None,
+        description=(
+            "Path to endpoint session ledger; defaults to "
+            "~/.config/wordwending/endpoint-session-ledger.json"
+        ),
+    )
+    #: Catalog entries keyed by runner_id; empty list uses built-in defaults.
+    huggingface_endpoint_catalog: list[EndpointCatalogEntry] = Field(
+        default_factory=list,
+        description="Endpoint catalog entries keyed by runner_id",
     )
 
     @field_validator("huggingface_model_endpoints")
@@ -177,6 +211,35 @@ class Settings(BaseSettings):
             dotenv_settings,
             file_secret_settings,
         )
+
+    def resolved_endpoint_ledger_path(self) -> Path:
+        """
+        Resolve the endpoint session ledger path.
+
+        Returns:
+            Configured ledger path or the default under the user config dir.
+
+        """
+        if self.huggingface_endpoint_ledger_path is not None:
+            return self.huggingface_endpoint_ledger_path
+        return (
+            Path.home()
+            / ".config"
+            / "wordwending"
+            / "endpoint-session-ledger.json"
+        )
+
+    def effective_endpoint_catalog(self) -> list[EndpointCatalogEntry]:
+        """
+        Return configured catalog entries or the built-in defaults.
+
+        Returns:
+            Non-empty catalog entries for endpoint lifecycle operations.
+
+        """
+        if self.huggingface_endpoint_catalog:
+            return self.huggingface_endpoint_catalog
+        return default_endpoint_catalog()
 
     def get_config_paths(self) -> list[Path]:
         """

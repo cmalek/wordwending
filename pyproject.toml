@@ -37,6 +37,7 @@ dependencies = [
   "pypdfium2>=5.12.1",
   "olmocr==0.4.27",
   "httpx>=0.28.1",
+  "huggingface-hub>=1.26.1",
 ]
 
 [dependency-groups]

@@ -13,6 +13,19 @@ from wordwending.models.bundle_layout import (
     PageBundleManifest,
     page_dir_name,
 )
+from wordwending.models.endpoint_lifecycle import (
+    ENDPOINT_SESSION_LEDGER_SCHEMA_VERSION,
+    EndpointCatalogEntry,
+    EndpointDownResult,
+    EndpointEnsureResult,
+    EndpointLastAction,
+    EndpointLedgerEntry,
+    EndpointSessionLedger,
+    EndpointStatusReport,
+    EndpointStatusRow,
+    default_endpoint_catalog,
+    mutable_revision_rejected,
+)
 from wordwending.models.evaluation import (
     EvaluationCohortKey,
     EvaluationCohortReport,
@@ -165,6 +178,7 @@ from wordwending.models.text_normalization import (
 #: Public OCR contract model exports.
 __all__ = [
     "BUNDLE_SCHEMA_VERSION",
+    "ENDPOINT_SESSION_LEDGER_SCHEMA_VERSION",
     "RESUME_LEDGER_FILENAME",
     "RESUME_LEDGER_SCHEMA_VERSION",
     "AcceptReviewEvent",
@@ -199,6 +213,14 @@ __all__ = [
     "DocumentBundle",
     "DocumentBundleManifest",
     "DocumentEvaluationSummary",
+    "EndpointCatalogEntry",
+    "EndpointDownResult",
+    "EndpointEnsureResult",
+    "EndpointLastAction",
+    "EndpointLedgerEntry",
+    "EndpointSessionLedger",
+    "EndpointStatusReport",
+    "EndpointStatusRow",
     "EvaluationCohortKey",
     "EvaluationCohortReport",
     "EvaluationCohortSummary",
@@ -305,5 +327,7 @@ __all__ = [
     "UnicodeNormalizationForm",
     "UnlinkNoteReviewEvent",
     "WitnessReference",
+    "default_endpoint_catalog",
+    "mutable_revision_rejected",
     "page_dir_name",
 ]

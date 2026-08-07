@@ -16,3 +16,7 @@ class FileError(WordwendingError):
 
 class RunnerEndpointUnavailable(WordwendingError):
     """Raised when a hosted runner endpoint is not ready for inference."""
+
+
+class EndpointLifecycleError(WordwendingError):
+    """Raised when Hugging Face endpoint lifecycle operations fail."""
