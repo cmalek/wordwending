@@ -94,9 +94,12 @@ overlays via ``wordwending review``, and ``eval`` / ``export`` follow without
 hand-edited ``DocumentBundle`` JSON. ``MergeFlagReviewService.build_review_tasks``
 exists in library code but is not auto-wired into ``assemble`` or the CLI.
 
+**Phase 6 COMPLETE:** ``PassRunner`` Protocol + ``PassRunnerRegistry`` (``olmocr`` /
+``kraken``) with the execution spine typed to the Protocol. Fake runners remain
+test doubles only.
+
 **Not claimed:** Spec 0004 Phase 4's **coordinate-rich second-runner** bullet
-(deferred until Phase 7); Phase 5 COMPLETE (bake-off); Phase 6 COMPLETE
-(PassRunner Protocol); Phase 10 COMPLETE (operational hardening). Kraken on the
-spine is a provisional second hosted adapter with conservative/text-first
-geometry. ``export`` reads bundle page graphs only—overlay files are not consumed
-until graph rebase lands.
+(deferred until Phase 7); Phase 5 COMPLETE (bake-off); Phase 10 COMPLETE
+(operational hardening). Kraken on the spine is a provisional second hosted
+adapter with conservative/text-first geometry. ``export`` reads bundle page
+graphs only—overlay files are not consumed until graph rebase lands.

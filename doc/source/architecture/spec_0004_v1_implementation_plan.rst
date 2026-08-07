@@ -75,6 +75,11 @@ deployments.
 Phase 6: Runner Boundary
 ========================
 
+**Status: COMPLETE** (Wave G). ``PassRunner`` Protocol extracted from the
+``olmocr`` and ``kraken`` hosted adapters; ``PassRunnerRegistry`` resolves by
+``runner_id``; execution spine and CLI are typed to the Protocol. Fake runners
+remain test doubles only and are not exit evidence.
+
 - extract the common pass-runner interface from two or three working adapters
 - validate batch counts, item/output associations, retries, timestamps, and
   immutable model/runtime/config revisions

@@ -39,9 +39,8 @@ from ..services.bakeoff import BakeoffService
 from ..services.bundle_layout import BundleLayoutService
 from ..services.evaluation import EvaluationService
 from ..services.evaluation_cohorts import EvaluationCohortService
-from ..services.kraken_runner import HuggingFaceKrakenRunner
 from ..services.merge import AbstainingMergeService
-from ..services.olmocr_runner import HuggingFaceOlmocrRunner
+from ..services.pass_runner_registry import PassRunnerRegistry, UnknownPassRunnerError
 from ..services.preparation import (
     PageClassifier,
     PagePreparationService,
@@ -56,37 +55,6 @@ from ..services.witness_adaptation import WitnessAdaptationService
 from ..settings import Settings
 from .review import review
 from .utils import console, print_error, print_info
-
-
-def _hosted_runner_class(
-    runner_id: str,
-) -> type[HuggingFaceOlmocrRunner | HuggingFaceKrakenRunner]:
-    """
-    Resolve one hosted runner class from ``runner_id`` without a registry.
-
-    Args:
-        runner_id: Stable logical runner id from ``RunnerReference``.
-
-    Returns:
-        Hosted runner class for ``runner_id``.
-
-    Raises:
-        click.ClickException: If ``runner_id`` is not supported.
-
-    """
-    # Built at call time so tests can patch the module-level class names.
-    hosted_runner_by_id: dict[
-        str, type[HuggingFaceOlmocrRunner] | type[HuggingFaceKrakenRunner]
-    ] = {
-        "olmocr": HuggingFaceOlmocrRunner,
-        "kraken": HuggingFaceKrakenRunner,
-    }
-    runner_cls = hosted_runner_by_id.get(runner_id)
-    if runner_cls is None:
-        supported = ", ".join(sorted(hosted_runner_by_id))
-        msg = f"unsupported runner_id {runner_id!r}; supported: {supported}"
-        raise click.ClickException(msg)
-    return runner_cls
 
 
 @click.group()
@@ -656,7 +624,10 @@ def run_runner(  # noqa: PLR0913, PLR0917
     except (OSError, ValidationError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
 
-    runner_cls = _hosted_runner_class(runner.runner_id)
+    try:
+        runner_cls = PassRunnerRegistry().resolve(runner.runner_id)
+    except UnknownPassRunnerError as exc:
+        raise click.ClickException(str(exc)) from exc
 
     settings: Settings = ctx.obj["settings"]
     api_key = settings.huggingface_api_key

@@ -54,7 +54,8 @@ Service Boundaries
     output dimensions.
 
 ``PassRunnerRegistry``
-    Resolves configured pass runners and their order.
+    Resolves configured pass runners by stable ``runner_id`` (v1 defaults:
+    ``olmocr``, ``kraken``). Constructable classes satisfy ``PassRunner``.
 
 ``PageAlignmentService``
     Normalizes raw pass coordinates into shared page space and computes evidence

@@ -104,10 +104,10 @@ guide on Read the Docs.
 
 Multi-witness assemble (olmOCR + kraken) and review overlays ship on the current
 spine. The v1 plan Phase 4 full bullets (Waves A+C+D) are met on
-fixture-backed pages; Spec 0004's coordinate-rich second-runner bullet,
+fixture-backed pages; Spec 0004's coordinate-rich second-runner bullet remains
+deferred. **Phase 6 (PassRunner Protocol + registry) is COMPLETE.**
 **Phase 5 (bake-off) NOT COMPLETE** (harness only; scoring placeholders /
-held-out corpus deferred), Phase 6 (PassRunner Protocol), and Phase 10
-(ops hardening) are not complete. See the
+held-out corpus deferred). Phase 10 (ops hardening) is not complete. See the
 [from source to Markdown](https://wordwending.readthedocs.io/en/latest/runbook/from_source_to_markdown.html)
 runbook for honest gaps.
 

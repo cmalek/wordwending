@@ -17,8 +17,9 @@ Is this production-ready?
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 No. Treat it as research software: commands and bundle-assembly paths change.
-Remaining gaps (bake-off, PassRunner Protocol, ops hardening) are documented
-rather than hidden. See :doc:`/runbook/from_source_to_markdown`.
+Remaining gaps (bake-off Phase 5, ops hardening Phase 10) are documented rather
+than hidden. Phase 6 (PassRunner Protocol + registry) is COMPLETE. See
+:doc:`/runbook/from_source_to_markdown`.
 
 Installation
 ------------

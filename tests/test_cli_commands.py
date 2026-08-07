@@ -574,7 +574,7 @@ class TestCLIRun:
         assert "failed item" in result.output.lower()
 
     @patch("wordwending.cli.cli.RunnerExecutionService.run")
-    @patch("wordwending.cli.cli.HuggingFaceKrakenRunner")
+    @patch("wordwending.services.pass_runner_registry.HuggingFaceKrakenRunner")
     def test_run_selects_kraken_runner_by_runner_id(
         self,
         mock_kraken_cls,
@@ -609,7 +609,7 @@ class TestCLIRun:
         assert mock_kraken_cls.call_args.kwargs["runner"].runner_id == "kraken"
 
     @patch("wordwending.cli.cli.RunnerExecutionService.run")
-    @patch("wordwending.cli.cli.HuggingFaceOlmocrRunner")
+    @patch("wordwending.services.pass_runner_registry.HuggingFaceOlmocrRunner")
     def test_run_selects_olmocr_runner_by_runner_id(
         self,
         mock_olmocr_cls,

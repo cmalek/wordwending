@@ -180,13 +180,18 @@ for a representative page traveling end to end without hand-edited
   ``review apply`` / ``review materialize``; ``export`` for JSON and Markdown
   from bundle page graphs
 
-This is **not** a claim that Spec 0004 Phase 5 (candidate bake-off), Phase 6
-(PassRunner Protocol extract), or Phase 10 (operational hardening) are complete.
-**Phase 5 is explicitly NOT COMPLETE**: the Wave F harness exists, but Spec exit
-criteria (cost/license/operability scoring and full held-out corpus) remain
-deferred. Spec 0004 Phase 4's **coordinate-rich second-runner** bullet remains
-**deferred**: kraken on the spine uses conservative/text-first geometry until
-Phase 7 alignment exit matures coordinate-rich merge.
+**Phase 6 is COMPLETE**: ``PassRunner`` Protocol extracted from the olmOCR and
+kraken hosted adapters, ``PassRunnerRegistry`` resolves by ``runner_id``, and the
+execution spine / CLI are typed to the Protocol. Fake runners remain test
+doubles only.
+
+This is **not** a claim that Spec 0004 Phase 5 (candidate bake-off) or Phase 10
+(operational hardening) are complete. **Phase 5 is explicitly NOT COMPLETE**:
+the Wave F harness exists, but Spec exit criteria (cost/license/operability
+scoring and full held-out corpus) remain deferred. Spec 0004 Phase 4's
+**coordinate-rich second-runner** bullet remains **deferred**: kraken on the
+spine uses conservative/text-first geometry until Phase 7 alignment exit
+matures coordinate-rich merge.
 
 What Is Missing
 ===============
@@ -206,8 +211,6 @@ These pieces are planned but **not** available or **not complete** today:
   license/cost/operability **placeholders**. Deferred before any Phase 5
   COMPLETE claim: cost/license/operability scoring, full corpus held-out
   slices, and live bake-off evidence beyond recorded fixtures
-- **Phase 6 PassRunner Protocol** — common runner interface extracted after bake-off
-  evidence (Wave G; Fake runners are test doubles only)
 - **Graph rebase / overlay → export** — ``review apply`` persists overlays, but
   ``export`` reads bundle page graphs only until rebase lands
 - **Phase 10 operations** — resumability, deployment health, cost controls beyond

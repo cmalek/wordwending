@@ -214,7 +214,8 @@ What is not a CLI yet
 - Spec 0004 **Phase 5 NOT COMPLETE** (``bakeoff`` harness writes
   ``bakeoff-matrix-v1.json`` from recorded predictions; cost/license/
   operability scoring and full held-out corpus remain deferred)
-- Phase 6 PassRunner Protocol, Phase 10 operational hardening
+- Phase 10 operational hardening (Phase 6 PassRunner Protocol + registry is
+  COMPLETE)
 
 Those gaps are documented in :doc:`/runbook/from_source_to_markdown`.
 
