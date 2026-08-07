@@ -97,7 +97,10 @@ Prefer cohesive, human-comprehensible classes over loose function collections, e
 - Put per-run orchestration and mutable run state in a dedicated execution/orchestrator class
 - Prefer stateless collaborators; isolate per-run mutable state in one accumulator/orchestrator
 
-Reference: `ExtractionOrchestrator` in `wordwending/services/orchestrator.py` (per-run orchestration + `RunStats` accumulator, driving stateless collaborators like `DdlExtractor`).
+References:
+- `RunnerExecutionOrchestrator` in `wordwending/services/runner_execution.py` — per-run orchestration with mutable batch/throughput state, driving stateless collaborators like `RunnerBatchPlanner` and `RunnerInputPackager`
+- `MergeOrchestrator` in `wordwending/services/merge.py` — per-page mutable merge state and step runner, driving stateless collaborators like `TextNormalizer`
+- `AssembleOrchestrator` lands in Task A3 (not yet present)
 
 ## Documentation Contract (Required)
 
