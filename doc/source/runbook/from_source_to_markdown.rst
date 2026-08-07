@@ -188,7 +188,9 @@ doubles only.
 This is **not** a claim that Spec 0004 Phase 5 (candidate bake-off) or Phase 10
 (operational hardening) are complete. **Phase 5 is explicitly NOT COMPLETE**:
 the Wave F harness exists, but Spec exit criteria (cost/license/operability
-scoring and full held-out corpus) remain deferred. Spec 0004 Phase 4's
+scoring and full held-out corpus) remain deferred. **Phase 10 is explicitly
+NOT COMPLETE**: Wave H ships an **ops skeleton only** (resume ledger +
+inspect checksums); Spec exit remains deferred (see below). Spec 0004 Phase 4's
 **coordinate-rich second-runner** bullet remains **deferred**: kraken on the
 spine uses conservative/text-first geometry until Phase 7 alignment exit
 matures coordinate-rich merge.
@@ -213,10 +215,16 @@ These pieces are planned but **not** available or **not complete** today:
   slices, and live bake-off evidence beyond recorded fixtures
 - **Graph rebase / overlay → export** — ``review apply`` persists overlays, but
   ``export`` reads bundle page graphs only until rebase lands
-- **Phase 10 operations** — Wave H adds a resume ledger for completed ``run``
-  batches (``runner-resume-ledger.json`` / ``--force``); full HF deploy/ops,
-  quotas, cost controls, and corpus regression gates remain deferred (do not
-  mark Phase 10 COMPLETE yet)
+- **Phase 10 operations — NOT COMPLETE (ops skeleton only)** — Wave H ships:
+
+  - ``run`` resume ledger (``runner-resume-ledger.json`` / ``--force``)
+  - ``inspect-bundle`` verification of digests already recorded in bundle-layout
+    metadata (``checksum: … OK|FAIL|SKIPPED``)
+
+  **Deferred before any Phase 10 COMPLETE claim:** Hugging Face deploy/ops
+  (endpoint deployment, health checks, secrets, cold starts, queueing), quotas,
+  cost controls, corpus regression gates, and operator calibration monitoring.
+  Do **not** mark Spec 0004 Phase 10 COMPLETE.
 
 Related Runbooks
 ================

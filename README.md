@@ -92,11 +92,11 @@ guide on Read the Docs.
 | `version` | Installed package and dependency versions |
 | `settings` | Effective configuration (table / json / text) |
 | `prepare` | Acquire and prepare source pages into a bundle layout |
-| `run` | Execute prepared artifacts against one hosted olmOCR runner |
+| `run` | Execute prepared artifacts against one hosted olmOCR or kraken runner (resume ledger; `--force` to bypass) |
 | `eval` | Score one predicted page against gold annotations |
 | `eval-cohorts` | Summarize page evaluations into fixed cohort views |
 | `assemble` | Adapt raw witnesses, merge, and write a document bundle tree |
-| `inspect-bundle` | Summarize an assembled bundle (manifests, pages, witnesses, exports when present) |
+| `inspect-bundle` | Summarize an assembled bundle (manifests, pages, witnesses, recorded checksums, exports when present) |
 | `bakeoff` | Offline candidate matrix from recorded predictions → `bakeoff-matrix-v1.json` |
 | `review apply` | Append overlay review events and materialize overlay state |
 | `review materialize` | Replay append-only review history into current overlay state |
@@ -107,7 +107,10 @@ spine. The v1 plan Phase 4 full bullets (Waves A+C+D) are met on
 fixture-backed pages; Spec 0004's coordinate-rich second-runner bullet remains
 deferred. **Phase 6 (PassRunner Protocol + registry) is COMPLETE.**
 **Phase 5 (bake-off) NOT COMPLETE** (harness only; scoring placeholders /
-held-out corpus deferred). Phase 10 (ops hardening) is not complete. See the
+held-out corpus deferred). **Phase 10 is NOT COMPLETE** — Wave H ships an
+**ops skeleton only** (`run` resume ledger + `inspect-bundle` checksum
+verification); Spec exit (HF deploy/ops, quotas, cost controls, corpus
+regression gates, operator calibration monitoring) remains deferred. See the
 [from source to Markdown](https://wordwending.readthedocs.io/en/latest/runbook/from_source_to_markdown.html)
 runbook for honest gaps.
 

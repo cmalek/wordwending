@@ -91,8 +91,10 @@ Execute prepared artifacts against one hosted olmOCR or kraken runner. Requires
 Successful batches are recorded under
 ``<bundle-root>/runner-resume-ledger.json``. A later ``run`` against the same
 bundle skips those batch ids unless ``--force`` is set. Missing or corrupt
-ledger files are treated as empty. This is resume scaffolding only — Spec 0004
-Phase 10 (HF deploy/ops/quotas/cost controls) remains **NOT COMPLETE**.
+ledger files are treated as empty. Together with ``inspect-bundle`` checksum
+verification, this is the Wave H **ops skeleton only** — Spec 0004 **Phase 10
+is NOT COMPLETE** (HF deploy/ops, quotas, cost controls, corpus regression
+gates, and operator calibration monitoring remain deferred).
 
 .. code-block:: bash
 
@@ -150,7 +152,10 @@ inspect-bundle
 ^^^^^^^^^^^^^^
 
 Summarize an assembled bundle: manifests, pages, witnesses, merge flags,
-overlay paths, and ``exports/*`` artifact paths when export has run.
+overlay paths, and ``exports/*`` artifact paths when export has run. Also
+prints ``checksum: <path> OK|FAIL|SKIPPED`` for digests already recorded in
+bundle-layout metadata (source / prepared-page / prepared-unit). This is
+corruption-check scaffolding only — Spec 0004 **Phase 10 is NOT COMPLETE**.
 
 .. code-block:: bash
 
@@ -221,8 +226,10 @@ What is not a CLI yet
 - Spec 0004 **Phase 5 NOT COMPLETE** (``bakeoff`` harness writes
   ``bakeoff-matrix-v1.json`` from recorded predictions; cost/license/
   operability scoring and full held-out corpus remain deferred)
-- Phase 10 operational hardening (Phase 6 PassRunner Protocol + registry is
-  COMPLETE)
+- Spec 0004 **Phase 10 NOT COMPLETE** — **ops skeleton only** (``run`` resume
+  ledger + ``inspect-bundle`` checksum verification). Deferred Spec exit:
+  HF deploy/ops, quotas, cost controls, corpus regression gates, operator
+  calibration monitoring. (Phase 6 PassRunner Protocol + registry is COMPLETE.)
 
 Those gaps are documented in :doc:`/runbook/from_source_to_markdown`.
 

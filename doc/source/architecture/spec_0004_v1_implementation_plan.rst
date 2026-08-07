@@ -125,10 +125,20 @@ objects, witnesses, and a chunking recipe.
 Phase 10: Operational Hardening
 ===============================
 
+**Status: NOT COMPLETE** (Wave H). Ops skeleton only: ``run`` resume ledger for
+completed batches and ``inspect-bundle`` verification of digests already
+recorded in bundle-layout metadata. Spec exit is deferred.
+
 - resumability, caching, artifact retention, and corruption checks
 - Hugging Face endpoint deployment, health checks, secrets, quotas, cold starts,
   queueing, retries, and cost controls
 - corpus expansion, regression gates, and operator calibration monitoring
+
+**Shipped (ops skeleton):** resume ledger (``runner-resume-ledger.json`` /
+``--force``); inspect checksum OK/FAIL/SKIPPED for recorded layout digests.
+
+**Deferred (do not mark COMPLETE):** HF deploy/ops, quotas, cost controls,
+corpus regression gates, operator calibration monitoring.
 
 Exit: interrupted runs resume without data loss and deployed runners are
 reproducible and observable.

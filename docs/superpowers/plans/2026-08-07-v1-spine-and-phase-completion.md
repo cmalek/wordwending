@@ -465,9 +465,9 @@ invocation = self._runner.invoke(planned, packaged, self._output_dir)
 **Model:** `cursor-grok-4.5-medium` / `composer-2.5-fast`
 
 - [x] Resume ledger under bundle_root; `--force` to bypass
-- [ ] Inspect verifies checksums where bundle layout already records them
-- [ ] Runbook: “ops skeleton only; Phase 10 Spec exit deferred”
-- [ ] Final whole-program ADR review (`cursor-grok-4.5-medium`)
+- [x] Inspect verifies checksums where bundle layout already records them
+- [x] Runbook: “ops skeleton only; Phase 10 Spec exit deferred”
+- [x] Final whole-program ADR review (`cursor-grok-4.5-medium`)
 
 ---
 

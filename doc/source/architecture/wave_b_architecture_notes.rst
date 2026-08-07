@@ -100,6 +100,8 @@ test doubles only.
 
 **Not claimed:** Spec 0004 Phase 4's **coordinate-rich second-runner** bullet
 (deferred until Phase 7); Phase 5 COMPLETE (bake-off); Phase 10 COMPLETE
-(operational hardening). Kraken on the spine is a provisional second hosted
-adapter with conservative/text-first geometry. ``export`` reads bundle page
+(operational hardening). Wave H ships an **ops skeleton only** (``run`` resume
+ledger + ``inspect-bundle`` checksum verification); Spec Phase 10 exit remains
+deferred. Kraken on the spine is a provisional second hosted adapter with
+conservative/text-first geometry. ``export`` reads bundle page
 graphs only—overlay files are not consumed until graph rebase lands.

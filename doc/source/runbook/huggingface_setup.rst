@@ -2,6 +2,15 @@
 Hugging Face Setup
 ==================
 
+.. note::
+
+   **Ops skeleton only; Spec 0004 Phase 10 exit deferred.** Wave H ships
+   ``run`` resume-ledger scaffolding and ``inspect-bundle`` checksum
+   verification. This runbook still describes the *intended* Hugging Face
+   deploy/ops path (endpoints, health, secrets, quotas, cold starts, cost
+   controls). Those items are **not** claimed complete under the current plan.
+   See :doc:`/runbook/from_source_to_markdown`.
+
 Purpose
 =======
 

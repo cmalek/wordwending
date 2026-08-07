@@ -17,9 +17,11 @@ Is this production-ready?
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 No. Treat it as research software: commands and bundle-assembly paths change.
-Remaining gaps (bake-off Phase 5, ops hardening Phase 10) are documented rather
-than hidden. Phase 6 (PassRunner Protocol + registry) is COMPLETE. See
-:doc:`/runbook/from_source_to_markdown`.
+**Phase 6** (PassRunner Protocol + registry) is **COMPLETE**. **Phase 5**
+(bake-off) and **Phase 10** (operational hardening) are **NOT COMPLETE**.
+Wave H ships an **ops skeleton only** (``run`` resume ledger +
+``inspect-bundle`` checksum verification); Spec Phase 10 exit remains deferred.
+See :doc:`/runbook/from_source_to_markdown`.
 
 Installation
 ------------
@@ -36,8 +38,8 @@ What commands exist?
 ^^^^^^^^^^^^^^^^^^^^
 
 ``version``, ``settings``, ``prepare``, ``run``, ``eval``, ``eval-cohorts``,
-``assemble``, ``inspect-bundle``, ``review apply``, ``review materialize``,
-and ``export``. Details: :doc:`usage`.
+``assemble``, ``inspect-bundle``, ``bakeoff``, ``review apply``,
+``review materialize``, and ``export``. Details: :doc:`usage`.
 
 Where is the end-to-end guide?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -52,15 +54,17 @@ Yes, with honest limits:
 - ``assemble`` adapts raw witnesses, merges (including olmOCR + kraken multi-witness),
   and writes a ``DocumentBundle`` tree from an operator ``AssembleManifest``
 - ``inspect-bundle`` summarizes the assembled tree, including merge flags as
-  dimension-specific evaluation flags (``evaluation/flags.json``) and
-  ``exports/*`` paths when derived exports exist on disk
+  dimension-specific evaluation flags (``evaluation/flags.json``),
+  ``checksum: … OK|FAIL|SKIPPED`` lines for digests already recorded in bundle
+  layout metadata, and ``exports/*`` paths when derived exports exist on disk
 - ``review apply`` and ``review materialize`` drive append-only overlay acceptance
   (operators hand-author ``PageOverlay`` JSON; Spec 0005 ``ReviewTask`` packets
   are not auto-emitted by assemble)
 
 There is no standalone ``merge`` command (merge runs inside ``assemble``) and no
 single orchestrated prepare→export run yet. Spec 0004 Phase 6 (PassRunner Protocol
-+ registry) is COMPLETE; Phase 5 and Phase 10 exits are not. See
++ registry) is COMPLETE; Phase 5 remains NOT COMPLETE; Phase 10 remains NOT
+COMPLETE (**ops skeleton only**; Spec exit deferred). See
 :doc:`/runbook/from_source_to_markdown`.
 
 Is Markdown the source of truth?
