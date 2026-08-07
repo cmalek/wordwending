@@ -656,6 +656,34 @@ class TestCLIRun:
         assert result.exit_code != 0
         assert "unsupported runner_id" in result.output
 
+    @patch("wordwending.cli.cli.RunnerExecutionService.run")
+    def test_run_passes_force_to_execution_service(
+        self,
+        mock_run,
+        runner,
+        tmp_path,
+    ) -> None:
+        mock_run.return_value = (
+            [],
+            RunnerThroughputSummary(
+                measured_item_count=0,
+                failed_item_count=0,
+                measured_duration_seconds=0.0,
+                items_per_second=0.0,
+            ),
+        )
+        configured = Settings(
+            huggingface_api_key="hf_test_token",
+            huggingface_model_endpoints={
+                "olmocr-production": "https://example.endpoints.huggingface.cloud/v1",
+            },
+        )
+        with patch("wordwending.cli.cli.Settings", return_value=configured):
+            result = runner.invoke(cli, [*_run_cli_args(tmp_path), "--force"])
+
+        assert result.exit_code == 0
+        assert mock_run.call_args.kwargs.get("force") is True
+
 
 class TestCLIExport:
     """Test the export command."""

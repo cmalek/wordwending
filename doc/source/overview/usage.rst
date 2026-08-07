@@ -84,9 +84,15 @@ into a reproducible output bundle.
 run
 ^^^
 
-Execute prepared artifacts against one hosted olmOCR runner. Requires
+Execute prepared artifacts against one hosted olmOCR or kraken runner. Requires
 ``huggingface_api_key`` and a matching entry in
 ``huggingface_model_endpoints`` (see :doc:`/overview/configuration`).
+
+Successful batches are recorded under
+``<bundle-root>/runner-resume-ledger.json``. A later ``run`` against the same
+bundle skips those batch ids unless ``--force`` is set. Missing or corrupt
+ledger files are treated as empty. This is resume scaffolding only — Spec 0004
+Phase 10 (HF deploy/ops/quotas/cost controls) remains **NOT COMPLETE**.
 
 .. code-block:: bash
 
@@ -96,7 +102,8 @@ Execute prepared artifacts against one hosted olmOCR runner. Requires
      --bundle-root ./bundle \
      --output-dir ./run-out \
      --run-id RUN_ID \
-     --document-id DOC_ID
+     --document-id DOC_ID \
+     [--force]
 
 eval
 ^^^^

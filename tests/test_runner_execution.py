@@ -434,3 +434,87 @@ def test_throughput_json_is_written(tmp_path: Path) -> None:
         (tmp_path / "throughput.json").read_text()
     )
     assert persisted == summary
+
+
+def test_resume_skips_completed_batches(tmp_path: Path) -> None:
+    bundle = fixture_root(tmp_path / "bundle")
+    artifacts = prepared_artifacts(8)
+    first = execution_service(warmup_batch_count=0)
+    first_batches, _ = first.run(
+        "run-1",
+        "bt",
+        artifacts,
+        bundle,
+        tmp_path / "out-1",
+    )
+    assert len(first_batches) == 2
+    assert (bundle / "runner-resume-ledger.json").exists()
+
+    second_fake_runner = FakeOlmocrRunner(
+        execution_policy=policy(warmup_batch_count=0),
+        runner_ref=runner_reference(),
+    )
+    second = RunnerExecutionService(
+        RunnerBatchPlanner(),
+        RunnerInputPackager(),
+        second_fake_runner,
+    )
+    second_batches, summary = second.run(
+        "run-2",
+        "bt",
+        artifacts,
+        bundle,
+        tmp_path / "out-2",
+    )
+    assert second_fake_runner.invoke_calls == 0
+    assert second_batches == []
+    assert summary.measured_item_count == 0
+
+
+def test_force_reruns_completed_batches(tmp_path: Path) -> None:
+    bundle = fixture_root(tmp_path / "bundle")
+    artifacts = prepared_artifacts(2)
+    first = execution_service(warmup_batch_count=0)
+    first.run("run-1", "bt", artifacts, bundle, tmp_path / "out-1")
+
+    forced_runner = FakeOlmocrRunner(
+        execution_policy=policy(warmup_batch_count=0),
+        runner_ref=runner_reference(),
+    )
+    forced = RunnerExecutionService(
+        RunnerBatchPlanner(),
+        RunnerInputPackager(),
+        forced_runner,
+    )
+    batches, summary = forced.run(
+        "run-2",
+        "bt",
+        artifacts,
+        bundle,
+        tmp_path / "out-2",
+        force=True,
+    )
+    assert forced_runner.invoke_calls == 1
+    assert len(batches) == 1
+    assert summary.measured_item_count == 2
+    assert summary.failed_item_count == 0
+
+
+def test_failed_batches_are_not_recorded_in_resume_ledger(tmp_path: Path) -> None:
+    bundle = fixture_root(tmp_path / "bundle")
+    service = execution_service(
+        warmup_batch_count=0,
+        retry_mode=RetryMode.NONE,
+        first_result=_fail_all_items,
+    )
+    batches, summary = service.run(
+        "run-1",
+        "bt",
+        prepared_artifacts(2),
+        bundle,
+        tmp_path,
+    )
+    assert summary.failed_item_count == 2
+    assert batches[0].result_status is BatchResultStatus.FAILED
+    ledger_path = bundle / "runner-resume-ledger.json"
+    assert not ledger_path.exists()

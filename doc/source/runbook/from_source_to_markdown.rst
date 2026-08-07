@@ -213,8 +213,10 @@ These pieces are planned but **not** available or **not complete** today:
   slices, and live bake-off evidence beyond recorded fixtures
 - **Graph rebase / overlay → export** — ``review apply`` persists overlays, but
   ``export`` reads bundle page graphs only until rebase lands
-- **Phase 10 operations** — resumability, deployment health, cost controls beyond
-  basic inspect (Wave H; do not mark Phase 10 COMPLETE yet)
+- **Phase 10 operations** — Wave H adds a resume ledger for completed ``run``
+  batches (``runner-resume-ledger.json`` / ``--force``); full HF deploy/ops,
+  quotas, cost controls, and corpus regression gates remain deferred (do not
+  mark Phase 10 COMPLETE yet)
 
 Related Runbooks
 ================

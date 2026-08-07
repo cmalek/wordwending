@@ -133,6 +133,12 @@ from wordwending.models.preparation import (
     QualitySignal,
     SourcePageArtifact,
 )
+from wordwending.models.resume_ledger import (
+    RESUME_LEDGER_FILENAME,
+    RESUME_LEDGER_SCHEMA_VERSION,
+    ResumeLedger,
+    ResumeLedgerEntry,
+)
 from wordwending.models.runner_execution import (
     HostedEndpointPolicy,
     HostedInvocationResult,
@@ -154,6 +160,8 @@ from wordwending.models.text_normalization import (
 #: Public OCR contract model exports.
 __all__ = [
     "BUNDLE_SCHEMA_VERSION",
+    "RESUME_LEDGER_FILENAME",
+    "RESUME_LEDGER_SCHEMA_VERSION",
     "AcceptReviewEvent",
     "AcquisitionProvenance",
     "AlternateCandidate",
@@ -252,6 +260,8 @@ __all__ = [
     "RegionRevision",
     "ReorderReviewEvent",
     "ResolveFlagReviewEvent",
+    "ResumeLedger",
+    "ResumeLedgerEntry",
     "RetrievalMetadata",
     "RetrievalProvenance",
     "RetryMode",

@@ -20,6 +20,7 @@ from wordwending.models.runner_execution import (
     RetryMode,
     RunnerThroughputSummary,
 )
+from wordwending.services.resume_ledger import ResumeLedgerService
 from wordwending.services.runner_batching import RunnerBatchPlanner  # noqa: TC001
 from wordwending.services.runner_packaging import RunnerInputPackager  # noqa: TC001
 
@@ -105,6 +106,8 @@ class RunnerExecutionOrchestrator:
         document_id: Document identifier under processing.
         bundle_root: Bundle root containing prepared artifact bytes.
         output_dir: Output root for batches, inputs, and witnesses.
+        force: When ``True``, bypass the resume ledger and re-run batches.
+        ledger: Resume ledger collaborator for completed-batch skip/record.
 
     """
 
@@ -118,6 +121,8 @@ class RunnerExecutionOrchestrator:
         document_id: str,
         bundle_root: Path,
         output_dir: Path,
+        force: bool = False,
+        ledger: ResumeLedgerService | None = None,
     ) -> None:
         """
         Bind collaborators and run identifiers for one execution segment.
@@ -130,6 +135,8 @@ class RunnerExecutionOrchestrator:
             document_id: Document identifier under processing.
             bundle_root: Bundle root containing prepared artifact bytes.
             output_dir: Output root for batches, inputs, and witnesses.
+            force: When ``True``, bypass the resume ledger and re-run batches.
+            ledger: Resume ledger collaborator for completed-batch skip/record.
 
         """
         #: Fixed-size batch planner.
@@ -146,6 +153,10 @@ class RunnerExecutionOrchestrator:
         self._bundle_root = bundle_root
         #: Output root for batches, inputs, and witnesses.
         self._output_dir = output_dir
+        #: When ``True``, ignore completed batches already recorded in the ledger.
+        self._force = force
+        #: Resume ledger used to skip and record successfully completed batches.
+        self._ledger = ledger
         #: Frozen execution policy for the run.
         self._policy = runner.policy
         #: Runner identity persisted on each batch record.
@@ -191,10 +202,27 @@ class RunnerExecutionOrchestrator:
         except RunnerEndpointUnavailable as exc:
             return self._persist_health_failure(planned_batches, str(exc))
         for planned in planned_batches:
+            if self._should_skip_planned_batch(planned):
+                continue
             self._execute_planned_batch(planned)
         summary = self._build_throughput()
         self._persist_throughput(summary)
         return self._batches, summary
+
+    def _should_skip_planned_batch(self, planned: PlannedRunnerBatch) -> bool:
+        """
+        Return whether ``planned`` should be skipped from a prior resume ledger.
+
+        Args:
+            planned: One planned batch from the fixed-size planner.
+
+        Returns:
+            ``True`` when the batch is already recorded and ``force`` is off.
+
+        """
+        if self._force or self._ledger is None:
+            return False
+        return self._ledger.contains(planned.batch_id)
 
     def _persist_health_failure(
         self,
@@ -260,6 +288,38 @@ class RunnerExecutionOrchestrator:
             )
             self._batches.append(retry_batch)
             self._apply_retry_outcomes(batch, retry_batch)
+        self._record_ledger_success(planned)
+
+    def _record_ledger_success(self, planned: PlannedRunnerBatch) -> None:
+        """
+        Record ``planned`` in the resume ledger when every item finally succeeded.
+
+        Side Effects:
+            Updates ``bundle_root/runner-resume-ledger.json`` when recording.
+
+        Args:
+            planned: Planned batch whose final item outcomes were just tracked.
+
+        """
+        if self._ledger is None:
+            return
+        item_ids = {item.item_id for item in planned.items}
+        if planned.warmup:
+            succeeded = any(
+                batch.batch_id == planned.batch_id
+                and batch.result_status is BatchResultStatus.SUCCEEDED
+                for batch in self._batches
+            )
+        else:
+            succeeded = not (item_ids & self._failed_item_ids)
+        if not succeeded:
+            return
+        self._ledger.record_completed(
+            batch_id=planned.batch_id,
+            run_id=self._run_id,
+            document_id=self._document_id,
+            source_page_ids=[item.source_page_id for item in planned.items],
+        )
 
     def _invoke_and_persist(
         self,
@@ -533,13 +593,15 @@ class RunnerExecutionService:
         #: Hosted runner used for health checks and invocations.
         self._runner = runner
 
-    def run(
+    def run(  # noqa: PLR0913
         self,
         run_id: str,
         document_id: str,
         artifacts: list[PreparedArtifactRef],
         bundle_root: Path,
         output_dir: Path,
+        *,
+        force: bool = False,
     ) -> tuple[list[RunnerExecutionBatch], RunnerThroughputSummary]:
         """
         Execute one runner segment and persist batches plus throughput.
@@ -550,6 +612,9 @@ class RunnerExecutionService:
             artifacts: Ordered prepared artifacts ready for runner execution.
             bundle_root: Bundle root containing prepared artifact bytes.
             output_dir: Output root for batches, inputs, and witnesses.
+
+        Keyword Args:
+            force: When ``True``, bypass the resume ledger and re-run batches.
 
         Returns:
             Persisted batch records and the measured throughput summary.
@@ -563,6 +628,8 @@ class RunnerExecutionService:
             document_id=document_id,
             bundle_root=bundle_root,
             output_dir=output_dir,
+            force=force,
+            ledger=ResumeLedgerService(bundle_root),
         )
         batches, summary = orchestrator.run(artifacts)
         return batches, summary

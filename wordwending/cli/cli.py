@@ -580,6 +580,11 @@ class _PreparedInputsManifest(BaseModel):
     required=True,
     help="Document identifier under processing.",
 )
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Bypass the resume ledger and re-run completed batches.",
+)
 @click.pass_context
 def run_runner(  # noqa: PLR0913, PLR0917
     ctx: click.Context,
@@ -590,6 +595,7 @@ def run_runner(  # noqa: PLR0913, PLR0917
     output_dir: Path,
     run_id: str,
     document_id: str,
+    force: bool,
 ) -> None:
     """
     Execute prepared artifacts against one hosted runner (olmOCR or kraken).
@@ -603,9 +609,11 @@ def run_runner(  # noqa: PLR0913, PLR0917
         output_dir: Destination root for runner outputs.
         run_id: Execution run identifier.
         document_id: Document identifier under processing.
+        force: When ``True``, bypass the resume ledger and re-run batches.
 
     Side Effects:
-        Writes runner inputs, batch records, witnesses, and throughput JSON.
+        Writes runner inputs, batch records, witnesses, throughput JSON, and
+        updates ``bundle_root/runner-resume-ledger.json`` for completed batches.
 
     Raises:
         click.ClickException: When inputs or settings fail validation.
@@ -666,6 +674,7 @@ def run_runner(  # noqa: PLR0913, PLR0917
             manifest.artifacts,
             bundle_root,
             output_dir,
+            force=force,
         )
     except (OSError, ValidationError, ValueError, ConfigurationError) as exc:
         raise click.ClickException(str(exc)) from exc
