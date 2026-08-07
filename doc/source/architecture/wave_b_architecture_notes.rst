@@ -1,0 +1,82 @@
+======================================
+Wave B Architecture Notes (2026-08-07)
+======================================
+
+:Status: Accepted
+:Date: 2026-08-07
+
+These notes record two Wave B decisions that refine accepted architecture
+without superseding the ADR chain. They are honest about what ships in Wave A/B
+versus what remains deferred.
+
+Spec 0001 Waive: PageAlignmentService and PageGraphBuilder
+==========================================================
+
+:Supersedes: nothing (temporary implementation waiver)
+:Revisit: after Wave F bake-off if merge-locality or testability fails
+
+Spec 0001 lists ``PageAlignmentService`` and ``PageGraphBuilder`` as separate
+core services with distinct responsibilities for coordinate normalization,
+evidence alignment, and derived page graph construction.
+
+**Wave B waives extracting those services as separate modules.** For v1 spine
+work through Wave C, ``wordwending.services.merge`` owns the full merge
+pipeline:
+
+- structure scaffold selection (Spec 0009)
+- coordinate-space normalization and witness alignment
+- text, typography, role, and note-link resolution onto the scaffold
+- emission of the accepted derived page graph with provenance
+
+The public facade is ``AbstainingMergeService``; per-page orchestration lives in
+``MergeOrchestrator``. Assemble calls merge; it does not reimplement alignment
+or graph build.
+
+This waiver is **temporary**. If the Wave F bake-off shows that alignment or
+graph construction must be split for locality, reuse, or independent testing,
+extract ``PageAlignmentService`` and/or ``PageGraphBuilder`` then and update
+Spec 0001 accordingly. Until that gate, treat Spec 0001's separate service
+names as aspirational boundaries, not missing modules.
+
+ADR 0009 Follow-up: Human Correction Boundary
+==============================================
+
+:Supersedes: ADR 0009 consequence "Human correction uses eScriptorium first"
+:Related spike: :doc:`spike_0001_page_escriptorium` (closed, **reject**)
+
+ADR 0009 required a bounded spike before committing to OCR-D/PAGE and
+eScriptorium as the human-review boundary. Spike 0001 recorded that eScriptorium
+native PAGE export preserves region and line structure plus line-level text, but
+does **not** round-trip the stable ``Word``/``span-*`` ids required by ADR 0008.
+Phase 1 stopped at that cost gate.
+
+**Follow-up decision (Wave B):** the v1 human correction boundary is a custom
+``wordwending review`` CLI, not eScriptorium. The CLI ships in Wave D; this note
+records the chosen boundary only.
+
+Implications:
+
+- Operators correct evidence through append-only review overlays and task packets
+  defined in Spec 0005 and Spec 0014, surfaced by the review CLI.
+- eScriptorium is **not** the v1 review UI. Do not build production workflows
+  that depend on eScriptorium round-tripping span-level identity.
+- ``PageXmlInterchangeService`` remains for **optional** PAGE XML import and
+  export (interchange with external tools, recorded fixtures, and spike evidence).
+  PAGE is an interchange format, not the operator review surface.
+- Public software contracts stay validated JSON and Markdown; XML is not forced
+  on downstream users (unchanged from ADR 0009).
+
+ADR 0009 itself stays **Accepted** — the spike gate worked as intended. This
+follow-up replaces only the "eScriptorium first" consequence with the custom CLI
+choice once spike evidence exists.
+
+References
+==========
+
+- :doc:`spec_0001_system_architecture`
+- :doc:`spec_0009_merge_policy`
+- :doc:`adr_0009_ocrd_page_escriptorium`
+- :doc:`spike_0001_page_escriptorium`
+- :doc:`spec_0005_human_markup`
+- :doc:`spec_0014_review_overlay_schema`
+- Wave plan: ``docs/superpowers/plans/2026-08-07-v1-spine-and-phase-completion.md``

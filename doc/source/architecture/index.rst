@@ -33,6 +33,12 @@ Read in this order:
 
 .. toctree::
    :maxdepth: 1
+   :caption: Implementation notes
+
+   wave_b_architecture_notes
+
+.. toctree::
+   :maxdepth: 1
    :caption: Specs
 
    spec_0004_v1_implementation_plan
