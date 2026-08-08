@@ -8,6 +8,7 @@ import json
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import pytest
 from pydantic import ValidationError
@@ -38,6 +39,11 @@ from wordwending.services.witness_adaptation import WitnessAdaptationService
 _FIXTURES = Path(__file__).parent / "fixtures" / "assemble"
 _FIXTURE = _FIXTURES / "olmocr-chat-completion-v1.json"
 _KRAKEN_FIXTURE = _FIXTURES / "kraken-chat-completion-v1.json"
+_KRAKEN_SEGMENTATION_FIXTURE = _FIXTURES / "kraken-segmentation-v1.json"
+_KRAKEN_LINE_BOXES = (
+    (10.0, 20.0, 180.0, 50.0),
+    (10.0, 60.0, 180.0, 90.0),
+)
 
 
 def _prepared_page(
@@ -93,13 +99,26 @@ def _acquisition() -> AcquisitionProvenance:
 
 
 def _merge_policy(*, runners: list[str] | None = None) -> MergePolicy:
-    """Return a merge policy with optional multi-runner precedence."""
+    """
+    Return a merge policy with optional multi-runner precedence.
+
+    When ``kraken`` is among runners, structure scaffold order prefers kraken
+    first so coordinate-rich layout wins over provisional olmOCR text.
+
+    Keyword Args:
+        runners: Runner ids for text precedence; defaults to ``["olmocr"]``.
+
+    """
     ordered = runners or ["olmocr"]
+    if "kraken" in ordered:
+        scaffold = ["kraken", *[runner for runner in ordered if runner != "kraken"]]
+    else:
+        scaffold = [ordered[0]]
     return MergePolicy(
         policy_id="merge-v1",
         version="1.0.0",
         runner_text_precedence=list(ordered),
-        structure_scaffold_runner_ids=[ordered[0]],
+        structure_scaffold_runner_ids=scaffold,
     )
 
 
@@ -163,6 +182,81 @@ def _stage_multi_witness_bundle_inputs(bundle_root: Path) -> None:
     image_dir = bundle_root / "prepared"
     image_dir.mkdir(parents=True, exist_ok=True)
     (image_dir / "page.png").write_bytes(b"fake-png-bytes")
+
+
+def _stage_structured_kraken_multi_witness_bundle_inputs(bundle_root: Path) -> None:
+    """Stage olmOCR plain + structured kraken fixtures under ``bundle_root``."""
+    witnesses_dir = bundle_root / "raw" / "witnesses"
+    witnesses_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy(_FIXTURE, witnesses_dir / "olmocr-chat-completion-v1.json")
+    shutil.copy(
+        _KRAKEN_SEGMENTATION_FIXTURE,
+        witnesses_dir / "kraken-segmentation-v1.json",
+    )
+    image_dir = bundle_root / "prepared"
+    image_dir.mkdir(parents=True, exist_ok=True)
+    (image_dir / "page.png").write_bytes(b"fake-png-bytes")
+
+
+def test_merge_policy_prefers_kraken_scaffold_when_present() -> None:
+    """Multi-runner ``_merge_policy`` lists kraken first for structure scaffold."""
+    policy = _merge_policy(runners=["olmocr", "kraken"])
+    assert policy.runner_text_precedence == ["olmocr", "kraken"]
+    assert policy.structure_scaffold_runner_ids == ["kraken", "olmocr"]
+
+
+def test_merge_policy_olmocr_only_keeps_olmocr_scaffold() -> None:
+    """Single-runner olmOCR policy keeps olmOCR as the sole scaffold preference."""
+    policy = _merge_policy()
+    assert policy.structure_scaffold_runner_ids == ["olmocr"]
+
+
+def test_assemble_structured_kraken_multi_witness_uses_kraken_line_boxes(
+    tmp_path: Path,
+) -> None:
+    """Assemble with structured kraken + olmOCR keeps kraken-distinct line boxes."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_structured_kraken_multi_witness_bundle_inputs(bundle_root)
+    page = AssemblePageRequest(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        raw_witnesses=[
+            RawWitnessRef(
+                witness_id="wit-olmocr",
+                runner_id="olmocr",
+                artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
+                coordinate_space=_coordinate_space(),
+            ),
+            RawWitnessRef(
+                witness_id="wit-kraken",
+                runner_id="kraken",
+                artifact_paths=["raw/witnesses/kraken-segmentation-v1.json"],
+                coordinate_space=_coordinate_space(),
+            ),
+        ],
+    )
+
+    bundle = _orchestrator().assemble_document(
+        bundle_root=bundle_root,
+        source=_source(),
+        bibliographic=_bibliographic(),
+        acquisition=_acquisition(),
+        pages=[page],
+        merge_policy=_merge_policy(runners=["olmocr", "kraken"]),
+    )
+
+    lines = bundle.pages[0].lines
+    assert len(lines) == 2
+    boxes = []
+    for line in lines:
+        assert line.bounding_box is not None
+        box = line.bounding_box
+        assert box.coordinate_space_id == "prepared-page-1"
+        assert (box.x0, box.y0, box.x1, box.y1) != (0.0, 0.0, 200.0, 300.0)
+        boxes.append((box.x0, box.y0, box.x1, box.y1))
+    assert tuple(boxes) == _KRAKEN_LINE_BOXES
 
 
 def test_assemble_document_seals_prepared_image_checksum_from_bytes(
@@ -406,7 +500,7 @@ def test_assemble_document_projects_non_text_merge_flags(
         ],
     )
 
-    bundle = _orchestrator(merge=merge).assemble_document(
+    bundle = _orchestrator(merge=cast("AbstainingMergeService", merge)).assemble_document(
         bundle_root=bundle_root,
         source=_source(),
         bibliographic=_bibliographic(),

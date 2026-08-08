@@ -6,6 +6,7 @@
     "kraken"
   ],
   "structure_scaffold_runner_ids": [
+    "kraken",
     "olmocr"
   ],
   "min_merge_confidence_to_accept": 0.6,
