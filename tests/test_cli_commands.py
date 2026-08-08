@@ -18,10 +18,16 @@ from wordwending.models import (
     PreparationResult,
     ReviewTaskType,
 )
+from wordwending.models.document_run import DocumentRunStage
 from wordwending.models.runner_execution import RunnerThroughputSummary
 from wordwending.services.bundle_layout import BundleLayoutService
+from wordwending.services.document_run import DocumentRunResult
 from wordwending.services.review_overlay import ReviewOverlayService
 from wordwending.settings import Settings
+
+DOCUMENT_RUN_CONFIG_FIXTURE = (
+    Path(__file__).parent / "fixtures" / "document_run" / "config-minimal.json"
+)
 
 
 def _dense_two_column_image() -> Image.Image:
@@ -1455,6 +1461,93 @@ class TestCLIReview:
 
         assert result.exit_code != 0
         assert "page-9999" in result.output
+
+
+class TestCLIDocumentRun:
+    """Test the document-run command."""
+
+    def test_document_run_help(self, runner) -> None:
+        """document-run --help exits zero and documents options."""
+        result = runner.invoke(cli, ["document-run", "--help"])
+        assert result.exit_code == 0
+        assert "--config" in result.output
+        assert "--force" in result.output
+
+    @patch("wordwending.cli.cli.DocumentRunOrchestrator")
+    def test_document_run_loads_config_and_echoes_summary(
+        self,
+        mock_orchestrator_cls,
+        runner,
+        tmp_path,
+    ) -> None:
+        """document-run loads config, calls orchestrator, and echoes result."""
+        config_path = tmp_path / "document-run.json"
+        config_path.write_text(
+            DOCUMENT_RUN_CONFIG_FIXTURE.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+        bundle_root = tmp_path / "output" / "bundle"
+        export_root = bundle_root / "exports"
+        document_bundle_path = bundle_root / "document-bundle.json"
+        mock_instance = mock_orchestrator_cls.return_value
+        mock_instance.run.return_value = DocumentRunResult(
+            run_id="run-cli-test",
+            document_id="doc-cli-test",
+            bundle_root=bundle_root,
+            stages_completed=[
+                DocumentRunStage.PREPARE,
+                DocumentRunStage.RUN,
+            ],
+            document_bundle_path=document_bundle_path,
+            export_root=export_root,
+            pending_task_pages=["page-0001", "page-0002"],
+        )
+
+        result = runner.invoke(cli, ["document-run", "--config", str(config_path)])
+
+        assert result.exit_code == 0
+        mock_instance.run.assert_called_once()
+        call_args = mock_instance.run.call_args
+        assert call_args.kwargs["config_dir"] == config_path.parent
+        assert call_args.args[0].run_id == "run-cli-test"
+        assert call_args.args[0].force_rerun is False
+        assert "stages: prepare, run" in result.output
+        assert f"document_bundle: {document_bundle_path}" in result.output
+        assert f"export_root: {export_root}" in result.output
+        assert "pending_task_pages: 2" in result.output
+
+    @patch("wordwending.cli.cli.DocumentRunOrchestrator")
+    def test_document_run_force_sets_force_rerun(
+        self,
+        mock_orchestrator_cls,
+        runner,
+        tmp_path,
+    ) -> None:
+        """--force sets force_rerun on the config passed to orchestrator.run."""
+        config_path = tmp_path / "document-run.json"
+        config_path.write_text(
+            DOCUMENT_RUN_CONFIG_FIXTURE.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+        mock_instance = mock_orchestrator_cls.return_value
+        mock_instance.run.return_value = DocumentRunResult(
+            run_id="run-cli-test",
+            document_id="doc-cli-test",
+            bundle_root=tmp_path / "bundle",
+            stages_completed=[DocumentRunStage.PREPARE],
+            document_bundle_path=None,
+            export_root=None,
+            pending_task_pages=[],
+        )
+
+        result = runner.invoke(
+            cli,
+            ["document-run", "--config", str(config_path), "--force"],
+        )
+
+        assert result.exit_code == 0
+        config_arg = mock_instance.run.call_args.args[0]
+        assert config_arg.force_rerun is True
 
 
 class TestCLIErrorHandling:

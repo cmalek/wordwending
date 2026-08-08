@@ -8,7 +8,7 @@ import os
 import sys
 from importlib.metadata import Distribution
 from pathlib import Path
-from typing import cast
+from typing import Callable, cast
 
 import click
 import httpx
@@ -35,6 +35,7 @@ from ..models import (
 )
 from ..models.assemble import AssembleManifest
 from ..models.bakeoff import BAKEOFF_MATRIX_FILENAME, BakeoffManifest
+from ..models.document_run import DocumentRunConfig
 from ..models.merge import MergePolicy
 from ..models.ocr import (
     AcquisitionProvenance,
@@ -47,6 +48,7 @@ from ..services.assemble_manifest import AssembleManifestBuilder
 from ..services.bakeoff import BakeoffService
 from ..services.bundle_checksum import BundleChecksumService
 from ..services.bundle_layout import BundleLayoutService
+from ..services.document_run import DocumentRunOrchestrator, DocumentRunResult
 from ..services.evaluation import EvaluationService
 from ..services.evaluation_cohorts import EvaluationCohortService
 from ..services.merge import AbstainingMergeService
@@ -57,6 +59,8 @@ from ..services.preparation import (
     PageQualityAssessor,
     PreparationBundleService,
 )
+from ..services.review_cli import ReviewCliService
+from ..services.review_overlay import ReviewOverlayService
 from ..services.runner_batching import RunnerBatchPlanner
 from ..services.runner_execution import RunnerExecutionService
 from ..services.runner_packaging import RunnerInputPackager
@@ -734,6 +738,52 @@ def export_document(document_bundle: Path, bundle_root: Path) -> None:
     click.echo(f"bundle_json: {bundle_root / exports.bundle_json_path}")
 
 
+@cli.command("document-run")
+@click.option(
+    "--config",
+    "config_path",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="DocumentRunConfig JSON file path.",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Force rerunning stages that would otherwise resume from ledger state.",
+)
+@click.pass_context
+def document_run(ctx: click.Context, config_path: Path, force: bool) -> None:
+    """
+    Execute one configured document run through the machine path.
+
+    Args:
+        ctx: Click context carrying settings for hosted runner wiring.
+        config_path: ``DocumentRunConfig`` JSON file path.
+        force: When ``True``, set ``force_rerun`` on the loaded config.
+
+    Side Effects:
+        Runs prepare, runner execution, assemble, optional eval, review issue,
+        and export stages as configured. May ensure remote endpoints and
+        overlay HTTPS URLs onto in-process settings.
+
+    Raises:
+        click.ClickException: When config validation or stage execution fails.
+
+    """
+    try:
+        config = DocumentRunConfig.model_validate_json(
+            config_path.read_text(encoding="utf-8")
+        )
+        if force:
+            config = config.model_copy(update={"force_rerun": True})
+        orchestrator = _build_document_run_orchestrator(ctx)
+        result = orchestrator.run(config, config_dir=config_path.parent)
+    except (OSError, ValidationError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    _echo_document_run_result(result)
+
+
 @cli.command("assemble")
 @click.option(
     "--bundle-root",
@@ -1110,6 +1160,133 @@ def bakeoff_matrix(  # noqa: PLR0913, PLR0917
     click.echo(f"cells: {len(matrix.cells)}")
     click.echo(f"filename: {BAKEOFF_MATRIX_FILENAME}")
     click.echo("phase_5: NOT COMPLETE")
+
+
+def _build_document_run_runner_factory(
+    ctx: click.Context,
+) -> Callable[..., RunnerExecutionService]:
+    """
+    Return a factory that builds one ``RunnerExecutionService`` per runner.
+
+    Reads current settings from ``ctx`` on each invocation so endpoint overlay
+    from ``ensure_endpoints`` is visible when resolving URLs and tokens.
+
+    Args:
+        ctx: Click context carrying settings.
+
+    Returns:
+        Callable matching ``DocumentRunOrchestrator``'s runner factory contract.
+
+    """
+
+    def factory(
+        *,
+        runner_cls: type,
+        runner: RunnerReference,
+        policy: RunnerExecutionPolicy,
+        bundle_root: Path,  # noqa: ARG001
+        output_dir: Path,
+    ) -> RunnerExecutionService:
+        settings: Settings = ctx.obj["settings"]
+        token = _huggingface_token(settings)
+        endpoint_url = _resolve_hosted_endpoint_url(
+            settings,
+            runner_id=runner.runner_id,
+            endpoint_key=policy.endpoint.endpoint_key,
+        )
+        output_dir.mkdir(parents=True, exist_ok=True)
+        client = httpx.Client()
+        hosted_runner = runner_cls(
+            runner=runner,
+            policy=policy,
+            endpoint_url=endpoint_url,
+            token=token,
+            client=client,
+        )
+        return RunnerExecutionService(
+            RunnerBatchPlanner(),
+            RunnerInputPackager(),
+            hosted_runner,
+        )
+
+    return factory
+
+
+def _build_document_run_endpoint_ensurer(
+    ctx: click.Context,
+) -> Callable[..., None]:
+    """
+    Return an endpoint ensurer that overlays HTTPS URLs onto session settings.
+
+    Args:
+        ctx: Click context carrying settings.
+
+    Returns:
+        Callable accepting ``runner_ids`` for one ensure/overlay cycle.
+
+    """
+
+    def endpoint_ensurer(*, runner_ids: list[str]) -> None:
+        settings: Settings = ctx.obj["settings"]
+        _overlay_ensure_endpoints(ctx, settings, runner_ids)
+
+    return endpoint_ensurer
+
+
+def _build_document_run_orchestrator(
+    ctx: click.Context,
+) -> DocumentRunOrchestrator:
+    """
+    Wire real stage collaborators for one ``DocumentRunOrchestrator``.
+
+    Args:
+        ctx: Click context carrying settings for runner and endpoint wiring.
+
+    Returns:
+        Orchestrator with the same collaborator style as staged CLI commands.
+
+    """
+    bundles = BundleLayoutService()
+    return DocumentRunOrchestrator(
+        preparation=PreparationBundleService(
+            SourceAcquisitionService(),
+            PagePreparationService(PageQualityAssessor(), PageClassifier()),
+        ),
+        runner_registry=PassRunnerRegistry(),
+        manifest_builder=AssembleManifestBuilder(),
+        assemble=AssembleOrchestrator(
+            adapter=WitnessAdaptationService(),
+            merge=AbstainingMergeService(),
+            bundles=bundles,
+        ),
+        bundles=bundles,
+        runner_service_factory=_build_document_run_runner_factory(ctx),
+        evaluation=EvaluationService(),
+        review_cli=ReviewCliService(
+            layout=bundles,
+            replay=ReviewOverlayService(),
+        ),
+        endpoint_ensurer=_build_document_run_endpoint_ensurer(ctx),
+    )
+
+
+def _echo_document_run_result(result: DocumentRunResult) -> None:
+    """
+    Print a concise summary of one document run outcome.
+
+    Args:
+        result: Orchestrator outcome summary.
+
+    """
+    click.echo(f"run_id: {result.run_id}")
+    click.echo(f"document_id: {result.document_id}")
+    stage_names = ", ".join(stage.value for stage in result.stages_completed)
+    click.echo(f"stages: {stage_names}")
+    if result.document_bundle_path is not None:
+        click.echo(f"document_bundle: {result.document_bundle_path}")
+    if result.export_root is not None:
+        click.echo(f"export_root: {result.export_root}")
+    click.echo(f"pending_task_pages: {len(result.pending_task_pages)}")
 
 
 def _overlay_ensure_endpoints(
