@@ -108,6 +108,16 @@ def _kraken_preferring_policy() -> MergePolicy:
     )
 
 
+def _olmocr_preferring_policy() -> MergePolicy:
+    """Return multi-witness merge policy with olmOCR-first structure scaffold."""
+    return MergePolicy(
+        policy_id="merge-v1",
+        version="1.0.0",
+        runner_text_precedence=["olmocr", "kraken"],
+        structure_scaffold_runner_ids=["olmocr", "kraken"],
+    )
+
+
 def test_adapted_kraken_is_more_coordinate_rich_than_olmocr(tmp_path: Path) -> None:
     """Structured kraken lines carry geometry; provisional olmOCR lines do not."""
     olmocr, kraken = _adapt_olmocr_and_kraken(tmp_path)
@@ -142,6 +152,47 @@ def test_multi_witness_merge_prefers_kraken_geometry(tmp_path: Path) -> None:
         assert (box.x0, box.y0, box.x1, box.y1) != (0.0, 0.0, 200.0, 300.0)
         boxes.append((box.x0, box.y0, box.x1, box.y1))
     assert tuple(boxes) == _KRAKEN_LINE_BOXES
+
+
+def test_multi_witness_merge_olmocr_first_scaffold_skips_kraken_geometry(
+    tmp_path: Path,
+) -> None:
+    """
+    OlmOCR-first scaffold order keeps provisional null boxes, not kraken geometry.
+
+    ``structure_scaffold_runner_ids`` is evaluated in order: olmOCR wins when
+    listed first even though kraken carries coordinate-rich line boxes. Only
+    kraken-first policy (see ``test_multi_witness_merge_prefers_kraken_geometry``)
+    selects kraken-distinct line boxes for the merged page.
+    """
+    olmocr, kraken = _adapt_olmocr_and_kraken(tmp_path)
+    page_input = MergePageInput(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        witnesses=[olmocr, kraken],
+    )
+
+    result = AbstainingMergeService().merge_page(
+        page_input,
+        _olmocr_preferring_policy(),
+    )
+
+    assert len(result.page.lines) == 2
+    for line in result.page.lines:
+        assert line.bounding_box is None
+    boxes = tuple(
+        None
+        if line.bounding_box is None
+        else (
+            line.bounding_box.x0,
+            line.bounding_box.y0,
+            line.bounding_box.x1,
+            line.bounding_box.y1,
+        )
+        for line in result.page.lines
+    )
+    assert boxes != _KRAKEN_LINE_BOXES
 
 
 def test_multi_witness_merge_policy_fixtures_prefer_kraken_scaffold() -> None:
