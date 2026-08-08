@@ -241,6 +241,45 @@ def _make_orchestrator(
     return orchestrator, prep, service, calls
 
 
+def _relative_prepare_run_config(
+    config_dir: Path,
+    *,
+    runners: list[DocumentRunnerSpec] | None = None,
+    **overrides: object,
+) -> DocumentRunConfig:
+    """Build a prepare+run config with paths relative to ``config_dir``."""
+    source = config_dir / "sources" / "source.pdf"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_bytes(b"%PDF-1.4")
+    recipe = config_dir / "recipes" / "recipe.json"
+    recipe.parent.mkdir(parents=True, exist_ok=True)
+    recipe.write_text(PREP_RECIPE.read_text(encoding="utf-8"), encoding="utf-8")
+    if runners is None:
+        _write_runner_files(config_dir / "runners")
+        runners = [
+            DocumentRunnerSpec(
+                runner_id="olmocr",
+                runner_reference_path="runners/olmocr-ref.json",
+                policy_path="runners/olmocr-policy.json",
+            )
+        ]
+    payload: dict[str, object] = {
+        "run_id": "run-001",
+        "document_id": "doc-source-001",
+        "bundle_root": "output/bundle",
+        "source_path": "sources/source.pdf",
+        "recipe_paths": ["recipes/recipe.json"],
+        "source_json": "provenance/source.json",
+        "bibliographic_json": "provenance/bib.json",
+        "acquisition_json": "provenance/acq.json",
+        "merge_policy_path": "policies/merge.json",
+        "runners": [spec.model_dump() for spec in runners],
+        "stages": [DocumentRunStage.PREPARE, DocumentRunStage.RUN],
+    }
+    payload.update(overrides)
+    return DocumentRunConfig.model_validate(payload)
+
+
 def _absolute_prepare_run_config(
     tmp_path: Path,
     *,
@@ -509,3 +548,81 @@ def test_orchestrator_multi_recipe_uses_prepare_variants(tmp_path: Path) -> None
     orchestrator.run(config)
     assert [call[0] for call in prep.calls] == ["prepare_variants"]
     assert len(prep.calls[0][2]) == 2
+
+
+def test_orchestrator_resolves_relative_paths_from_config_dir(
+    tmp_path: Path,
+) -> None:
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    config = _relative_prepare_run_config(config_dir)
+    expected_bundle = (config_dir / "output" / "bundle").resolve()
+    expected_source = (config_dir / "sources" / "source.pdf").resolve()
+    wrong_source_under_bundle = expected_bundle / "sources" / "source.pdf"
+
+    orchestrator, prep, service, factory_calls = _make_orchestrator()
+    result = orchestrator.run(config, config_dir=config_dir)
+
+    assert [call[0] for call in prep.calls] == ["prepare_bundle"]
+    _, source, _recipe, output_dir, _kwargs = prep.calls[0]
+    assert source == expected_source
+    assert source.is_absolute()
+    assert source != wrong_source_under_bundle
+    assert output_dir == expected_bundle
+    assert len(factory_calls) == 1
+    factory_kwargs = factory_calls[0]
+    assert factory_kwargs["runner"].runner_id == "olmocr"
+    assert factory_kwargs["policy"].policy_id == "olmocr-hf-fixed-v1"
+    assert len(service.calls) == 1
+    assert result.bundle_root == expected_bundle
+
+
+def test_orchestrator_runner_id_mismatch_raises(tmp_path: Path) -> None:
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    ref_path, policy_path = _write_runner_files(
+        config_dir / "runners",
+        runner_id="kraken",
+    )
+    config = _relative_prepare_run_config(
+        config_dir,
+        runners=[
+            DocumentRunnerSpec(
+                runner_id="olmocr",
+                runner_reference_path="runners/kraken-ref.json",
+                policy_path="runners/kraken-policy.json",
+            )
+        ],
+    )
+    orchestrator, _, _, _ = _make_orchestrator()
+    with pytest.raises(ValueError, match="does not match"):
+        orchestrator.run(config, config_dir=config_dir)
+    assert ref_path.exists()
+    assert policy_path.exists()
+
+
+def test_orchestrator_ensure_endpoints_without_ensurer_raises(
+    tmp_path: Path,
+) -> None:
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    config = _relative_prepare_run_config(config_dir, ensure_endpoints=True)
+    orchestrator, _, _, _ = _make_orchestrator(endpoint_ensurer=None)
+    with pytest.raises(ValueError, match="ensure_endpoints requires endpoint_ensurer"):
+        orchestrator.run(config, config_dir=config_dir)
+
+
+def test_orchestrator_assemble_stage_not_implemented(tmp_path: Path) -> None:
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    config = _relative_prepare_run_config(
+        config_dir,
+        stages=[
+            DocumentRunStage.PREPARE,
+            DocumentRunStage.RUN,
+            DocumentRunStage.ASSEMBLE,
+        ],
+    )
+    orchestrator, _, _, _ = _make_orchestrator()
+    with pytest.raises(NotImplementedError, match="assemble"):
+        orchestrator.run(config, config_dir=config_dir)
