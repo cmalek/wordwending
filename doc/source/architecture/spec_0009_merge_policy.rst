@@ -67,6 +67,14 @@ Recommended default:
   scaffold
 - fit other evidence onto that scaffold
 
+Current multi-witness defaults set
+``structure_scaffold_runner_ids: ["kraken", "olmocr"]`` so kraken structure is
+preferred when both runners are present. That preference only yields real line
+geometry when kraken witness content is ``wordwending.kraken_segmentation/v1``
+(plain-text kraken and olmOCR adapt with null line boxes). Runner order in the
+policy short-circuits before coordinate-rich counting, so listing olmOCR first
+would keep a provisional scaffold even when kraken is richer.
+
 This avoids trying to merge two incompatible region hierarchies symmetrically.
 
 Text Resolution Policy

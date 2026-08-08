@@ -57,7 +57,10 @@ Yes, with honest limits:
 - ``assemble`` adapts raw witnesses, merges (including olmOCR + kraken multi-witness),
   and writes a ``DocumentBundle`` tree. Prefer ``--from-run`` (scans prepare/run
   trees); ``--manifest`` remains an escape hatch for a hand-written
-  ``AssembleManifest``
+  ``AssembleManifest``. Kraken structured ``wordwending.kraken_segmentation/v1``
+  content adapts as coordinate-rich geometry; plain-text kraken and olmOCR stay
+  provisional (null line boxes). Multi-witness merge defaults prefer kraken for
+  the structure scaffold (``structure_scaffold_runner_ids: ["kraken", "olmocr"]``)
 - ``assemble`` also writes Spec 0005 ``ReviewTask`` packets to
   ``overlays/pending_tasks.json`` when merge flags exist (empty list when none);
   ``review issue`` regenerates those packets from the page's evaluation flags

@@ -164,9 +164,13 @@ hand-written ``AssembleManifest`` JSON.
 Paths inside the manifest (and built by ``--from-run``) are relative posix
 strings resolved against ``--bundle-root``. Multi-witness pages list olmOCR
 and kraken (or other supported runner) artifact paths; merge flags persist as
-dimension-specific evaluation flags (``evaluation/flags.json``). Assemble also
-writes Spec 0005 ``ReviewTask`` packets to ``overlays/pending_tasks.json``;
-``review issue`` regenerates them from the page's current evaluation flags.
+dimension-specific evaluation flags (``evaluation/flags.json``). When both
+runners are present, merge policy prefers kraken for the structure scaffold.
+Kraken ``wordwending.kraken_segmentation/v1`` content adapts with real line
+boxes and baselines; plain-text kraken and olmOCR stay provisional (null line
+boxes). Assemble also writes Spec 0005 ``ReviewTask`` packets to
+``overlays/pending_tasks.json``; ``review issue`` regenerates them from the
+page's current evaluation flags.
 
 inspect-bundle
 ^^^^^^^^^^^^^^

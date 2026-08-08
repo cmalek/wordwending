@@ -48,6 +48,12 @@ coordinate identity, warnings, and optional prepared units.
 Phase 4: One Vertical Slice
 ===========================
 
+**Status (fixture-backed spine):** met for Waves A+C+D. The coordinate-rich
+second runner is honest when kraken emits ``wordwending.kraken_segmentation/v1``
+JSON inside exact HF ``chat.completion`` bytes (ADR 0004); plain-text kraken and
+olmOCR remain provisional (null line boxes). Live HF must emit v1 JSON for the
+same geometry in production.
+
 - execute one provisional text runner and one coordinate-rich runner
 - preserve raw witnesses and exact model/runtime/config identity
 - build one ``region/line/span/note`` page graph
