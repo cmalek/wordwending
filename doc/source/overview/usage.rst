@@ -292,8 +292,10 @@ What is not a CLI yet
 ---------------------
 
 - Standalone ``merge`` (merge runs inside ``assemble``)
-- Single orchestrated prepare → run → assemble → review → export run
-  (``DocumentRunOrchestrator`` remains out of scope)
+- Hands-off review **apply** / **rebase** in ``document-run`` (``wordwending
+  document-run`` ships the machine path through export and auto-issues review
+  tasks; operators still run ``review apply`` and ``review rebase`` manually
+  after correction)
 - Auto-generated review **events** (humans still author corrections for
   ``review apply``; pending ``ReviewTask`` packets are emitted by assemble /
   ``review issue``)

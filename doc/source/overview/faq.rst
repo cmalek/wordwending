@@ -71,8 +71,10 @@ Yes, with honest limits:
   (successor overlay; JSONL history stays append-only), then ``export`` reads the
   rebased graphs
 
-There is no standalone ``merge`` command (merge runs inside ``assemble``) and no
-single orchestrated prepare→export run yet. Spec 0004 Phase 6 (PassRunner Protocol
+There is no standalone ``merge`` command (merge runs inside ``assemble``).
+``wordwending document-run`` is the preferred one-config machine path (prepare
+→ run → assemble → optional eval → issue review tasks → export); ``review
+apply`` and ``review rebase`` remain manual. Spec 0004 Phase 6 (PassRunner Protocol
 + registry) is COMPLETE; Phase 5 remains NOT COMPLETE; Phase 10 remains NOT
 COMPLETE (**ops skeleton only**; Spec exit deferred). See
 :doc:`/runbook/from_source_to_markdown`.
