@@ -47,7 +47,7 @@ Supporting commands:
 - ``wordwending run`` — stage 2: OCR runner passes and raw witness artifacts
 - ``wordwending assemble`` — stage 3: bundle assembly (``--from-run`` preferred)
 - ``wordwending inspect-bundle`` — summarize an assembled bundle on disk
-- ``wordwending review issue`` — regenerate pending review tasks from merge flags
+- ``wordwending review issue`` — regenerate pending review tasks from page evaluation flags
 - ``wordwending review apply`` — append overlay review events to a bundle page
 - ``wordwending review materialize`` — replay overlay history into current state
 - ``wordwending review rebase`` — apply accepted overlays onto the page graph
@@ -134,7 +134,7 @@ Operator workflow:
    flags** (``evaluation/flags.json`` and the page evaluation summary)—use
    ``inspect-bundle`` to read them. When merge flags exist, assemble also writes
    Spec 0005 ``ReviewTask`` packets to ``overlays/pending_tasks.json``. Regenerate
-   that queue from flags with:
+   that queue from the page's current evaluation flags (merge + eval) with:
 
 .. code-block:: bash
 

@@ -98,15 +98,16 @@ guide on Read the Docs.
 | `assemble` | Adapt raw witnesses, merge, and write a document bundle tree (`--from-run` preferred; `--manifest` escape hatch) |
 | `inspect-bundle` | Summarize an assembled bundle (manifests, pages, witnesses, recorded checksums, exports when present) |
 | `bakeoff` | Offline candidate matrix from recorded predictions → `bakeoff-matrix-v1.json` |
-| `review issue` | Regenerate pending review tasks from merge flags on one page |
+| `review issue` | Regenerate pending review tasks from page evaluation flags (merge + eval) |
 | `review apply` | Append overlay review events and materialize overlay state |
 | `review materialize` | Replay append-only review history into current overlay state |
 | `review rebase` | Apply accepted overlays onto the page graph (then re-export) |
 | `endpoints up` / `down` / `status` | Ensure, pause (or `--delete`), or inspect catalogued HF Inference Endpoints |
 | `export` | Derive bundle / RAG / Markdown exports from a DocumentBundle |
 
-Multi-witness assemble (olmOCR + kraken), pending ReviewTasks on merge flags,
-and review overlays (issue → apply → rebase → export) ship on the current spine.
+Multi-witness assemble (olmOCR + kraken), pending ReviewTasks from evaluation
+flags (assemble + `review issue`), and review overlays (issue → apply → rebase →
+export) ship on the current spine.
 The v1 plan Phase 4 full bullets (Waves A+C+D) are met on fixture-backed pages;
 Spec 0004's coordinate-rich second-runner bullet remains deferred. **Phase 6 (PassRunner Protocol + registry) is COMPLETE.**
 **Phase 5 (bake-off) NOT COMPLETE** (harness only; scoring placeholders /
