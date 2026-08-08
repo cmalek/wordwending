@@ -31,6 +31,22 @@
     ],
     "prepared_units": []
   },
+  "witnesses": [
+    {
+      "witness_id": "wit-dict-1",
+      "witness_kind": "text",
+      "artifact_path": "fixtures/wit-dict-1.json",
+      "runner_id": "olmocr",
+      "page_id": "page-0100"
+    },
+    {
+      "witness_id": "wit-page-0100-ocr",
+      "witness_kind": "text",
+      "artifact_path": "fixtures/wit-page-0100-ocr.json",
+      "runner_id": "olmocr-hf",
+      "page_id": "page-0100"
+    }
+  ],
   "regions": [
     {
       "region_id": "region-0100-a",
@@ -96,6 +112,7 @@
         {"x": 120.0, "y": 175.0},
         {"x": 500.0, "y": 177.0}
       ],
+      "baseline_coordinate_space_id": "prepared-page-0100",
       "span_ids": ["span-0100-headword", "span-0100-sorrow"],
       "provenance": {
         "source_page_id": "page-0100",
@@ -128,6 +145,7 @@
         {"x": 1200.0, "y": 960.0},
         {"x": 2200.0, "y": 961.0}
       ],
+      "baseline_coordinate_space_id": "prepared-page-0100",
       "span_ids": [],
       "provenance": {
         "source_page_id": "page-0100",

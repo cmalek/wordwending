@@ -31,6 +31,22 @@
     ],
     "prepared_units": []
   },
+  "witnesses": [
+    {
+      "witness_id": "wit-note-1",
+      "witness_kind": "text",
+      "artifact_path": "fixtures/wit-note-1.json",
+      "runner_id": "olmocr",
+      "page_id": "page-0010"
+    },
+    {
+      "witness_id": "wit-page-0010-ocr",
+      "witness_kind": "text",
+      "artifact_path": "fixtures/wit-page-0010-ocr.json",
+      "runner_id": "olmocr-hf",
+      "page_id": "page-0010"
+    }
+  ],
   "regions": [
     {
       "region_id": "region-0010-body",
@@ -88,6 +104,7 @@
         {"x": 100.0, "y": 155.0},
         {"x": 1750.0, "y": 157.0}
       ],
+      "baseline_coordinate_space_id": "prepared-page-0010",
       "span_ids": ["span-0010-italic", "span-0010-formula", "span-note-marker-10"],
       "provenance": {
         "source_page_id": "page-0010",
