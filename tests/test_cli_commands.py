@@ -1144,7 +1144,7 @@ class TestCLIAssemble:
     def test_inspect_bundle_surfaces_multi_witness_merge_flags(
         self, runner, tmp_path: Path
     ) -> None:
-        """inspect-bundle prints merge flags after multi-witness disagreement."""
+        """inspect-bundle lists both provisional multi-witness paths (no IoU flags)."""
         bundle_root = tmp_path / "bundle"
         bundle_root.mkdir()
         self._stage_multi_witness_bundle_inputs(bundle_root)
@@ -1168,8 +1168,9 @@ class TestCLIAssemble:
         assert result.exit_code == 0
         assert "wit-olmocr" in result.output
         assert "wit-kraken" in result.output
-        assert "text_disagreement" in result.output
-        assert "flag:" in result.output
+        # Dual provisional (null line boxes) cannot IoU-match for text_disagreement.
+        assert "text_disagreement" not in result.output
+        assert "flag:" not in result.output
 
     def test_assemble_fails_when_witness_artifacts_missing(
         self, runner, tmp_path: Path
