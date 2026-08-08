@@ -415,6 +415,23 @@ def test_adapt_kraken_structured_sets_per_line_boxes_and_baselines(
     assert page.lines[0].baseline_coordinate_space_id == space_id
     assert page.lines[1].baseline_coordinate_space_id == space_id
 
+    assert len(page.regions) == 1
+    assert page.regions[0].bounding_box is not None
+    assert page.regions[0].bounding_box.coordinate_space_id == space_id
+    assert (page.regions[0].bounding_box.x0, page.regions[0].bounding_box.y0) == (
+        0,
+        0,
+    )
+    assert (page.regions[0].bounding_box.x1, page.regions[0].bounding_box.y1) == (
+        200,
+        300,
+    )
+    assert page.lines[0].polygon is not None
+    assert page.lines[0].polygon.coordinate_space_id == space_id
+    assert len(page.lines[0].polygon.points) >= 3
+    assert page.spans[0].bounding_box is not None
+    assert page.spans[0].bounding_box.coordinate_space_id == space_id
+
     assert _coordinate_rich_line_count(page) == 2
 
 
@@ -436,6 +453,10 @@ def test_adapt_kraken_plain_text_fallback_has_no_line_boxes(
 
     assert len(page.lines) == 2
     assert all(line.bounding_box is None for line in page.lines)
+    assert all(span.bounding_box is None for span in page.spans)
+    assert all(not line.baseline for line in page.lines)
+    assert all(line.baseline_coordinate_space_id is None for line in page.lines)
+    assert page.regions[0].bounding_box is not None
     assert _coordinate_rich_line_count(page) == 0
 
 
@@ -455,6 +476,10 @@ def test_adapt_olmocr_provisional_has_no_line_boxes(tmp_path: Path) -> None:
 
     assert len(page.lines) == 2
     assert all(line.bounding_box is None for line in page.lines)
+    assert all(span.bounding_box is None for span in page.spans)
+    assert all(not line.baseline for line in page.lines)
+    assert all(line.baseline_coordinate_space_id is None for line in page.lines)
+    assert page.regions[0].bounding_box is not None
     assert _coordinate_rich_line_count(page) == 0
 
 

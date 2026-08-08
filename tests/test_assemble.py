@@ -26,7 +26,6 @@ from wordwending.models import (
     PageClass,
     PreparationMode,
     PreparedPage,
-    ReviewTask,
     SourceDescriptor,
     SourceType,
 )
@@ -104,7 +103,9 @@ def _merge_policy(*, runners: list[str] | None = None) -> MergePolicy:
     )
 
 
-def _orchestrator(*, merge: AbstainingMergeService | None = None) -> AssembleOrchestrator:
+def _orchestrator(
+    *, merge: AbstainingMergeService | None = None
+) -> AssembleOrchestrator:
     """Build AssembleOrchestrator with real assemble collaborators."""
     return AssembleOrchestrator(
         adapter=WitnessAdaptationService(),
@@ -130,9 +131,7 @@ class _MergeWithExtraFlags:
         policy: MergePolicy,
     ) -> MergePageResult:
         result = self._inner.merge_page(page_input, policy)
-        return result.model_copy(
-            update={"flags": [*result.flags, *self._extra_flags]}
-        )
+        return result.model_copy(update={"flags": [*result.flags, *self._extra_flags]})
 
 
 def _stage_bundle_inputs(bundle_root: Path) -> tuple[Path, Path]:
@@ -203,9 +202,7 @@ def test_assemble_document_seals_prepared_image_checksum_from_bytes(
     assert graph["prepared_page"]["image_checksum"] == expected
     copied = bundle_root / graph["prepared_page"]["image_path"]
     assert copied.is_file()
-    assert (
-        f"sha256:{hashlib.sha256(copied.read_bytes()).hexdigest()}" == expected
-    )
+    assert f"sha256:{hashlib.sha256(copied.read_bytes()).hexdigest()}" == expected
 
 
 def test_raw_witness_ref_paths_are_relative_posix_strings() -> None:
@@ -219,9 +216,7 @@ def test_raw_witness_ref_paths_are_relative_posix_strings() -> None:
     assert all(isinstance(path, str) for path in ref.artifact_paths)
     assert not any(isinstance(path, Path) for path in ref.artifact_paths)
     dumped = ref.model_dump(mode="json")
-    assert dumped["artifact_paths"] == [
-        "raw/witnesses/olmocr-chat-completion-v1.json"
-    ]
+    assert dumped["artifact_paths"] == ["raw/witnesses/olmocr-chat-completion-v1.json"]
 
 
 def test_raw_witness_ref_rejects_empty_artifact_paths() -> None:
@@ -235,10 +230,17 @@ def test_raw_witness_ref_rejects_empty_artifact_paths() -> None:
         )
 
 
-def test_assemble_document_multi_witness_disagreement_persists_flags(
+def test_assemble_document_multi_witness_provisional_skips_iou_text_disagreement(
     tmp_path: Path,
 ) -> None:
-    """Multi-witness text disagreement writes non-empty evaluation/flags.json."""
+    """
+    Dual provisional witnesses cannot IoU-match spans for text disagreement.
+
+    Plain-text olmOCR + plain-text kraken adapt with null line/span boxes, so
+    merge keeps scaffold text only and does not emit text_disagreement. Flags
+    file is still written (possibly empty). Coordinate-rich disagreement is
+    covered once structured kraken geometry is on the multi-witness path.
+    """
     bundle_root = tmp_path / "bundle"
     bundle_root.mkdir()
     _stage_multi_witness_bundle_inputs(bundle_root)
@@ -273,25 +275,23 @@ def test_assemble_document_multi_witness_disagreement_persists_flags(
 
     assert len(bundle.pages) == 1
     assert {w.runner_id for w in bundle.pages[0].witnesses} == {"olmocr", "kraken"}
-    flags_path = (
-        bundle_root / "pages" / "page-0001" / "evaluation" / "flags.json"
-    )
+    assert all(span.bounding_box is None for span in bundle.pages[0].spans)
+    flags_path = bundle_root / "pages" / "page-0001" / "evaluation" / "flags.json"
     assert flags_path.is_file()
     flags_payload = json.loads(flags_path.read_text(encoding="utf-8"))
-    assert flags_payload["flags"]
-    assert any(
+    assert not any(
         flag["flag_type"] == "text_disagreement" for flag in flags_payload["flags"]
     )
-    assert any(
+    assert not any(
         flag.flag_type == "text_disagreement"
         for flag in bundle.pages[0].evaluation_summary.text.flags
     )
 
 
-def test_assemble_document_multi_witness_disagreement_persists_pending_tasks(
+def test_assemble_document_multi_witness_provisional_writes_empty_pending_tasks(
     tmp_path: Path,
 ) -> None:
-    """Multi-witness disagreement writes Spec 0005 pending_tasks.json."""
+    """Dual provisional witnesses write pending_tasks.json without IoU disagreement tasks."""
     bundle_root = tmp_path / "bundle"
     bundle_root.mkdir()
     _stage_multi_witness_bundle_inputs(bundle_root)
@@ -329,12 +329,7 @@ def test_assemble_document_multi_witness_disagreement_persists_pending_tasks(
     pending_path = BundlePaths(bundle_root).pending_tasks_path(1)
     assert pending_path.is_file()
     tasks = BundleLayoutService().read_pending_review_tasks(bundle_root, 1)
-    assert tasks
-    assert all(isinstance(task, ReviewTask) for task in tasks)
-    assert all(
-        task.base_graph_revision == page_graph.graph_revision for task in tasks
-    )
-    assert all(task.base_run_id == bundle.run.run_id for task in tasks)
+    assert tasks == []
 
 
 def test_assemble_document_empty_flags_writes_empty_pending_tasks(
@@ -448,7 +443,9 @@ def test_assemble_document_rejects_duplicate_witness_id_across_pages(
                     witness_id="wit-1",
                     runner_id="olmocr",
                     artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
-                    coordinate_space=_coordinate_space(prepared_page_id="prepared-page-1"),
+                    coordinate_space=_coordinate_space(
+                        prepared_page_id="prepared-page-1"
+                    ),
                 )
             ],
         ),
@@ -464,7 +461,9 @@ def test_assemble_document_rejects_duplicate_witness_id_across_pages(
                     witness_id="wit-1",
                     runner_id="olmocr",
                     artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
-                    coordinate_space=_coordinate_space(prepared_page_id="prepared-page-2"),
+                    coordinate_space=_coordinate_space(
+                        prepared_page_id="prepared-page-2"
+                    ),
                 )
             ],
         ),
