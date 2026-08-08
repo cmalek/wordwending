@@ -57,9 +57,12 @@ boundary.
 
 Implications:
 
-- Operators correct evidence through append-only review overlays (Spec 0014),
-  hand-authored ``PageOverlay`` JSON, and Spec 0005 review concepts—not through
-  auto-emitted review packets from ``assemble``.
+- Operators correct evidence through append-only review overlays (Spec 0014) and
+  Spec 0005 review concepts. Assemble / ``review issue`` emit pending
+  ``ReviewTask`` packets (``overlays/pending_tasks.json``); humans still
+  hand-author review **events** / ``PageOverlay`` JSON for ``review apply``.
+  ``review rebase`` applies accepted leaf overrides onto the page graph before
+  export (ADR 0008 successor overlay; JSONL history stays append-only).
 - eScriptorium is **not** the v1 review UI. Do not build production workflows
   that depend on eScriptorium round-tripping span-level identity.
 - ``PageXmlInterchangeService`` remains for **optional** PAGE XML import and
@@ -89,21 +92,25 @@ Spec 0004 Phase 4 Status (2026-08-07)
 After Waves A, C, and D, the v1 plan **Phase 4 full bullets (Waves A+C+D)** are
 met on the fixture-backed spine: olmOCR + kraken witnesses adapt through
 ``assemble``, multi-witness merge persists **evaluation flags**
-(``evaluation/flags.json``), operators hand-author ``PageOverlay`` and apply
-overlays via ``wordwending review``, and ``eval`` / ``export`` follow without
-hand-edited ``DocumentBundle`` JSON. ``MergeFlagReviewService.build_review_tasks``
-exists in library code but is not auto-wired into ``assemble`` or the CLI.
+(``evaluation/flags.json``), operators hand-author review **events** /
+``PageOverlay`` and apply overlays via ``wordwending review``, and ``eval`` /
+``export`` follow without hand-edited ``DocumentBundle`` JSON. Hands-off
+operator path follow-up: ``assemble --from-run`` builds the manifest;
+assemble / ``review issue`` persist Spec 0005 pending ``ReviewTask`` packets;
+``review rebase`` applies accepted overlay leaf overrides onto page graphs
+(ADR 0008 successor overlay) so ``export`` sees corrections.
 
 **Phase 6 COMPLETE:** ``PassRunner`` Protocol + ``PassRunnerRegistry`` (``olmocr`` /
 ``kraken``) with the execution spine typed to the Protocol. Fake runners remain
 test doubles only.
 
-**Not claimed complete:** Spec 0004 Phase 4's **coordinate-rich second-runner**
-bullet (deferred until Phase 7); **Phase 5 NOT COMPLETE** (bake-off harness
+**Not claimed complete:** **Phase 5 NOT COMPLETE** (bake-off harness
 only); **Phase 10 NOT COMPLETE** (operational hardening). Wave H ships an **ops
 skeleton only** (``run`` resume ledger, ``inspect-bundle`` checksum
 verification, ``wordwending endpoints up|down|status`` lifecycle CLI with
 optional ``--ensure-endpoints`` on ``run``/``bakeoff``); Spec Phase 10 exit
-remains deferred. Kraken on the spine is a provisional second hosted adapter
-with conservative/text-first geometry. ``export`` reads bundle page graphs
-only—overlay files are not consumed until graph rebase lands.
+remains deferred. Spec 0004 Phase 4's **coordinate-rich second-runner**
+bullet is met on the **fixture-backed spine** when kraken emits
+``wordwending.kraken_segmentation/v1`` JSON; the **live HF endpoint must emit
+v1 JSON** for the same geometry in production. Plain-text kraken fallback and
+olmOCR remain provisional (null line boxes).

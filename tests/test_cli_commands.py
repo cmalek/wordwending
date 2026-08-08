@@ -18,10 +18,16 @@ from wordwending.models import (
     PreparationResult,
     ReviewTaskType,
 )
+from wordwending.models.document_run import DocumentRunStage
 from wordwending.models.runner_execution import RunnerThroughputSummary
 from wordwending.services.bundle_layout import BundleLayoutService
+from wordwending.services.document_run import DocumentRunResult
 from wordwending.services.review_overlay import ReviewOverlayService
 from wordwending.settings import Settings
+
+DOCUMENT_RUN_CONFIG_FIXTURE = (
+    Path(__file__).parent / "fixtures" / "document_run" / "config-minimal.json"
+)
 
 
 def _dense_two_column_image() -> Image.Image:
@@ -749,6 +755,7 @@ class TestCLIAssemble:
     _MULTI_WITNESS_MANIFEST = Path(
         "tests/fixtures/assemble/manifest-multi-witness-v1.json"
     )
+    _HANDS_OFF_FIXTURES = Path("tests/fixtures/hands_off")
 
     def _stage_bundle_inputs(self, bundle_root: Path) -> None:
         """Copy witness fixture and prepared image under bundle_root."""
@@ -769,6 +776,168 @@ class TestCLIAssemble:
         shutil.copy(
             self._KRAKEN_FIXTURE, witnesses_dir / "kraken-chat-completion-v1.json"
         )
+
+    def _stage_hands_off_from_run_inputs(
+        self, bundle_root: Path, tmp_path: Path
+    ) -> Path:
+        """Stage prepare tree and one olmOCR run fixture for --from-run."""
+        shutil.copytree(
+            self._HANDS_OFF_FIXTURES / "prepare" / "pages", bundle_root / "pages"
+        )
+        run_dir = tmp_path / "run-olmocr"
+        shutil.copytree(self._HANDS_OFF_FIXTURES / "run-olmocr", run_dir)
+        return run_dir
+
+    def _hands_off_from_run_args(
+        self,
+        *,
+        bundle_root: Path,
+        run_dir: Path,
+        write_manifest: Path | None = None,
+    ) -> list[str]:
+        """Build CLI argv for assemble --from-run with hands-off fixtures."""
+        args = [
+            "assemble",
+            "--bundle-root",
+            str(bundle_root),
+            "--from-run",
+            "--run-dir",
+            str(run_dir),
+            "--source-json",
+            str(self._HANDS_OFF_FIXTURES / "source.json"),
+            "--bibliographic-json",
+            str(self._HANDS_OFF_FIXTURES / "bibliographic.json"),
+            "--acquisition-json",
+            str(self._HANDS_OFF_FIXTURES / "acquisition.json"),
+            "--merge-policy",
+            str(self._HANDS_OFF_FIXTURES / "merge-policy.json"),
+        ]
+        if write_manifest is not None:
+            args.extend(["--write-manifest", str(write_manifest)])
+        return args
+
+    def test_assemble_from_run_writes_bundle_tree(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """Assemble --from-run builds manifest from run dirs and writes bundle."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        run_dir = self._stage_hands_off_from_run_inputs(bundle_root, tmp_path)
+
+        result = runner.invoke(
+            cli,
+            self._hands_off_from_run_args(bundle_root=bundle_root, run_dir=run_dir),
+        )
+
+        assert result.exit_code == 0, result.output
+        assert (bundle_root / "manifest.json").exists()
+        assert (bundle_root / "document-bundle.json").exists()
+        assert (
+            bundle_root
+            / "runs"
+            / "run-olmocr"
+            / "witnesses"
+            / "batch-olmocr-1"
+            / "item-1.json"
+        ).is_file()
+        assert (
+            bundle_root / "pages" / "page-0001" / "graph" / "page_graph.json"
+        ).exists()
+        assert "doc-src-1" in result.output
+        assert "pages: 1" in result.output
+
+    def test_assemble_from_run_write_manifest(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """Assemble --from-run optionally persists the built manifest JSON."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        run_dir = self._stage_hands_off_from_run_inputs(bundle_root, tmp_path)
+        manifest_path = tmp_path / "built-manifest.json"
+
+        result = runner.invoke(
+            cli,
+            self._hands_off_from_run_args(
+                bundle_root=bundle_root,
+                run_dir=run_dir,
+                write_manifest=manifest_path,
+            ),
+        )
+
+        assert result.exit_code == 0, result.output
+        assert manifest_path.is_file()
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert payload["source"]["source_id"] == "src-1"
+        assert len(payload["pages"]) == 1
+        assert payload["pages"][0]["raw_witnesses"][0]["runner_id"] == "olmocr"
+
+    def test_assemble_rejects_manifest_and_from_run(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """Assemble rejects using --manifest and --from-run together."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        run_dir = self._stage_hands_off_from_run_inputs(bundle_root, tmp_path)
+
+        result = runner.invoke(
+            cli,
+            [
+                *self._hands_off_from_run_args(
+                    bundle_root=bundle_root, run_dir=run_dir
+                ),
+                "--manifest",
+                str(self._MANIFEST_FIXTURE),
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "manifest" in result.output.lower()
+        assert "from-run" in result.output.lower()
+
+    def test_assemble_requires_manifest_or_from_run(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """Assemble requires either --manifest or --from-run."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+
+        result = runner.invoke(
+            cli,
+            [
+                "assemble",
+                "--bundle-root",
+                str(bundle_root),
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "manifest" in result.output.lower() or "from-run" in result.output.lower()
+
+    def test_assemble_write_manifest_requires_from_run(
+        self, runner, tmp_path: Path
+    ) -> None:
+        """Assemble rejects --write-manifest without --from-run."""
+        bundle_root = tmp_path / "bundle"
+        bundle_root.mkdir()
+        self._stage_bundle_inputs(bundle_root)
+        manifest_path = tmp_path / "built-manifest.json"
+
+        result = runner.invoke(
+            cli,
+            [
+                "assemble",
+                "--bundle-root",
+                str(bundle_root),
+                "--manifest",
+                str(self._MANIFEST_FIXTURE),
+                "--write-manifest",
+                str(manifest_path),
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "write-manifest" in result.output.lower()
+        assert "from-run" in result.output.lower()
 
     def test_assemble_writes_bundle_tree(self, runner, tmp_path: Path) -> None:
         """Assemble materializes Spec 0002 bundle tree from manifest."""
@@ -975,7 +1144,7 @@ class TestCLIAssemble:
     def test_inspect_bundle_surfaces_multi_witness_merge_flags(
         self, runner, tmp_path: Path
     ) -> None:
-        """inspect-bundle prints merge flags after multi-witness disagreement."""
+        """inspect-bundle lists both provisional multi-witness paths (no IoU flags)."""
         bundle_root = tmp_path / "bundle"
         bundle_root.mkdir()
         self._stage_multi_witness_bundle_inputs(bundle_root)
@@ -999,8 +1168,9 @@ class TestCLIAssemble:
         assert result.exit_code == 0
         assert "wit-olmocr" in result.output
         assert "wit-kraken" in result.output
-        assert "text_disagreement" in result.output
-        assert "flag:" in result.output
+        # Dual provisional (null line boxes) cannot IoU-match for text_disagreement.
+        assert "text_disagreement" not in result.output
+        assert "flag:" not in result.output
 
     def test_assemble_fails_when_witness_artifacts_missing(
         self, runner, tmp_path: Path
@@ -1292,6 +1462,104 @@ class TestCLIReview:
 
         assert result.exit_code != 0
         assert "page-9999" in result.output
+
+
+class TestCLIDocumentRun:
+    """Test the document-run command."""
+
+    def test_document_run_help(self, runner) -> None:
+        """document-run --help exits zero and documents options."""
+        result = runner.invoke(cli, ["document-run", "--help"])
+        assert result.exit_code == 0
+        assert "--config" in result.output
+        assert "--force" in result.output
+
+    def test_document_run_rejects_invalid_config(self, runner, tmp_path) -> None:
+        """Invalid config JSON exits nonzero with a ClickException message."""
+        config_path = tmp_path / "document-run.json"
+        config_path.write_text("{not valid json", encoding="utf-8")
+
+        result = runner.invoke(cli, ["document-run", "--config", str(config_path)])
+
+        assert result.exit_code != 0
+        assert "Error:" in result.output
+        assert "Invalid JSON" in result.output
+
+    @patch("wordwending.cli.cli.DocumentRunOrchestrator")
+    def test_document_run_loads_config_and_echoes_summary(
+        self,
+        mock_orchestrator_cls,
+        runner,
+        tmp_path,
+    ) -> None:
+        """document-run loads config, calls orchestrator, and echoes result."""
+        config_path = tmp_path / "document-run.json"
+        config_path.write_text(
+            DOCUMENT_RUN_CONFIG_FIXTURE.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+        bundle_root = tmp_path / "output" / "bundle"
+        export_root = bundle_root / "exports"
+        document_bundle_path = bundle_root / "document-bundle.json"
+        mock_instance = mock_orchestrator_cls.return_value
+        mock_instance.run.return_value = DocumentRunResult(
+            run_id="run-cli-test",
+            document_id="doc-cli-test",
+            bundle_root=bundle_root,
+            stages_completed=[
+                DocumentRunStage.PREPARE,
+                DocumentRunStage.RUN,
+            ],
+            document_bundle_path=document_bundle_path,
+            export_root=export_root,
+            pending_task_pages=["page-0001", "page-0002"],
+        )
+
+        result = runner.invoke(cli, ["document-run", "--config", str(config_path)])
+
+        assert result.exit_code == 0
+        mock_instance.run.assert_called_once()
+        call_args = mock_instance.run.call_args
+        assert call_args.kwargs["config_dir"] == config_path.parent
+        assert call_args.args[0].run_id == "run-cli-test"
+        assert call_args.args[0].force_rerun is False
+        assert "stages: prepare, run" in result.output
+        assert f"document_bundle: {document_bundle_path}" in result.output
+        assert f"export_root: {export_root}" in result.output
+        assert "pending_task_pages: 2" in result.output
+
+    @patch("wordwending.cli.cli.DocumentRunOrchestrator")
+    def test_document_run_force_sets_force_rerun(
+        self,
+        mock_orchestrator_cls,
+        runner,
+        tmp_path,
+    ) -> None:
+        """--force sets force_rerun on the config passed to orchestrator.run."""
+        config_path = tmp_path / "document-run.json"
+        config_path.write_text(
+            DOCUMENT_RUN_CONFIG_FIXTURE.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+        mock_instance = mock_orchestrator_cls.return_value
+        mock_instance.run.return_value = DocumentRunResult(
+            run_id="run-cli-test",
+            document_id="doc-cli-test",
+            bundle_root=tmp_path / "bundle",
+            stages_completed=[DocumentRunStage.PREPARE],
+            document_bundle_path=None,
+            export_root=None,
+            pending_task_pages=[],
+        )
+
+        result = runner.invoke(
+            cli,
+            ["document-run", "--config", str(config_path), "--force"],
+        )
+
+        assert result.exit_code == 0
+        config_arg = mock_instance.run.call_args.args[0]
+        assert config_arg.force_rerun is True
 
 
 class TestCLIErrorHandling:

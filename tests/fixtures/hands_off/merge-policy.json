@@ -1,0 +1,15 @@
+{
+  "policy_id": "merge-v1",
+  "version": "1.0.0",
+  "runner_text_precedence": [
+    "olmocr",
+    "kraken"
+  ],
+  "structure_scaffold_runner_ids": [
+    "kraken",
+    "olmocr"
+  ],
+  "min_merge_confidence_to_accept": 0.6,
+  "iou_match_threshold": 0.5,
+  "text_normalization_policy_id": "text-norm-v1"
+}

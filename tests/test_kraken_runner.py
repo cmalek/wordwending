@@ -24,7 +24,11 @@ from wordwending.models.runner_execution import (
     PlannedRunnerBatch,
     RunnerExecutionPolicy,
 )
-from wordwending.services.kraken_runner import HuggingFaceKrakenRunner
+from wordwending.services.kraken_runner import (
+    KRAKEN_TRANSCRIPTION_PROMPT,
+    HuggingFaceKrakenRunner,
+)
+from wordwending.services.witness_adaptation import KRAKEN_SEGMENTATION_SCHEMA
 
 ENDPOINT_URL = "https://example.endpoints.huggingface.cloud/v1"
 TOKEN = "hf_test_token"  # noqa: S105
@@ -393,6 +397,16 @@ def test_runner_exposes_execution_contract() -> None:
     assert runner.policy.policy_id == "olmocr-hf-fixed-v1"
     assert runner.runner_ref.runner_id == "kraken"
     assert runner.capability.supports_multi_item_batching is True
+
+
+def test_kraken_transcription_prompt_requests_v1_json_only() -> None:
+    """Runner prompt must demand wordwending.kraken_segmentation/v1 JSON only."""
+    assert KRAKEN_SEGMENTATION_SCHEMA in KRAKEN_TRANSCRIPTION_PROMPT
+    lowered = KRAKEN_TRANSCRIPTION_PROMPT.lower()
+    assert "json" in lowered
+    assert "bbox" in lowered or "bounding" in lowered
+    assert "baseline" in lowered
+    assert "markdown" in lowered or "fence" in lowered or "commentary" in lowered
 
 
 def test_kraken_capability_matches_spine_packaging() -> None:

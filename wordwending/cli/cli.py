@@ -8,6 +8,7 @@ import os
 import sys
 from importlib.metadata import Distribution
 from pathlib import Path
+from typing import Callable, cast
 
 import click
 import httpx
@@ -34,11 +35,24 @@ from ..models import (
 )
 from ..models.assemble import AssembleManifest
 from ..models.bakeoff import BAKEOFF_MATRIX_FILENAME, BakeoffManifest
-from ..models.runner_execution import RunnerExecutionPolicy
+from ..models.document_run import DocumentRunConfig
+from ..models.merge import MergePolicy
+from ..models.ocr import (
+    AcquisitionProvenance,
+    BibliographicProvenance,
+    RunnerExecutionBatch,
+    SourceDescriptor,
+)
+from ..models.runner_execution import (
+    RunnerExecutionPolicy,
+    RunnerThroughputSummary,
+)
 from ..services.assemble import DOCUMENT_BUNDLE_JSON, AssembleOrchestrator
+from ..services.assemble_manifest import AssembleManifestBuilder
 from ..services.bakeoff import BakeoffService
 from ..services.bundle_checksum import BundleChecksumService
 from ..services.bundle_layout import BundleLayoutService
+from ..services.document_run import DocumentRunOrchestrator, DocumentRunResult
 from ..services.evaluation import EvaluationService
 from ..services.evaluation_cohorts import EvaluationCohortService
 from ..services.merge import AbstainingMergeService
@@ -49,6 +63,8 @@ from ..services.preparation import (
     PageQualityAssessor,
     PreparationBundleService,
 )
+from ..services.review_cli import ReviewCliService
+from ..services.review_overlay import ReviewOverlayService
 from ..services.runner_batching import RunnerBatchPlanner
 from ..services.runner_execution import RunnerExecutionService
 from ..services.runner_packaging import RunnerInputPackager
@@ -726,6 +742,58 @@ def export_document(document_bundle: Path, bundle_root: Path) -> None:
     click.echo(f"bundle_json: {bundle_root / exports.bundle_json_path}")
 
 
+@cli.command("document-run")
+@click.option(
+    "--config",
+    "config_path",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="DocumentRunConfig JSON file path.",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Force rerunning stages that would otherwise resume from ledger state.",
+)
+@click.pass_context
+def document_run(ctx: click.Context, config_path: Path, force: bool) -> None:
+    """
+    Execute one configured document run through the machine path.
+
+    Args:
+        ctx: Click context carrying settings for hosted runner wiring.
+        config_path: ``DocumentRunConfig`` JSON file path.
+        force: When ``True``, set ``force_rerun`` on the loaded config.
+
+    Side Effects:
+        Runs prepare, runner execution, assemble, optional eval, review issue,
+        and export stages as configured. May ensure remote endpoints and
+        overlay HTTPS URLs onto in-process settings.
+
+    Raises:
+        click.ClickException: When config validation or stage execution fails.
+
+    """
+    try:
+        config = DocumentRunConfig.model_validate_json(
+            config_path.read_text(encoding="utf-8")
+        )
+        if force:
+            config = config.model_copy(update={"force_rerun": True})
+        orchestrator = _build_document_run_orchestrator(ctx)
+        result = orchestrator.run(config, config_dir=config_path.parent)
+    except (
+        OSError,
+        ValidationError,
+        ValueError,
+        ConfigurationError,
+        UnknownPassRunnerError,
+    ) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    _echo_document_run_result(result)
+
+
 @cli.command("assemble")
 @click.option(
     "--bundle-root",
@@ -735,17 +803,72 @@ def export_document(document_bundle: Path, bundle_root: Path) -> None:
 )
 @click.option(
     "--manifest",
-    required=True,
+    required=False,
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     help="AssembleManifest JSON with relative witness and image paths.",
 )
-def assemble_document(bundle_root: Path, manifest: Path) -> None:
+@click.option(
+    "--from-run",
+    is_flag=True,
+    help="Build manifest by scanning prepare/run artifact trees under bundle_root.",
+)
+@click.option(
+    "--run-dir",
+    "run_dirs",
+    multiple=True,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Runner output directory. Repeat for multiple runners.",
+)
+@click.option(
+    "--source-json",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="SourceDescriptor JSON (required with --from-run).",
+)
+@click.option(
+    "--bibliographic-json",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="BibliographicProvenance JSON (required with --from-run).",
+)
+@click.option(
+    "--acquisition-json",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="AcquisitionProvenance JSON (required with --from-run).",
+)
+@click.option(
+    "--merge-policy",
+    "merge_policy_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="MergePolicy JSON (required with --from-run).",
+)
+@click.option(
+    "--write-manifest",
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="Optional path to persist the built manifest JSON (--from-run only).",
+)
+def assemble_document(  # noqa: PLR0913, PLR0917
+    bundle_root: Path,
+    manifest: Path | None,
+    from_run: bool,
+    run_dirs: tuple[Path, ...],
+    source_json: Path | None,
+    bibliographic_json: Path | None,
+    acquisition_json: Path | None,
+    merge_policy_path: Path | None,
+    write_manifest: Path | None,
+) -> None:
     """
     Adapt raw witnesses, merge, and write a Spec 0002 document bundle.
 
     Args:
         bundle_root: Filesystem root for relative paths and bundle output.
         manifest: AssembleManifest JSON describing pages and witness refs.
+        from_run: When ``True``, build manifest from prepare/run artifacts.
+        run_dirs: Runner output directories to scan when ``from_run``.
+        source_json: SourceDescriptor JSON for ``from_run``.
+        bibliographic_json: BibliographicProvenance JSON for ``from_run``.
+        acquisition_json: AcquisitionProvenance JSON for ``from_run``.
+        merge_policy_path: MergePolicy JSON for ``from_run``.
+        write_manifest: Optional destination for built manifest JSON.
 
     Side Effects:
         Writes document and page manifests, graphs, witnesses, images, and
@@ -753,25 +876,41 @@ def assemble_document(bundle_root: Path, manifest: Path) -> None:
 
     Raises:
         click.ClickException: When manifest validation or assemble fails.
+        click.UsageError: When ``--manifest`` and ``--from-run`` are combined
+            or required options are missing.
 
     """
+    if from_run and manifest is not None:
+        msg = "Use either --manifest or --from-run, not both."
+        raise click.UsageError(msg)
+    if not from_run and manifest is None:
+        msg = "Either --manifest or --from-run is required."
+        raise click.UsageError(msg)
+    if write_manifest is not None and not from_run:
+        msg = "--write-manifest requires --from-run."
+        raise click.UsageError(msg)
+
     try:
-        assemble_manifest = AssembleManifest.model_validate_json(
-            manifest.read_text(encoding="utf-8")
-        )
-        orchestrator = AssembleOrchestrator(
-            adapter=WitnessAdaptationService(),
-            merge=AbstainingMergeService(),
-            bundles=BundleLayoutService(),
-        )
-        bundle = orchestrator.assemble_document(
+        if from_run:
+            assemble_manifest = _assemble_manifest_from_run(
+                bundle_root=bundle_root,
+                run_dirs=list(run_dirs),
+                source_json=source_json,
+                bibliographic_json=bibliographic_json,
+                acquisition_json=acquisition_json,
+                merge_policy_path=merge_policy_path,
+                write_manifest=write_manifest,
+            )
+        else:
+            assemble_manifest = AssembleManifest.model_validate_json(
+                cast("Path", manifest).read_text(encoding="utf-8")
+            )
+        bundle = _run_assemble_orchestrator(
             bundle_root=bundle_root,
-            source=assemble_manifest.source,
-            bibliographic=assemble_manifest.bibliographic,
-            acquisition=assemble_manifest.acquisition,
-            pages=assemble_manifest.pages,
-            merge_policy=assemble_manifest.merge_policy,
+            assemble_manifest=assemble_manifest,
         )
+    except click.UsageError:
+        raise
     except (OSError, ValidationError, ValueError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
 
@@ -779,6 +918,112 @@ def assemble_document(bundle_root: Path, manifest: Path) -> None:
     click.echo(f"pages: {len(bundle.pages)}")
     click.echo(f"manifest: {bundle_root / 'manifest.json'}")
     click.echo(f"document_bundle: {bundle_root / DOCUMENT_BUNDLE_JSON}")
+
+
+def _assemble_manifest_from_run(  # noqa: PLR0913
+    *,
+    bundle_root: Path,
+    run_dirs: list[Path],
+    source_json: Path | None,
+    bibliographic_json: Path | None,
+    acquisition_json: Path | None,
+    merge_policy_path: Path | None,
+    write_manifest: Path | None,
+) -> AssembleManifest:
+    """
+    Build an assemble manifest from prepare/run artifact trees.
+
+    Keyword Args:
+        bundle_root: Bundle root receiving copied witnesses and pages.
+        run_dirs: Runner output directories to scan.
+        source_json: SourceDescriptor JSON path.
+        bibliographic_json: BibliographicProvenance JSON path.
+        acquisition_json: AcquisitionProvenance JSON path.
+        merge_policy_path: MergePolicy JSON path.
+        write_manifest: Optional path to persist built manifest JSON.
+
+    Returns:
+        Validated assemble manifest ready for orchestration.
+
+    Raises:
+        click.UsageError: When required ``from_run`` options are missing.
+        OSError: When optional manifest output cannot be written.
+
+    Side Effects:
+        Copies witness bytes into ``bundle_root`` and may write manifest JSON.
+
+    """
+    if not run_dirs:
+        msg = "--run-dir is required with --from-run."
+        raise click.UsageError(msg)
+    required_paths = (
+        (source_json, "--source-json"),
+        (bibliographic_json, "--bibliographic-json"),
+        (acquisition_json, "--acquisition-json"),
+        (merge_policy_path, "--merge-policy"),
+    )
+    for path, option_name in required_paths:
+        if path is None:
+            msg = f"{option_name} is required with --from-run."
+            raise click.UsageError(msg)
+
+    source = SourceDescriptor.model_validate_json(
+        cast("Path", source_json).read_text(encoding="utf-8")
+    )
+    bibliographic = BibliographicProvenance.model_validate_json(
+        cast("Path", bibliographic_json).read_text(encoding="utf-8")
+    )
+    acquisition = AcquisitionProvenance.model_validate_json(
+        cast("Path", acquisition_json).read_text(encoding="utf-8")
+    )
+    merge_policy = MergePolicy.model_validate_json(
+        cast("Path", merge_policy_path).read_text(encoding="utf-8")
+    )
+    assemble_manifest = AssembleManifestBuilder().build(
+        bundle_root=bundle_root,
+        run_dirs=run_dirs,
+        source=source,
+        bibliographic=bibliographic,
+        acquisition=acquisition,
+        merge_policy=merge_policy,
+    )
+    if write_manifest is not None:
+        write_manifest.write_text(
+            assemble_manifest.model_dump_json(indent=2) + "\n",
+            encoding="utf-8",
+        )
+    return assemble_manifest
+
+
+def _run_assemble_orchestrator(
+    *,
+    bundle_root: Path,
+    assemble_manifest: AssembleManifest,
+) -> DocumentBundle:
+    """
+    Adapt, merge, and write one document bundle from a manifest.
+
+    Keyword Args:
+        bundle_root: Filesystem root for relative paths and bundle output.
+        assemble_manifest: Pages, provenance, and merge policy to assemble.
+
+    Returns:
+        Assembled document bundle after on-disk write.
+
+    """
+    orchestrator = AssembleOrchestrator(
+        adapter=WitnessAdaptationService(),
+        merge=AbstainingMergeService(),
+        bundles=BundleLayoutService(),
+    )
+    return orchestrator.assemble_document(
+        bundle_root=bundle_root,
+        source=assemble_manifest.source,
+        bibliographic=assemble_manifest.bibliographic,
+        acquisition=assemble_manifest.acquisition,
+        pages=assemble_manifest.pages,
+        merge_policy=assemble_manifest.merge_policy,
+    )
 
 
 @cli.command("inspect-bundle")
@@ -925,6 +1170,208 @@ def bakeoff_matrix(  # noqa: PLR0913, PLR0917
     click.echo(f"cells: {len(matrix.cells)}")
     click.echo(f"filename: {BAKEOFF_MATRIX_FILENAME}")
     click.echo("phase_5: NOT COMPLETE")
+
+
+class _ClientClosingRunnerExecutionService:
+    """
+    Close a shared ``httpx.Client`` after one ``RunnerExecutionService.run``.
+
+    The document-run orchestrator invokes ``run`` after the runner factory
+    returns, so the factory cannot close the client directly.
+
+    Args:
+        service: Underlying runner execution service.
+        client: Shared HTTP client closed after ``run`` completes.
+
+    """
+
+    def __init__(
+        self,
+        service: RunnerExecutionService,
+        client: httpx.Client,
+    ) -> None:
+        """
+        Store the wrapped service and client to close after ``run``.
+
+        Args:
+            service: Underlying runner execution service.
+            client: Shared HTTP client closed after ``run`` completes.
+
+        """
+        #: Underlying runner execution service.
+        self._service = service
+        #: Shared HTTP client closed after ``run`` completes.
+        self._client = client
+
+    def run(  # noqa: PLR0913
+        self,
+        run_id: str,
+        document_id: str,
+        artifacts: list[PreparedArtifactRef],
+        bundle_root: Path,
+        output_dir: Path,
+        *,
+        force: bool = False,
+    ) -> tuple[list[RunnerExecutionBatch], RunnerThroughputSummary]:
+        """
+        Delegate to the wrapped service and always close the HTTP client.
+
+        Args:
+            run_id: Execution run identifier.
+            document_id: Document identifier under processing.
+            artifacts: Ordered prepared artifacts ready for runner execution.
+            bundle_root: Bundle root containing prepared artifact bytes.
+            output_dir: Output root for batches, inputs, and witnesses.
+
+        Keyword Args:
+            force: When ``True``, bypass the resume ledger and re-run batches.
+
+        Returns:
+            Persisted batch records and the measured throughput summary.
+
+        """
+        try:
+            return self._service.run(
+                run_id,
+                document_id,
+                artifacts,
+                bundle_root,
+                output_dir,
+                force=force,
+            )
+        finally:
+            self._client.close()
+
+
+def _build_document_run_runner_factory(
+    ctx: click.Context,
+) -> Callable[..., RunnerExecutionService]:
+    """
+    Return a factory that builds one ``RunnerExecutionService`` per runner.
+
+    Reads current settings from ``ctx`` on each invocation so endpoint overlay
+    from ``ensure_endpoints`` is visible when resolving URLs and tokens.
+
+    Args:
+        ctx: Click context carrying settings.
+
+    Returns:
+        Callable matching ``DocumentRunOrchestrator``'s runner factory contract.
+
+    """
+
+    def factory(
+        *,
+        runner_cls: type,
+        runner: RunnerReference,
+        policy: RunnerExecutionPolicy,
+        bundle_root: Path,  # noqa: ARG001
+        output_dir: Path,
+    ) -> RunnerExecutionService:
+        settings: Settings = ctx.obj["settings"]
+        token = _huggingface_token(settings)
+        endpoint_url = _resolve_hosted_endpoint_url(
+            settings,
+            runner_id=runner.runner_id,
+            endpoint_key=policy.endpoint.endpoint_key,
+        )
+        output_dir.mkdir(parents=True, exist_ok=True)
+        client = httpx.Client()
+        hosted_runner = runner_cls(
+            runner=runner,
+            policy=policy,
+            endpoint_url=endpoint_url,
+            token=token,
+            client=client,
+        )
+        service = RunnerExecutionService(
+            RunnerBatchPlanner(),
+            RunnerInputPackager(),
+            hosted_runner,
+        )
+        return cast(
+            "RunnerExecutionService",
+            _ClientClosingRunnerExecutionService(service, client),
+        )
+
+    return factory
+
+
+def _build_document_run_endpoint_ensurer(
+    ctx: click.Context,
+) -> Callable[..., None]:
+    """
+    Return an endpoint ensurer that overlays HTTPS URLs onto session settings.
+
+    Args:
+        ctx: Click context carrying settings.
+
+    Returns:
+        Callable accepting ``runner_ids`` for one ensure/overlay cycle.
+
+    """
+
+    def endpoint_ensurer(*, runner_ids: list[str]) -> None:
+        settings: Settings = ctx.obj["settings"]
+        _overlay_ensure_endpoints(ctx, settings, runner_ids)
+
+    return endpoint_ensurer
+
+
+def _build_document_run_orchestrator(
+    ctx: click.Context,
+) -> DocumentRunOrchestrator:
+    """
+    Wire real stage collaborators for one ``DocumentRunOrchestrator``.
+
+    Args:
+        ctx: Click context carrying settings for runner and endpoint wiring.
+
+    Returns:
+        Orchestrator with the same collaborator style as staged CLI commands.
+
+    """
+    bundles = BundleLayoutService()
+    return DocumentRunOrchestrator(
+        preparation=PreparationBundleService(
+            SourceAcquisitionService(),
+            PagePreparationService(PageQualityAssessor(), PageClassifier()),
+        ),
+        runner_registry=PassRunnerRegistry(),
+        manifest_builder=AssembleManifestBuilder(),
+        assemble=AssembleOrchestrator(
+            adapter=WitnessAdaptationService(),
+            merge=AbstainingMergeService(),
+            bundles=bundles,
+        ),
+        bundles=bundles,
+        runner_service_factory=_build_document_run_runner_factory(ctx),
+        evaluation=EvaluationService(),
+        review_cli=ReviewCliService(
+            layout=bundles,
+            replay=ReviewOverlayService(),
+        ),
+        endpoint_ensurer=_build_document_run_endpoint_ensurer(ctx),
+    )
+
+
+def _echo_document_run_result(result: DocumentRunResult) -> None:
+    """
+    Print a concise summary of one document run outcome.
+
+    Args:
+        result: Orchestrator outcome summary.
+
+    """
+    click.echo(f"run_id: {result.run_id}")
+    click.echo(f"document_id: {result.document_id}")
+    stage_names = ", ".join(stage.value for stage in result.stages_completed)
+    click.echo(f"stages: {stage_names}")
+    if result.document_bundle_path is not None:
+        click.echo(f"document_bundle: {result.document_bundle_path}")
+    if result.export_root is not None:
+        click.echo(f"export_root: {result.export_root}")
+    click.echo(f"pending_task_pages: {len(result.pending_task_pages)}")
 
 
 def _overlay_ensure_endpoints(

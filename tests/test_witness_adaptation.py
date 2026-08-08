@@ -12,15 +12,18 @@ import pytest
 from wordwending.models import (
     CoordinateSpace,
     PageClass,
+    Point,
     PreparationMode,
     PreparedPage,
     RegionKind,
 )
+from wordwending.services.merge import _coordinate_rich_line_count
 from wordwending.services.witness_adaptation import WitnessAdaptationService
 
 _FIXTURES = Path(__file__).parent / "fixtures" / "assemble"
 _FIXTURE = _FIXTURES / "olmocr-chat-completion-v1.json"
 _KRAKEN_FIXTURE = _FIXTURES / "kraken-chat-completion-v1.json"
+_KRAKEN_SEGMENTATION_FIXTURE = _FIXTURES / "kraken-segmentation-v1.json"
 _MANIFEST_FIXTURE = _FIXTURES / "manifest-v1.json"
 
 
@@ -93,6 +96,10 @@ def test_adapt_page_builds_provisional_two_line_graph(tmp_path: Path) -> None:
     assert page.lines[1].span_ids == ["prepared-page-1:s1"]
     assert page.lines[0].region_id == region.region_id
     assert page.lines[1].region_id == region.region_id
+    assert page.lines[0].bounding_box is None
+    assert page.lines[1].bounding_box is None
+    assert page.spans[0].bounding_box is None
+    assert page.spans[1].bounding_box is None
 
 
 def test_adapt_page_stable_ids_across_rebuilds(tmp_path: Path) -> None:
@@ -356,6 +363,130 @@ def test_adapt_page_stable_ids_for_kraken_across_rebuilds(tmp_path: Path) -> Non
     ]
 
 
+def test_adapt_kraken_structured_sets_per_line_boxes_and_baselines(
+    tmp_path: Path,
+) -> None:
+    """Structured kraken v1 content yields per-line geometry in prepared-page space."""
+    witness_path = tmp_path / "kraken-segmentation-witness.json"
+    shutil.copy(_KRAKEN_SEGMENTATION_FIXTURE, witness_path)
+    prepared = _prepared_page()
+    space_id = prepared.coordinate_space.space_id
+
+    page = WitnessAdaptationService().adapt_page(
+        prepared_page=prepared,
+        witness_id="wit-kraken-structured-1",
+        runner_id="kraken",
+        artifact_paths=[str(witness_path)],
+        coordinate_space=_coordinate_space(),
+    )
+
+    assert page.runner_id == "kraken"
+    assert len(page.lines) == 2
+    assert page.lines[0].line_id == f"{space_id}:l0"
+    assert page.lines[1].line_id == f"{space_id}:l1"
+    assert page.spans[0].text_diplomatic == "Diplomatic line one"
+    assert page.spans[1].text_diplomatic == "Diplomatic line two"
+
+    line0_box = page.lines[0].bounding_box
+    line1_box = page.lines[1].bounding_box
+    assert line0_box is not None
+    assert line1_box is not None
+    assert (line0_box.x0, line0_box.y0, line0_box.x1, line0_box.y1) != (
+        line1_box.x0,
+        line1_box.y0,
+        line1_box.x1,
+        line1_box.y1,
+    )
+    assert line0_box.x0 == 10
+    assert line0_box.y0 == 20
+    assert line0_box.x1 == 180
+    assert line0_box.y1 == 50
+    assert line0_box.coordinate_space_id == space_id
+    assert line1_box.x0 == 10
+    assert line1_box.y0 == 60
+    assert line1_box.x1 == 180
+    assert line1_box.y1 == 90
+    assert line1_box.coordinate_space_id == space_id
+
+    assert page.lines[0].baseline == [
+        Point(x=10, y=40),
+        Point(x=180, y=42),
+    ]
+    assert page.lines[1].baseline == [
+        Point(x=10, y=80),
+        Point(x=180, y=82),
+    ]
+    assert page.lines[0].baseline_coordinate_space_id == space_id
+    assert page.lines[1].baseline_coordinate_space_id == space_id
+
+    assert len(page.regions) == 1
+    assert page.regions[0].bounding_box is not None
+    assert page.regions[0].bounding_box.coordinate_space_id == space_id
+    assert (page.regions[0].bounding_box.x0, page.regions[0].bounding_box.y0) == (
+        0,
+        0,
+    )
+    assert (page.regions[0].bounding_box.x1, page.regions[0].bounding_box.y1) == (
+        200,
+        300,
+    )
+    assert page.lines[0].polygon is not None
+    assert page.lines[0].polygon.coordinate_space_id == space_id
+    assert len(page.lines[0].polygon.points) >= 3
+    assert page.spans[0].bounding_box is not None
+    assert page.spans[0].bounding_box.coordinate_space_id == space_id
+
+    assert _coordinate_rich_line_count(page) == 2
+
+
+def test_adapt_kraken_plain_text_fallback_has_no_line_boxes(
+    tmp_path: Path,
+) -> None:
+    """Plain-text kraken chat.completion must not assign page-wide line boxes."""
+    witness_path = tmp_path / "kraken-plain-witness.json"
+    shutil.copy(_KRAKEN_FIXTURE, witness_path)
+    prepared = _prepared_page()
+
+    page = WitnessAdaptationService().adapt_page(
+        prepared_page=prepared,
+        witness_id="wit-kraken-plain-1",
+        runner_id="kraken",
+        artifact_paths=[str(witness_path)],
+        coordinate_space=_coordinate_space(),
+    )
+
+    assert len(page.lines) == 2
+    assert all(line.bounding_box is None for line in page.lines)
+    assert all(span.bounding_box is None for span in page.spans)
+    assert all(not line.baseline for line in page.lines)
+    assert all(line.baseline_coordinate_space_id is None for line in page.lines)
+    assert page.regions[0].bounding_box is not None
+    assert _coordinate_rich_line_count(page) == 0
+
+
+def test_adapt_olmocr_provisional_has_no_line_boxes(tmp_path: Path) -> None:
+    """OlmOCR provisional adaptation must not use page-wide line boxes."""
+    witness_path = tmp_path / "olmocr-witness.json"
+    shutil.copy(_FIXTURE, witness_path)
+    prepared = _prepared_page()
+
+    page = WitnessAdaptationService().adapt_page(
+        prepared_page=prepared,
+        witness_id="wit-olmocr-1",
+        runner_id="olmocr",
+        artifact_paths=[str(witness_path)],
+        coordinate_space=_coordinate_space(),
+    )
+
+    assert len(page.lines) == 2
+    assert all(line.bounding_box is None for line in page.lines)
+    assert all(span.bounding_box is None for span in page.spans)
+    assert all(not line.baseline for line in page.lines)
+    assert all(line.baseline_coordinate_space_id is None for line in page.lines)
+    assert page.regions[0].bounding_box is not None
+    assert _coordinate_rich_line_count(page) == 0
+
+
 def test_adapt_page_rejects_unsupported_runner_id(tmp_path: Path) -> None:
     """Unknown runner_id is rejected before parsing strategy selection."""
     witness_path = tmp_path / "witness.json"
@@ -366,6 +497,73 @@ def test_adapt_page_rejects_unsupported_runner_id(tmp_path: Path) -> None:
             prepared_page=_prepared_page(),
             witness_id="wit-1",
             runner_id="not-a-runner",
+            artifact_paths=[str(witness_path)],
+            coordinate_space=_coordinate_space(),
+        )
+
+
+def _write_structured_kraken_chat_completion(
+    tmp_path: Path,
+    *,
+    payload: dict[str, object],
+    filename: str = "kraken-structured.json",
+) -> Path:
+    """Write a chat.completion witness whose content is structured kraken v1 JSON."""
+    return _write_chat_completion(
+        tmp_path,
+        content=json.dumps(payload),
+        filename=filename,
+    )
+
+
+@pytest.mark.parametrize(
+    ("payload", "match"),
+    [
+        pytest.param(
+            {
+                "schema": "wordwending.kraken_segmentation/v1",
+                "type": "baselines",
+                "lines": [
+                    {
+                        "id": "line_0",
+                        "text": "Boundary only",
+                        "boundary": [[10, 20], [180, 20], [180, 50], [10, 50]],
+                    },
+                ],
+            },
+            "boundary-only",
+            id="boundary_only_line",
+        ),
+        pytest.param(
+            {
+                "schema": "wordwending.kraken_segmentation/v1",
+                "type": "bbox",
+                "lines": [
+                    {
+                        "id": "line_0",
+                        "text": "Baseline without bbox",
+                        "baseline": [[10, 40], [180, 42]],
+                    },
+                ],
+            },
+            "bbox or baseline",
+            id="bbox_type_without_bbox",
+        ),
+    ],
+)
+def test_adapt_page_rejects_invalid_structured_kraken_geometry(
+    tmp_path: Path,
+    payload: dict[str, object],
+    match: str,
+) -> None:
+    """Structured kraken lines must satisfy bbox/baseline accept rules."""
+    witness_path = _write_structured_kraken_chat_completion(tmp_path, payload=payload)
+    service = WitnessAdaptationService()
+    with pytest.raises(ValueError, match=match):
+        service.adapt_page(
+            prepared_page=_prepared_page(),
+            witness_id="wit-kraken-bad-1",
+            runner_id="kraken",
             artifact_paths=[str(witness_path)],
             coordinate_space=_coordinate_space(),
         )

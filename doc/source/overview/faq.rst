@@ -55,17 +55,29 @@ Is there an assemble / merge / review CLI?
 Yes, with honest limits:
 
 - ``assemble`` adapts raw witnesses, merges (including olmOCR + kraken multi-witness),
-  and writes a ``DocumentBundle`` tree from an operator ``AssembleManifest``
+  and writes a ``DocumentBundle`` tree. Prefer ``--from-run`` (scans prepare/run
+  trees); ``--manifest`` remains an escape hatch for a hand-written
+  ``AssembleManifest``. Kraken structured ``wordwending.kraken_segmentation/v1``
+  content adapts as coordinate-rich geometry; plain-text kraken and olmOCR stay
+  provisional (null line boxes). Multi-witness merge defaults prefer kraken for
+  the structure scaffold (``structure_scaffold_runner_ids: ["kraken", "olmocr"]``)
+- ``assemble`` also writes Spec 0005 ``ReviewTask`` packets to
+  ``overlays/pending_tasks.json`` when merge flags exist (empty list when none);
+  ``review issue`` regenerates those packets from the page's evaluation flags
 - ``inspect-bundle`` summarizes the assembled tree, including merge flags as
   dimension-specific evaluation flags (``evaluation/flags.json``),
   ``checksum: … OK|FAIL|SKIPPED`` lines for digests already recorded in bundle
   layout metadata, and ``exports/*`` paths when derived exports exist on disk
 - ``review apply`` and ``review materialize`` drive append-only overlay acceptance
-  (operators hand-author ``PageOverlay`` JSON; Spec 0005 ``ReviewTask`` packets
-  are not auto-emitted by assemble)
+  (operators still hand-author review **events** / ``PageOverlay`` JSON)
+- ``review rebase`` applies accepted overlay leaf overrides onto the page graph
+  (successor overlay; JSONL history stays append-only), then ``export`` reads the
+  rebased graphs
 
-There is no standalone ``merge`` command (merge runs inside ``assemble``) and no
-single orchestrated prepare→export run yet. Spec 0004 Phase 6 (PassRunner Protocol
+There is no standalone ``merge`` command (merge runs inside ``assemble``).
+``wordwending document-run`` is the preferred one-config machine path (prepare
+→ run → assemble → optional eval → issue review tasks → export); ``review
+apply`` and ``review rebase`` remain manual. Spec 0004 Phase 6 (PassRunner Protocol
 + registry) is COMPLETE; Phase 5 remains NOT COMPLETE; Phase 10 remains NOT
 COMPLETE (**ops skeleton only**; Spec exit deferred). See
 :doc:`/runbook/from_source_to_markdown`.

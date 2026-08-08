@@ -147,6 +147,9 @@ def test_bundle_paths_match_spec_0002_layout(tmp_path) -> None:
     assert paths.overlay_state(1) == (
         paths.root / "pages/page-0001/overlays/current_state.json"
     )
+    assert paths.pending_tasks_path(1) == (
+        paths.root / "pages/page-0001/overlays/pending_tasks.json"
+    )
     assert paths.page_export(1, "page.md") == (
         paths.root / "pages/page-0001/exports/page.md"
     )

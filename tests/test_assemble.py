@@ -8,6 +8,7 @@ import json
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import pytest
 from pydantic import ValidationError
@@ -15,7 +16,9 @@ from pydantic import ValidationError
 from wordwending.models import (
     AcquisitionProvenance,
     BibliographicProvenance,
+    BundlePaths,
     CoordinateSpace,
+    DocumentBundle,
     MergeFlag,
     MergeFlagType,
     MergePageInput,
@@ -36,6 +39,11 @@ from wordwending.services.witness_adaptation import WitnessAdaptationService
 _FIXTURES = Path(__file__).parent / "fixtures" / "assemble"
 _FIXTURE = _FIXTURES / "olmocr-chat-completion-v1.json"
 _KRAKEN_FIXTURE = _FIXTURES / "kraken-chat-completion-v1.json"
+_KRAKEN_SEGMENTATION_FIXTURE = _FIXTURES / "kraken-segmentation-v1.json"
+_KRAKEN_LINE_BOXES = (
+    (10.0, 20.0, 180.0, 50.0),
+    (10.0, 60.0, 180.0, 90.0),
+)
 
 
 def _prepared_page(
@@ -91,17 +99,32 @@ def _acquisition() -> AcquisitionProvenance:
 
 
 def _merge_policy(*, runners: list[str] | None = None) -> MergePolicy:
-    """Return a merge policy with optional multi-runner precedence."""
+    """
+    Return a merge policy with optional multi-runner precedence.
+
+    When ``kraken`` is among runners, structure scaffold order prefers kraken
+    first so coordinate-rich layout wins over provisional olmOCR text.
+
+    Keyword Args:
+        runners: Runner ids for text precedence; defaults to ``["olmocr"]``.
+
+    """
     ordered = runners or ["olmocr"]
+    if "kraken" in ordered:
+        scaffold = ["kraken", *[runner for runner in ordered if runner != "kraken"]]
+    else:
+        scaffold = [ordered[0]]
     return MergePolicy(
         policy_id="merge-v1",
         version="1.0.0",
         runner_text_precedence=list(ordered),
-        structure_scaffold_runner_ids=[ordered[0]],
+        structure_scaffold_runner_ids=scaffold,
     )
 
 
-def _orchestrator(*, merge: AbstainingMergeService | None = None) -> AssembleOrchestrator:
+def _orchestrator(
+    *, merge: AbstainingMergeService | None = None
+) -> AssembleOrchestrator:
     """Build AssembleOrchestrator with real assemble collaborators."""
     return AssembleOrchestrator(
         adapter=WitnessAdaptationService(),
@@ -127,9 +150,7 @@ class _MergeWithExtraFlags:
         policy: MergePolicy,
     ) -> MergePageResult:
         result = self._inner.merge_page(page_input, policy)
-        return result.model_copy(
-            update={"flags": [*result.flags, *self._extra_flags]}
-        )
+        return result.model_copy(update={"flags": [*result.flags, *self._extra_flags]})
 
 
 def _stage_bundle_inputs(bundle_root: Path) -> tuple[Path, Path]:
@@ -161,6 +182,81 @@ def _stage_multi_witness_bundle_inputs(bundle_root: Path) -> None:
     image_dir = bundle_root / "prepared"
     image_dir.mkdir(parents=True, exist_ok=True)
     (image_dir / "page.png").write_bytes(b"fake-png-bytes")
+
+
+def _stage_structured_kraken_multi_witness_bundle_inputs(bundle_root: Path) -> None:
+    """Stage olmOCR plain + structured kraken fixtures under ``bundle_root``."""
+    witnesses_dir = bundle_root / "raw" / "witnesses"
+    witnesses_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy(_FIXTURE, witnesses_dir / "olmocr-chat-completion-v1.json")
+    shutil.copy(
+        _KRAKEN_SEGMENTATION_FIXTURE,
+        witnesses_dir / "kraken-segmentation-v1.json",
+    )
+    image_dir = bundle_root / "prepared"
+    image_dir.mkdir(parents=True, exist_ok=True)
+    (image_dir / "page.png").write_bytes(b"fake-png-bytes")
+
+
+def test_merge_policy_prefers_kraken_scaffold_when_present() -> None:
+    """Multi-runner ``_merge_policy`` lists kraken first for structure scaffold."""
+    policy = _merge_policy(runners=["olmocr", "kraken"])
+    assert policy.runner_text_precedence == ["olmocr", "kraken"]
+    assert policy.structure_scaffold_runner_ids == ["kraken", "olmocr"]
+
+
+def test_merge_policy_olmocr_only_keeps_olmocr_scaffold() -> None:
+    """Single-runner olmOCR policy keeps olmOCR as the sole scaffold preference."""
+    policy = _merge_policy()
+    assert policy.structure_scaffold_runner_ids == ["olmocr"]
+
+
+def test_assemble_structured_kraken_multi_witness_uses_kraken_line_boxes(
+    tmp_path: Path,
+) -> None:
+    """Assemble with structured kraken + olmOCR keeps kraken-distinct line boxes."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_structured_kraken_multi_witness_bundle_inputs(bundle_root)
+    page = AssemblePageRequest(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        raw_witnesses=[
+            RawWitnessRef(
+                witness_id="wit-olmocr",
+                runner_id="olmocr",
+                artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
+                coordinate_space=_coordinate_space(),
+            ),
+            RawWitnessRef(
+                witness_id="wit-kraken",
+                runner_id="kraken",
+                artifact_paths=["raw/witnesses/kraken-segmentation-v1.json"],
+                coordinate_space=_coordinate_space(),
+            ),
+        ],
+    )
+
+    bundle = _orchestrator().assemble_document(
+        bundle_root=bundle_root,
+        source=_source(),
+        bibliographic=_bibliographic(),
+        acquisition=_acquisition(),
+        pages=[page],
+        merge_policy=_merge_policy(runners=["olmocr", "kraken"]),
+    )
+
+    lines = bundle.pages[0].lines
+    assert len(lines) == 2
+    boxes = []
+    for line in lines:
+        assert line.bounding_box is not None
+        box = line.bounding_box
+        assert box.coordinate_space_id == "prepared-page-1"
+        assert (box.x0, box.y0, box.x1, box.y1) != (0.0, 0.0, 200.0, 300.0)
+        boxes.append((box.x0, box.y0, box.x1, box.y1))
+    assert tuple(boxes) == _KRAKEN_LINE_BOXES
 
 
 def test_assemble_document_seals_prepared_image_checksum_from_bytes(
@@ -200,9 +296,7 @@ def test_assemble_document_seals_prepared_image_checksum_from_bytes(
     assert graph["prepared_page"]["image_checksum"] == expected
     copied = bundle_root / graph["prepared_page"]["image_path"]
     assert copied.is_file()
-    assert (
-        f"sha256:{hashlib.sha256(copied.read_bytes()).hexdigest()}" == expected
-    )
+    assert f"sha256:{hashlib.sha256(copied.read_bytes()).hexdigest()}" == expected
 
 
 def test_raw_witness_ref_paths_are_relative_posix_strings() -> None:
@@ -216,9 +310,7 @@ def test_raw_witness_ref_paths_are_relative_posix_strings() -> None:
     assert all(isinstance(path, str) for path in ref.artifact_paths)
     assert not any(isinstance(path, Path) for path in ref.artifact_paths)
     dumped = ref.model_dump(mode="json")
-    assert dumped["artifact_paths"] == [
-        "raw/witnesses/olmocr-chat-completion-v1.json"
-    ]
+    assert dumped["artifact_paths"] == ["raw/witnesses/olmocr-chat-completion-v1.json"]
 
 
 def test_raw_witness_ref_rejects_empty_artifact_paths() -> None:
@@ -232,10 +324,17 @@ def test_raw_witness_ref_rejects_empty_artifact_paths() -> None:
         )
 
 
-def test_assemble_document_multi_witness_disagreement_persists_flags(
+def test_assemble_document_multi_witness_provisional_skips_iou_text_disagreement(
     tmp_path: Path,
 ) -> None:
-    """Multi-witness text disagreement writes non-empty evaluation/flags.json."""
+    """
+    Dual provisional witnesses cannot IoU-match spans for text disagreement.
+
+    Plain-text olmOCR + plain-text kraken adapt with null line/span boxes, so
+    merge keeps scaffold text only and does not emit text_disagreement. Flags
+    file is still written (possibly empty). Coordinate-rich disagreement is
+    covered once structured kraken geometry is on the multi-witness path.
+    """
     bundle_root = tmp_path / "bundle"
     bundle_root.mkdir()
     _stage_multi_witness_bundle_inputs(bundle_root)
@@ -270,19 +369,97 @@ def test_assemble_document_multi_witness_disagreement_persists_flags(
 
     assert len(bundle.pages) == 1
     assert {w.runner_id for w in bundle.pages[0].witnesses} == {"olmocr", "kraken"}
-    flags_path = (
-        bundle_root / "pages" / "page-0001" / "evaluation" / "flags.json"
-    )
+    assert all(span.bounding_box is None for span in bundle.pages[0].spans)
+    flags_path = bundle_root / "pages" / "page-0001" / "evaluation" / "flags.json"
     assert flags_path.is_file()
     flags_payload = json.loads(flags_path.read_text(encoding="utf-8"))
-    assert flags_payload["flags"]
-    assert any(
+    assert not any(
         flag["flag_type"] == "text_disagreement" for flag in flags_payload["flags"]
     )
-    assert any(
+    assert not any(
         flag.flag_type == "text_disagreement"
         for flag in bundle.pages[0].evaluation_summary.text.flags
     )
+
+
+def test_assemble_document_multi_witness_provisional_writes_empty_pending_tasks(
+    tmp_path: Path,
+) -> None:
+    """Dual provisional witnesses write pending_tasks.json without IoU disagreement tasks."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_multi_witness_bundle_inputs(bundle_root)
+    page = AssemblePageRequest(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        raw_witnesses=[
+            RawWitnessRef(
+                witness_id="wit-olmocr",
+                runner_id="olmocr",
+                artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
+                coordinate_space=_coordinate_space(),
+            ),
+            RawWitnessRef(
+                witness_id="wit-kraken",
+                runner_id="kraken",
+                artifact_paths=["raw/witnesses/kraken-chat-completion-v1.json"],
+                coordinate_space=_coordinate_space(),
+            ),
+        ],
+    )
+
+    bundle = _orchestrator().assemble_document(
+        bundle_root=bundle_root,
+        source=_source(),
+        bibliographic=_bibliographic(),
+        acquisition=_acquisition(),
+        pages=[page],
+        merge_policy=_merge_policy(runners=["olmocr", "kraken"]),
+    )
+
+    page_graph = bundle.pages[0]
+    assert page_graph.graph_revision == "graph-v0"
+    pending_path = BundlePaths(bundle_root).pending_tasks_path(1)
+    assert pending_path.is_file()
+    tasks = BundleLayoutService().read_pending_review_tasks(bundle_root, 1)
+    assert tasks == []
+
+
+def test_assemble_document_empty_flags_writes_empty_pending_tasks(
+    tmp_path: Path,
+) -> None:
+    """Single-witness assemble with no flags still writes pending_tasks.json as []."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_bundle_inputs(bundle_root)
+    page = AssemblePageRequest(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        raw_witnesses=[
+            RawWitnessRef(
+                witness_id="wit-1",
+                runner_id="olmocr",
+                artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
+                coordinate_space=_coordinate_space(),
+            )
+        ],
+    )
+
+    _orchestrator().assemble_document(
+        bundle_root=bundle_root,
+        source=_source(),
+        bibliographic=_bibliographic(),
+        acquisition=_acquisition(),
+        pages=[page],
+        merge_policy=_merge_policy(),
+    )
+
+    pending_path = BundlePaths(bundle_root).pending_tasks_path(1)
+    assert pending_path.is_file()
+    assert json.loads(pending_path.read_text(encoding="utf-8")) == []
+    assert BundleLayoutService().read_pending_review_tasks(bundle_root, 1) == []
 
 
 def test_assemble_document_projects_non_text_merge_flags(
@@ -323,7 +500,7 @@ def test_assemble_document_projects_non_text_merge_flags(
         ],
     )
 
-    bundle = _orchestrator(merge=merge).assemble_document(
+    bundle = _orchestrator(merge=cast("AbstainingMergeService", merge)).assemble_document(
         bundle_root=bundle_root,
         source=_source(),
         bibliographic=_bibliographic(),
@@ -360,7 +537,9 @@ def test_assemble_document_rejects_duplicate_witness_id_across_pages(
                     witness_id="wit-1",
                     runner_id="olmocr",
                     artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
-                    coordinate_space=_coordinate_space(prepared_page_id="prepared-page-1"),
+                    coordinate_space=_coordinate_space(
+                        prepared_page_id="prepared-page-1"
+                    ),
                 )
             ],
         ),
@@ -376,7 +555,9 @@ def test_assemble_document_rejects_duplicate_witness_id_across_pages(
                     witness_id="wit-1",
                     runner_id="olmocr",
                     artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
-                    coordinate_space=_coordinate_space(prepared_page_id="prepared-page-2"),
+                    coordinate_space=_coordinate_space(
+                        prepared_page_id="prepared-page-2"
+                    ),
                 )
             ],
         ),
@@ -452,3 +633,70 @@ def test_assemble_document_happy_path_writes_bundle_tree(tmp_path: Path) -> None
     assert witness_dir.is_dir()
     assert any(witness_dir.iterdir())
     assert (bundle_root / "pages" / "page-0001" / "image" / "page.png").exists()
+
+
+def test_assemble_document_uses_provided_document_id(tmp_path: Path) -> None:
+    """Lock A: optional document_id overrides doc-{source_id} default."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_bundle_inputs(bundle_root)
+    page = AssemblePageRequest(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        raw_witnesses=[
+            RawWitnessRef(
+                witness_id="wit-1",
+                runner_id="olmocr",
+                artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
+                coordinate_space=_coordinate_space(),
+            )
+        ],
+    )
+
+    bundle = _orchestrator().assemble_document(
+        bundle_root=bundle_root,
+        source=_source(),
+        bibliographic=_bibliographic(),
+        acquisition=_acquisition(),
+        pages=[page],
+        merge_policy=_merge_policy(),
+        document_id="doc-config-authoritative",
+    )
+
+    assert bundle.document_id == "doc-config-authoritative"
+    written = DocumentBundle.model_validate_json(
+        (bundle_root / "document-bundle.json").read_text(encoding="utf-8")
+    )
+    assert written.document_id == "doc-config-authoritative"
+
+
+def test_assemble_document_defaults_document_id_from_source(tmp_path: Path) -> None:
+    """Without document_id kwarg, keep doc-{source.source_id}."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_bundle_inputs(bundle_root)
+    page = AssemblePageRequest(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        raw_witnesses=[
+            RawWitnessRef(
+                witness_id="wit-1",
+                runner_id="olmocr",
+                artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
+                coordinate_space=_coordinate_space(),
+            )
+        ],
+    )
+
+    bundle = _orchestrator().assemble_document(
+        bundle_root=bundle_root,
+        source=_source(),
+        bibliographic=_bibliographic(),
+        acquisition=_acquisition(),
+        pages=[page],
+        merge_policy=_merge_policy(),
+    )
+
+    assert bundle.document_id == f"doc-{_source().source_id}"

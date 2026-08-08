@@ -36,8 +36,20 @@ from wordwending.models.runner_execution import (
 
 #: Provisional transcription prompt for OpenAI-compatible kraken HF endpoints.
 KRAKEN_TRANSCRIPTION_PROMPT = (
-    "Transcribe all readable text in this image. Preserve line breaks and "
-    "historical characters when present. Do not add commentary."
+    "Transcribe all readable text in this image and return ONLY a single JSON "
+    'object with schema "wordwending.kraken_segmentation/v1". Do not wrap the '
+    "JSON in markdown fences and do not add commentary before or after it.\n\n"
+    "Required top-level fields:\n"
+    '- "schema": "wordwending.kraken_segmentation/v1"\n'
+    '- "type": "baselines" (or "bbox" when baselines are unavailable)\n'
+    '- "lines": array of objects, each with "id", "text", "bbox" '
+    '[x0, y0, x1, y1], and "baseline" as [[x, y], ...] polyline points\n\n'
+    "Optional top-level fields:\n"
+    '- "text_direction" (e.g. "horizontal-lr")\n'
+    '- "regions": array of objects with "id" and "bbox" [x0, y0, x1, y1]\n\n'
+    'Each line may also include "boundary" ([[x, y], ...]) and "region_ids". '
+    "Preserve historical characters and reading order. Output the JSON object "
+    "only."
 )
 
 #: Declared kraken runner input and batching contract for hosted execution.

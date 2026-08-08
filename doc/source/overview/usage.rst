@@ -140,19 +140,37 @@ assemble
 ^^^^^^^^
 
 Adapt raw witness artifacts, merge (single- or multi-witness), and write a
-``DocumentBundle`` tree from an operator ``AssembleManifest`` JSON.
+``DocumentBundle`` tree. Prefer ``--from-run`` (scans prepare/run trees and
+copies witnesses into ``bundle_root``); ``--manifest`` is an escape hatch for a
+hand-written ``AssembleManifest`` JSON.
 
 .. code-block:: bash
 
    wordwending assemble \
      --bundle-root ./bundle-root \
+     --from-run \
+     --run-dir ./run-olmocr \
+     --run-dir ./run-kraken \
+     --source-json source.json \
+     --bibliographic-json bibliographic.json \
+     --acquisition-json acquisition.json \
+     --merge-policy merge-policy.json
+
+   # Escape hatch:
+   wordwending assemble \
+     --bundle-root ./bundle-root \
      --manifest manifest.json
 
-Paths inside the manifest are relative posix strings resolved against
-``--bundle-root``. Multi-witness pages list olmOCR and kraken (or other
-supported runner) artifact paths; merge flags persist as dimension-specific
-evaluation flags (``evaluation/flags.json``) for ``inspect-bundle`` and
-operator review prep—not auto-emitted Spec 0005 ``ReviewTask`` packets.
+Paths inside the manifest (and built by ``--from-run``) are relative posix
+strings resolved against ``--bundle-root``. Multi-witness pages list olmOCR
+and kraken (or other supported runner) artifact paths; merge flags persist as
+dimension-specific evaluation flags (``evaluation/flags.json``). When both
+runners are present, merge policy prefers kraken for the structure scaffold.
+Kraken ``wordwending.kraken_segmentation/v1`` content adapts with real line
+boxes and baselines; plain-text kraken and olmOCR stay provisional (null line
+boxes). Assemble also writes Spec 0005 ``ReviewTask`` packets to
+``overlays/pending_tasks.json``; ``review issue`` regenerates them from the
+page's current evaluation flags.
 
 inspect-bundle
 ^^^^^^^^^^^^^^
@@ -258,11 +276,16 @@ export
 ^^^^^^
 
 Write derived exports from a ``DocumentBundle`` JSON into
-``<bundle-root>/exports/``. Export reads accepted page graphs only; overlay
-files (``overlays/review_events.jsonl``, ``overlays/current_state.json``) are
-not consumed until graph rebase lands.
+``<bundle-root>/exports/``. Export reads accepted page graphs. After
+``review apply``, run ``review rebase`` so overlay leaf corrections are written
+into the page graph (and ``document-bundle.json``) before export; append-only
+``overlays/review_events.jsonl`` is not rewritten by rebase.
 
 .. code-block:: bash
+
+   wordwending review rebase \
+     --bundle-root ./bundle-root \
+     --page-id page-0001
 
    wordwending export document-bundle.json --bundle-root ./bundle-root
 
@@ -273,8 +296,13 @@ What is not a CLI yet
 ---------------------
 
 - Standalone ``merge`` (merge runs inside ``assemble``)
-- Auto-generated ``AssembleManifest`` from prepare/run output trees
-- Single orchestrated prepare → run → assemble → review → export run
+- Hands-off review **apply** / **rebase** in ``document-run`` (``wordwending
+  document-run`` ships the machine path through export and auto-issues review
+  tasks; operators still run ``review apply`` and ``review rebase`` manually
+  after correction)
+- Auto-generated review **events** (humans still author corrections for
+  ``review apply``; pending ``ReviewTask`` packets are emitted by assemble /
+  ``review issue``)
 - Spec 0004 **Phase 5 NOT COMPLETE** (``bakeoff`` harness writes
   ``bakeoff-matrix-v1.json`` from recorded predictions; cost/license/
   operability scoring and full held-out corpus remain deferred)

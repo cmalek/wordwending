@@ -18,7 +18,7 @@
     "policy_id": "merge-v1",
     "version": "1.0.0",
     "runner_text_precedence": ["olmocr", "kraken"],
-    "structure_scaffold_runner_ids": ["olmocr"]
+    "structure_scaffold_runner_ids": ["kraken", "olmocr"]
   },
   "pages": [
     {

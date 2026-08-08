@@ -1,0 +1,19 @@
+{
+  "run_id": "run-cli-test",
+  "document_id": "doc-cli-test",
+  "bundle_root": "output/bundle",
+  "source_path": "sources/source.pdf",
+  "recipe_paths": ["recipes/recipe.json"],
+  "source_json": "provenance/source.json",
+  "bibliographic_json": "provenance/bibliographic.json",
+  "acquisition_json": "provenance/acquisition.json",
+  "merge_policy_path": "policies/merge.json",
+  "runners": [
+    {
+      "runner_id": "olmocr",
+      "runner_reference_path": "runners/olmocr-ref.json",
+      "policy_path": "runners/olmocr-policy.json"
+    }
+  ],
+  "stages": ["prepare", "run"]
+}

@@ -238,6 +238,11 @@
         "evaluation_summary": {
           "$ref": "#/$defs/PageEvaluationSummary"
         },
+        "graph_revision": {
+          "default": "graph-v0",
+          "title": "Graph Revision",
+          "type": "string"
+        },
         "lines": {
           "items": {
             "$ref": "#/$defs/LineRecord"

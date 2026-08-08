@@ -45,11 +45,17 @@ assemble writes `pages/page-0001/graph/page_graph.json`.
 | File | Role |
 |------|------|
 | `manifest-v1.json` | Assemble input: one page, one olmOCR raw witness |
-| `manifest-multi-witness-v1.json` | Assemble input: one page, olmOCR + kraken with intentional text disagreement |
-| `olmocr-chat-completion-v1.json` | Raw witness bytes (exact `chat.completion` shape) |
-| `kraken-chat-completion-v1.json` | Second-runner raw witness with disagreeing diplomatic lines |
+| `manifest-multi-witness-v1.json` | Assemble input: one page, olmOCR + kraken; `structure_scaffold_runner_ids: ["kraken", "olmocr"]` |
+| `olmocr-chat-completion-v1.json` | Raw witness bytes (exact `chat.completion` shape); provisional null line boxes |
+| `kraken-chat-completion-v1.json` | Plain-text kraken fallback (disagreeing diplomatic lines); provisional null line boxes |
+| `kraken-segmentation-v1.json` | Structured kraken: `message.content` is a **string** of `wordwending.kraken_segmentation/v1` JSON (distinct per-line boxes + baselines) |
 | `gold-v1.json` | Partial text gold keyed to adapted span ids |
 | `metric-profile-v1.json` | Eval profile for Wave A exit |
+
+Coordinate-rich path: adapt `kraken-segmentation-v1.json` (real boxes/baselines).
+Plain-text kraken and olmOCR stay provisional (`bounding_box is None` on lines/spans).
+Multi-witness merge prefers kraken for the structure scaffold when both runners
+are present.
 
 Manifest `prepared_page.image_checksum` may use a placeholder (`sha256:image`);
 assemble reseals it from on-disk prepared image bytes when writing the bundle.

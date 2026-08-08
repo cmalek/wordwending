@@ -15,9 +15,11 @@ from wordwending.models import (
     DocumentBundle,
     DocumentEvaluationSummary,
     ExportSummary,
+    MergeFlag,
     MergePageInput,
     MergePolicy,
     PassWitnessPage,
+    ReviewTask,
     RunMetadata,
     RunnerReference,
     SourceDescriptor,
@@ -30,6 +32,7 @@ from wordwending.models.assemble import (  # noqa: TC001
 from wordwending.services.bundle_layout import BundleLayoutService  # noqa: TC001
 from wordwending.services.merge import AbstainingMergeService  # noqa: TC001
 from wordwending.services.merge_review import MergeFlagReviewService
+from wordwending.services.review_markup import HumanMarkupService
 from wordwending.services.witness_adaptation import (  # noqa: TC001
     WitnessAdaptationService,
 )
@@ -38,6 +41,12 @@ from wordwending.services.witness_adaptation import (  # noqa: TC001
 _TEXT_WITNESS_KIND = "text"
 #: Stable relative path for loadable DocumentBundle JSON at bundle root.
 DOCUMENT_BUNDLE_JSON = "document-bundle.json"
+#: Initial accepted graph revision for newly assembled pages (ADR 0008).
+_INITIAL_GRAPH_REVISION = "graph-v0"
+#: Review guideline family stamped onto assemble-issued Spec 0005 packets.
+_ASSEMBLE_REVIEW_GUIDELINE_ID = "review-v1"
+#: Review guideline revision stamped onto assemble-issued Spec 0005 packets.
+_ASSEMBLE_REVIEW_GUIDELINE_VERSION = "1.0.0"
 
 
 class AssembleOrchestrator:
@@ -96,13 +105,15 @@ class AssembleOrchestrator:
         acquisition: AcquisitionProvenance,
         pages: list[AssemblePageRequest],
         merge_policy: MergePolicy,
+        document_id: str | None = None,
     ) -> DocumentBundle:
         """
         Adapt, merge, and write one document bundle under ``bundle_root``.
 
         Side Effects:
             Writes Spec 0002 document-bundle tree under ``bundle_root`` via
-            ``BundleLayoutService.write_document_bundle``, and writes loadable
+            ``BundleLayoutService.write_document_bundle``, writes Spec 0005
+            ``overlays/pending_tasks.json`` per page, and writes loadable
             ``DocumentBundle`` JSON at ``document-bundle.json`` under
             ``bundle_root``.
 
@@ -114,6 +125,8 @@ class AssembleOrchestrator:
             acquisition: Acquisition metadata kept with the document.
             pages: Per-page prepared inputs and raw witness refs.
             merge_policy: Versioned merge precedence and thresholds.
+            document_id: Optional authoritative document id; defaults to
+                ``doc-{source.source_id}`` when omitted.
 
         Returns:
             Assembled ``DocumentBundle`` after successful on-disk write.
@@ -137,10 +150,19 @@ class AssembleOrchestrator:
         )
         for page_request in pages:
             execution.assemble_page(page_request)
+        run_id = f"run-assemble-{source.source_id}"
+        pending_by_page = execution.project_flags_and_build_pending_tasks(
+            run_id=run_id
+        )
+        resolved_document_id = (
+            document_id if document_id is not None else f"doc-{source.source_id}"
+        )
         bundle = execution.build_document_bundle(
             source=source,
             bibliographic=bibliographic,
             acquisition=acquisition,
+            run_id=run_id,
+            document_id=resolved_document_id,
         )
         self._bundles.write_document_bundle(
             bundle,
@@ -148,6 +170,10 @@ class AssembleOrchestrator:
             page_images=execution.page_images or None,
             witness_files=execution.witness_files or None,
         )
+        for page, tasks in zip(bundle.pages, pending_by_page, strict=True):
+            self._bundles.write_pending_review_tasks(
+                bundle_root, page.page_number, tasks
+            )
         bundle_json_path = bundle_root / DOCUMENT_BUNDLE_JSON
         bundle_json_path.write_text(
             bundle.model_dump_json(indent=2),
@@ -209,6 +235,8 @@ class _AssembleExecution:
         self.runner_ids: list[str] = []
         #: Preparation recipe id from the first assembled page when present.
         self.preparation_recipe_id: str = "prep-v1"
+        #: Merge flags per accumulated page (parallel to ``bundle_pages``).
+        self.page_merge_flags: list[list[MergeFlag]] = []
 
     def assemble_page(self, page_request: AssemblePageRequest) -> None:
         """
@@ -249,13 +277,53 @@ class _AssembleExecution:
             raw_refs_by_id=raw_refs_by_id,
             resolved_artifacts=resolved_by_id,
         )
-        page = self._merge_flag_review.project_onto_page(page, merge_result.flags)
+        page = page.model_copy(update={"graph_revision": _INITIAL_GRAPH_REVISION})
+        self.page_merge_flags.append(list(merge_result.flags))
         self._accumulate_page(
             page_request=page_request,
             page=page,
             resolved_by_id=resolved_by_id,
             raw_refs_by_id=raw_refs_by_id,
         )
+
+    def project_flags_and_build_pending_tasks(
+        self,
+        *,
+        run_id: str,
+    ) -> list[list[ReviewTask]]:
+        """
+        Project merge flags onto pages and build Spec 0005 pending tasks.
+
+        Replaces ``bundle_pages`` with projected graphs. Each page is projected
+        once; review tasks are built from that projected graph via
+        ``HumanMarkupService``.
+
+        Keyword Args:
+            run_id: Deterministic assemble run id stamped onto each task.
+
+        Returns:
+            Pending review-task lists parallel to ``bundle_pages``.
+
+        """
+        markup = HumanMarkupService(
+            _ASSEMBLE_REVIEW_GUIDELINE_ID,
+            _ASSEMBLE_REVIEW_GUIDELINE_VERSION,
+        )
+        pending_by_page: list[list[ReviewTask]] = []
+        projected_pages: list[BundlePage] = []
+        for page, flags in zip(
+            self.bundle_pages, self.page_merge_flags, strict=True
+        ):
+            projected = self._merge_flag_review.project_onto_page(page, flags)
+            tasks = markup.build_review_tasks(
+                projected,
+                run_id=run_id,
+                graph_revision=page.graph_revision,
+            )
+            projected_pages.append(projected)
+            pending_by_page.append(tasks)
+        self.bundle_pages = projected_pages
+        return pending_by_page
 
     def _adapt_page_witnesses(
         self,
@@ -385,6 +453,8 @@ class _AssembleExecution:
         source: SourceDescriptor,
         bibliographic: BibliographicProvenance,
         acquisition: AcquisitionProvenance,
+        run_id: str,
+        document_id: str,
     ) -> DocumentBundle:
         """
         Build the in-memory document bundle from accumulated page results.
@@ -393,6 +463,8 @@ class _AssembleExecution:
             source: Source identity for the input artifact(s).
             bibliographic: Bibliographic metadata kept with the document.
             acquisition: Acquisition metadata kept with the document.
+            run_id: Deterministic assemble run identifier.
+            document_id: Authoritative document identifier for the bundle.
 
         Returns:
             Document bundle with coherent schema versions and runner set.
@@ -400,13 +472,13 @@ class _AssembleExecution:
         """
         schema_version = BUNDLE_SCHEMA_VERSION
         return DocumentBundle(
-            document_id=f"doc-{source.source_id}",
+            document_id=document_id,
             bundle_schema_version=schema_version,
             source=source,
             bibliographic_provenance=bibliographic,
             acquisition_provenance=acquisition,
             run=RunMetadata(
-                run_id=f"run-assemble-{source.source_id}",
+                run_id=run_id,
                 run_timestamp_utc=datetime.now(UTC),
                 preparation_recipe_id=self.preparation_recipe_id,
                 config_digest=(

@@ -1,0 +1,14 @@
+{
+  "id": "chatcmpl-kraken-segmentation-test",
+  "object": "chat.completion",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\"schema\":\"wordwending.kraken_segmentation/v1\",\"type\":\"baselines\",\"text_direction\":\"horizontal-lr\",\"regions\":[{\"id\":\"region_0\",\"bbox\":[0,0,200,300]}],\"lines\":[{\"id\":\"line_0\",\"text\":\"Diplomatic line one\",\"baseline\":[[10,40],[180,42]],\"boundary\":[[10,20],[180,20],[180,50],[10,50]],\"bbox\":[10,20,180,50],\"region_ids\":[\"region_0\"]},{\"id\":\"line_1\",\"text\":\"Diplomatic line two\",\"baseline\":[[10,80],[180,82]],\"boundary\":[[10,60],[180,60],[180,90],[10,90]],\"bbox\":[10,60,180,90],\"region_ids\":[\"region_0\"]}]}"
+      },
+      "finish_reason": "stop"
+    }
+  ]
+}

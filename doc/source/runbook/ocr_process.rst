@@ -79,8 +79,12 @@ Each runner writes raw witness artifacts unchanged.
 
 Initial v1 strategy:
 
-- ``olmocr`` for difficult text recognition
-- ``kraken`` for structured historical OCR evidence and coordinate-rich outputs
+- ``olmocr`` for difficult text recognition (provisional text; null line boxes)
+- ``kraken`` for structured historical OCR: when
+  ``message.content`` is ``wordwending.kraken_segmentation/v1`` JSON, adapt
+  yields coordinate-rich line/region geometry (boxes + baselines); plain-text
+  content remains provisional (null line boxes). Live HF must emit v1 JSON for
+  production geometry; fixtures prove the adapt/merge spine.
 
 Operator notes:
 

@@ -37,18 +37,34 @@ The intended end-to-end spine:
 2. **run** (``wordwending run``) — execute OCR runner passes; preserve raw witness
    artifacts
 3. **assemble** (``wordwending assemble``) — adapt raw witnesses, merge, and
-   write a ``DocumentBundle`` tree from an operator manifest
+   write a ``DocumentBundle`` tree (prefer ``--from-run``; ``--manifest`` escape hatch)
 4. **export** (``wordwending export``) — derive bundle JSON, RAG JSONL, and Markdown
    from an accepted ``DocumentBundle``
 
+**Preferred one-config machine path:** ``wordwending document-run --config PATH``
+runs prepare → run(s) → assemble → optional eval (when gold and metric profile are
+configured) → ``issue_review_tasks`` → export under one ``run_id``. Pass a
+``DocumentRunConfig`` JSON file; use ``--force`` to bypass resume ledger state.
+The staged commands below remain valid for step-by-step or partial workflows.
+
+.. note::
+
+   ``document-run`` auto-issues pending review tasks from evaluation flags but
+   does **not** apply overlays or rebase page graphs. Operators still run
+   ``review apply`` and ``review rebase`` by hand after correction.
+
 Supporting commands:
 
+- ``wordwending document-run`` — preferred one-config machine path (prepare →
+  run → assemble → optional eval → issue review tasks → export)
 - ``wordwending prepare`` — stage 1: PDF or page images to prepared page images
 - ``wordwending run`` — stage 2: OCR runner passes and raw witness artifacts
-- ``wordwending assemble`` — stage 3: manifest-driven bundle assembly
+- ``wordwending assemble`` — stage 3: bundle assembly (``--from-run`` preferred)
 - ``wordwending inspect-bundle`` — summarize an assembled bundle on disk
+- ``wordwending review issue`` — regenerate pending review tasks from page evaluation flags
 - ``wordwending review apply`` — append overlay review events to a bundle page
 - ``wordwending review materialize`` — replay overlay history into current state
+- ``wordwending review rebase`` — apply accepted overlays onto the page graph
 - ``wordwending version`` — confirm installed CLI
 - ``wordwending settings`` — inspect effective configuration
 - ``wordwending eval`` — score one page against gold
@@ -61,19 +77,30 @@ Stage 3: Assemble from Prepare/Run Outputs
 
 After ``run`` completes, raw witness artifacts live under the bundle root
 (typically ``witnesses/...`` relative paths recorded in the run manifest).
-Assemble does **not** auto-scan the tree: the operator writes an
-``AssembleManifest`` JSON listing each page's prepared image and relative
-witness paths, then runs:
+**Preferred path:** scan prepare/run output trees with ``--from-run`` (repeat
+``--run-dir`` for olmOCR + kraken). Provenance JSON paths are required; the
+CLI builds the manifest, copies witnesses into ``bundle_root``, and assembles:
 
 .. code-block:: bash
 
-   wordwending assemble --bundle-root path/to/bundle-root --manifest path/to/manifest.json
+   wordwending assemble \
+     --bundle-root path/to/bundle-root \
+     --from-run \
+     --run-dir path/to/run-olmocr \
+     --run-dir path/to/run-kraken \
+     --source-json path/to/source.json \
+     --bibliographic-json path/to/bibliographic.json \
+     --acquisition-json path/to/acquisition.json \
+     --merge-policy path/to/merge-policy.json
 
-Paths inside the manifest are **relative posix strings** resolved against
-``--bundle-root``. After assemble, ``document-bundle.json`` at the bundle root
-is the loadable ``DocumentBundle`` input for ``wordwending export``; use
-``inspect-bundle`` to verify the written tree (and, after ``export``, list
-``exports/*`` paths):
+Optional ``--write-manifest path/to/manifest.json`` persists the built manifest
+for inspection. **Escape hatch:** hand-written ``AssembleManifest`` JSON with
+``--manifest`` (mutually exclusive with ``--from-run``). Manifest paths are
+**relative posix strings** resolved against ``--bundle-root``.
+
+After assemble, ``document-bundle.json`` at the bundle root is the loadable
+``DocumentBundle`` input for ``wordwending export``; use ``inspect-bundle`` to
+verify the written tree (and, after ``export``, list ``exports/*`` paths):
 
 .. code-block:: bash
 
@@ -119,11 +146,18 @@ Operator workflow:
    (diplomatic text, typography, note linkage, trust states). Multi-witness
    assemble projects merge disagreements into dimension-specific **evaluation
    flags** (``evaluation/flags.json`` and the page evaluation summary)—use
-   ``inspect-bundle`` to read them. Spec 0005 ``ReviewTask`` packets are **not**
-   auto-emitted by ``assemble`` or the CLI; operators hand-author a
-   ``PageOverlay`` JSON (library code exposes
-   ``MergeFlagReviewService.build_review_tasks`` for separate workflows).
-3. Prepare a ``PageOverlay`` JSON with review events (Spec 0014).
+   ``inspect-bundle`` to read them. When merge flags exist, assemble also writes
+   Spec 0005 ``ReviewTask`` packets to ``overlays/pending_tasks.json``. Regenerate
+   that queue from the page's current evaluation flags (merge + eval) with:
+
+.. code-block:: bash
+
+   wordwending review issue \
+     --bundle-root path/to/bundle-root \
+     --page-id PAGE_ID
+
+3. Prepare a ``PageOverlay`` JSON with review **events** (Spec 0014). Operators
+   still hand-author correction events; the CLI does not auto-generate them.
 4. Append events and materialize overlay state:
 
 .. code-block:: bash
@@ -137,12 +171,20 @@ Operator workflow:
      --bundle-root path/to/bundle-root \
      --page-id PAGE_ID
 
-5. Overlay acceptance is persisted under the page tree. **Graph rebase**—applying
-   accepted overlay corrections back onto the accepted page graph—is deferred
-   (Spec 0004 Phase 8 exit). ``wordwending export`` reads ``DocumentBundle`` page
-   graphs only; it does **not** consume ``overlays/review_events.jsonl`` or
-   ``overlays/current_state.json`` until rebase lands. Re-running export after
-   ``review apply`` does not regenerate Markdown from overlay edits.
+5. Rebase accepted overlay corrections onto the page graph, then export:
+
+.. code-block:: bash
+
+   wordwending review rebase \
+     --bundle-root path/to/bundle-root \
+     --page-id PAGE_ID
+
+   wordwending export path/to/document-bundle.json \
+     --bundle-root path/to/bundle-root
+
+   ``review rebase`` bumps ``graph_revision``, updates ``document-bundle.json``,
+   and writes a successor overlay bound to the new revision. ``export`` reads
+   rebased page graphs—not raw ``overlays/review_events.jsonl`` alone.
 
 Append-only overlay history is preserved under ``overlays/review_events.jsonl``;
 ``review materialize`` rebuilds ``overlays/current_state.json`` from that log.
@@ -168,17 +210,22 @@ On the current spine, the v1 plan **Phase 4 full bullets (Waves A+C+D)** are met
 for a representative page traveling end to end without hand-edited
 ``DocumentBundle`` JSON:
 
-- **Two real hosted runners on assemble** — olmOCR (provisional text) and kraken
-  (``HuggingFaceKrakenRunner``) adapt through ``wordwending assemble`` with
-  multi-witness merge and flag persistence
+- **Two real hosted runners on assemble** — olmOCR (provisional text; null line
+  boxes) and kraken (``HuggingFaceKrakenRunner``) adapt through
+  ``wordwending assemble`` with multi-witness merge and flag persistence.
+  Kraken structured ``wordwending.kraken_segmentation/v1`` content maps to
+  coordinate-rich line/region geometry (real boxes and baselines); plain-text
+  kraken fallback remains provisional (null line boxes).
 - **Raw witnesses preserved** — exact runner response bytes under the bundle tree
 - **Derived page graph** — region/line/span/note scaffold via merge on assemble
-  (provisional text-first geometry on both runners today)
+  (coordinate-rich when kraken emits v1 JSON; provisional text-first for olmOCR
+  and plain-text kraken)
 - **Score, evaluation flags, overlay CLI, export** — ``eval`` / ``eval-cohorts``;
   merge flags → dimension-specific **evaluation flags**
-  (``evaluation/flags.json``); operators hand-author ``PageOverlay`` for
-  ``review apply`` / ``review materialize``; ``export`` for JSON and Markdown
-  from bundle page graphs
+  (``evaluation/flags.json``) and pending **ReviewTask** packets
+  (``overlays/pending_tasks.json``); operators hand-author review **events** for
+  ``review apply`` / ``review materialize`` / ``review rebase``; ``export`` for
+  JSON and Markdown from rebased bundle page graphs
 
 **Phase 6 is COMPLETE**: ``PassRunner`` Protocol extracted from the olmOCR and
 kraken hosted adapters, ``PassRunnerRegistry`` resolves by ``runner_id``, and the
@@ -192,10 +239,11 @@ scoring and full held-out corpus) remain deferred. **Phase 10 is explicitly
 NOT COMPLETE**: Wave H ships an **ops skeleton only** (resume ledger +
 inspect checksums + ``wordwending endpoints`` lifecycle CLI with optional
 ``--ensure-endpoints`` on ``run``/``bakeoff``); Spec exit remains deferred
-(see below). Spec 0004 Phase 4's
-**coordinate-rich second-runner** bullet remains **deferred**: kraken on the
-spine uses conservative/text-first geometry until Phase 7 alignment exit
-matures coordinate-rich merge.
+(see below). Spec 0004 Phase 4's **coordinate-rich second-runner** bullet is
+met on the **fixture-backed spine** when kraken emits
+``wordwending.kraken_segmentation/v1`` JSON; the **live HF endpoint must emit
+v1 JSON** for the same geometry in production. Plain-text kraken fallback and
+olmOCR remain provisional (null line boxes).
 
 What Is Missing
 ===============
@@ -204,10 +252,6 @@ These pieces are planned but **not** available or **not complete** today:
 
 - **Standalone merge CLI** — merge runs inside ``assemble``; there is no separate
   ``wordwending merge`` command
-- **Auto manifest** — assemble requires an operator-written ``AssembleManifest``;
-  the CLI does not scan prepare/run output trees automatically
-- **Full DocumentRunOrchestrator** — prepare → run → assemble → review → export
-  is staged by separate commands, not one orchestrated run id
 - **Phase 5 bake-off — NOT COMPLETE** — Wave F ships an offline harness
   (``BakeoffService`` / ``wordwending bakeoff``) that writes
   ``bakeoff-matrix-v1.json`` for real schema candidates (``olmocr`` +
@@ -215,8 +259,6 @@ These pieces are planned but **not** available or **not complete** today:
   license/cost/operability **placeholders**. Deferred before any Phase 5
   COMPLETE claim: cost/license/operability scoring, full corpus held-out
   slices, and live bake-off evidence beyond recorded fixtures
-- **Graph rebase / overlay → export** — ``review apply`` persists overlays, but
-  ``export`` reads bundle page graphs only until rebase lands
 - **Phase 10 operations — NOT COMPLETE (ops skeleton only)** — Wave H ships:
 
   - ``run`` resume ledger (``runner-resume-ledger.json`` / ``--force``)

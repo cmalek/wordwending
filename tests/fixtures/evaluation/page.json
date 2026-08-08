@@ -21,7 +21,15 @@
     "transforms": [],
     "prepared_units": []
   },
-  "witnesses": [],
+  "witnesses": [
+    {
+      "witness_id": "wit-1",
+      "witness_kind": "text",
+      "artifact_path": "fixtures/wit-1.json",
+      "runner_id": "olmocr",
+      "page_id": "page-1"
+    }
+  ],
   "regions": [
     {
       "region_id": "region-1",
@@ -35,7 +43,7 @@
       "note_ids": [],
       "trust_state": "machine",
       "provenance": {
-        "source_page_id": "page-0001",
+        "source_page_id": "page-1",
         "witness_ids": [
           "wit-1"
         ],
@@ -67,7 +75,7 @@
       ],
       "trust_state": "machine",
       "provenance": {
-        "source_page_id": "page-0001",
+        "source_page_id": "page-1",
         "witness_ids": [
           "wit-1"
         ],
@@ -111,11 +119,11 @@
         "y0": 0.0,
         "x1": 40.0,
         "y1": 10.0,
-        "coordinate_space_id": "prepared-page"
+        "coordinate_space_id": "prepared-page-1"
       },
       "trust_state": "machine",
       "provenance": {
-        "source_page_id": "page-0001",
+        "source_page_id": "page-1",
         "witness_ids": [
           "wit-1"
         ],

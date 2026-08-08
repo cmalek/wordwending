@@ -23,6 +23,10 @@ Decision
 4. Export layer
 
 The raw witness layer stores exact outputs from each pass unchanged.
+For Hugging Face OpenAI-compatible runners, that means the exact
+``chat.completion`` response bytes. Structured geometry (for example kraken
+``wordwending.kraken_segmentation/v1``) lives only inside
+``choices[0].message.content`` as a JSON string — not a second on-disk raw schema.
 
 The derived graph layer stores normalized page graph data built from those raw
 artifacts.
