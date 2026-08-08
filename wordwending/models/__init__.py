@@ -13,6 +13,11 @@ from wordwending.models.bundle_layout import (
     PageBundleManifest,
     page_dir_name,
 )
+from wordwending.models.document_run import (
+    DocumentRunConfig,
+    DocumentRunnerSpec,
+    DocumentRunStage,
+)
 from wordwending.models.endpoint_lifecycle import (
     ENDPOINT_SESSION_LEDGER_SCHEMA_VERSION,
     EndpointCatalogEntry,
@@ -214,6 +219,9 @@ __all__ = [
     "DocumentBundle",
     "DocumentBundleManifest",
     "DocumentEvaluationSummary",
+    "DocumentRunConfig",
+    "DocumentRunStage",
+    "DocumentRunnerSpec",
     "EndpointCatalogEntry",
     "EndpointDownResult",
     "EndpointEnsureResult",
