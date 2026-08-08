@@ -109,8 +109,12 @@ guide on Read the Docs.
 Multi-witness assemble (olmOCR + kraken), pending ReviewTasks from evaluation
 flags (assemble + `review issue`), and review overlays (issue → apply → rebase →
 export) ship on the current spine.
-The v1 plan Phase 4 full bullets (Waves A+C+D) are met on fixture-backed pages;
-Spec 0004's coordinate-rich second-runner bullet remains deferred. **Phase 6 (PassRunner Protocol + registry) is COMPLETE.**
+The v1 plan Phase 4 full bullets (Waves A+C+D) are met on fixture-backed pages.
+Kraken structured ``wordwending.kraken_segmentation/v1`` adapts with
+coordinate-rich line/region geometry on the fixture-backed spine; the **live HF
+endpoint must emit v1 JSON** for the same geometry in production. Plain-text
+kraken fallback and olmOCR remain provisional (null line boxes). **Phase 6
+(PassRunner Protocol + registry) is COMPLETE.**
 **Phase 5 (bake-off) NOT COMPLETE** (harness only; scoring placeholders /
 held-out corpus deferred). **Phase 10 is NOT COMPLETE** — Wave H ships an
 **ops skeleton only** (`run` resume ledger, `inspect-bundle` checksum

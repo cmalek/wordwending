@@ -210,12 +210,16 @@ On the current spine, the v1 plan **Phase 4 full bullets (Waves A+C+D)** are met
 for a representative page traveling end to end without hand-edited
 ``DocumentBundle`` JSON:
 
-- **Two real hosted runners on assemble** — olmOCR (provisional text) and kraken
-  (``HuggingFaceKrakenRunner``) adapt through ``wordwending assemble`` with
-  multi-witness merge and flag persistence
+- **Two real hosted runners on assemble** — olmOCR (provisional text; null line
+  boxes) and kraken (``HuggingFaceKrakenRunner``) adapt through
+  ``wordwending assemble`` with multi-witness merge and flag persistence.
+  Kraken structured ``wordwending.kraken_segmentation/v1`` content maps to
+  coordinate-rich line/region geometry (real boxes and baselines); plain-text
+  kraken fallback remains provisional (null line boxes).
 - **Raw witnesses preserved** — exact runner response bytes under the bundle tree
 - **Derived page graph** — region/line/span/note scaffold via merge on assemble
-  (provisional text-first geometry on both runners today)
+  (coordinate-rich when kraken emits v1 JSON; provisional text-first for olmOCR
+  and plain-text kraken)
 - **Score, evaluation flags, overlay CLI, export** — ``eval`` / ``eval-cohorts``;
   merge flags → dimension-specific **evaluation flags**
   (``evaluation/flags.json``) and pending **ReviewTask** packets
@@ -235,10 +239,11 @@ scoring and full held-out corpus) remain deferred. **Phase 10 is explicitly
 NOT COMPLETE**: Wave H ships an **ops skeleton only** (resume ledger +
 inspect checksums + ``wordwending endpoints`` lifecycle CLI with optional
 ``--ensure-endpoints`` on ``run``/``bakeoff``); Spec exit remains deferred
-(see below). Spec 0004 Phase 4's
-**coordinate-rich second-runner** bullet remains **deferred**: kraken on the
-spine uses conservative/text-first geometry until Phase 7 alignment exit
-matures coordinate-rich merge.
+(see below). Spec 0004 Phase 4's **coordinate-rich second-runner** bullet is
+met on the **fixture-backed spine** when kraken emits
+``wordwending.kraken_segmentation/v1`` JSON; the **live HF endpoint must emit
+v1 JSON** for the same geometry in production. Plain-text kraken fallback and
+olmOCR remain provisional (null line boxes).
 
 What Is Missing
 ===============

@@ -104,11 +104,13 @@ assemble / ``review issue`` persist Spec 0005 pending ``ReviewTask`` packets;
 ``kraken``) with the execution spine typed to the Protocol. Fake runners remain
 test doubles only.
 
-**Not claimed complete:** Spec 0004 Phase 4's **coordinate-rich second-runner**
-bullet (deferred until Phase 7); **Phase 5 NOT COMPLETE** (bake-off harness
+**Not claimed complete:** **Phase 5 NOT COMPLETE** (bake-off harness
 only); **Phase 10 NOT COMPLETE** (operational hardening). Wave H ships an **ops
 skeleton only** (``run`` resume ledger, ``inspect-bundle`` checksum
 verification, ``wordwending endpoints up|down|status`` lifecycle CLI with
 optional ``--ensure-endpoints`` on ``run``/``bakeoff``); Spec Phase 10 exit
-remains deferred. Kraken on the spine is a provisional second hosted adapter
-with conservative/text-first geometry.
+remains deferred. Spec 0004 Phase 4's **coordinate-rich second-runner**
+bullet is met on the **fixture-backed spine** when kraken emits
+``wordwending.kraken_segmentation/v1`` JSON; the **live HF endpoint must emit
+v1 JSON** for the same geometry in production. Plain-text kraken fallback and
+olmOCR remain provisional (null line boxes).
