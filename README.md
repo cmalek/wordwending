@@ -91,6 +91,7 @@ guide on Read the Docs.
 | --- | --- |
 | `version` | Installed package and dependency versions |
 | `settings` | Effective configuration (table / json / text) |
+| `document-run` | Preferred one-config machine path: prepare → run(s) → assemble → optional eval → issue review tasks → export under one `run_id` (`--config PATH`; `--force` to bypass resume ledger) |
 | `prepare` | Acquire and prepare source pages into a bundle layout |
 | `run` | Execute prepared artifacts against one hosted olmOCR or kraken runner (resume ledger; `--force` to bypass; `--ensure-endpoints` to ensure catalogued HF endpoints) |
 | `eval` | Score one predicted page against gold annotations |

@@ -41,8 +41,22 @@ The intended end-to-end spine:
 4. **export** (``wordwending export``) — derive bundle JSON, RAG JSONL, and Markdown
    from an accepted ``DocumentBundle``
 
+**Preferred one-config machine path:** ``wordwending document-run --config PATH``
+runs prepare → run(s) → assemble → optional eval (when gold and metric profile are
+configured) → ``issue_review_tasks`` → export under one ``run_id``. Pass a
+``DocumentRunConfig`` JSON file; use ``--force`` to bypass resume ledger state.
+The staged commands below remain valid for step-by-step or partial workflows.
+
+.. note::
+
+   ``document-run`` auto-issues pending review tasks from evaluation flags but
+   does **not** apply overlays or rebase page graphs. Operators still run
+   ``review apply`` and ``review rebase`` by hand after correction.
+
 Supporting commands:
 
+- ``wordwending document-run`` — preferred one-config machine path (prepare →
+  run → assemble → optional eval → issue review tasks → export)
 - ``wordwending prepare`` — stage 1: PDF or page images to prepared page images
 - ``wordwending run`` — stage 2: OCR runner passes and raw witness artifacts
 - ``wordwending assemble`` — stage 3: bundle assembly (``--from-run`` preferred)
@@ -233,8 +247,6 @@ These pieces are planned but **not** available or **not complete** today:
 
 - **Standalone merge CLI** — merge runs inside ``assemble``; there is no separate
   ``wordwending merge`` command
-- **Full DocumentRunOrchestrator** — prepare → run → assemble → review → export
-  is staged by separate commands, not one orchestrated run id
 - **Phase 5 bake-off — NOT COMPLETE** — Wave F ships an offline harness
   (``BakeoffService`` / ``wordwending bakeoff``) that writes
   ``bakeoff-matrix-v1.json`` for real schema candidates (``olmocr`` +
