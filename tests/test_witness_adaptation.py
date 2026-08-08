@@ -96,6 +96,10 @@ def test_adapt_page_builds_provisional_two_line_graph(tmp_path: Path) -> None:
     assert page.lines[1].span_ids == ["prepared-page-1:s1"]
     assert page.lines[0].region_id == region.region_id
     assert page.lines[1].region_id == region.region_id
+    assert page.lines[0].bounding_box is None
+    assert page.lines[1].bounding_box is None
+    assert page.spans[0].bounding_box is None
+    assert page.spans[1].bounding_box is None
 
 
 def test_adapt_page_stable_ids_across_rebuilds(tmp_path: Path) -> None:
@@ -493,6 +497,73 @@ def test_adapt_page_rejects_unsupported_runner_id(tmp_path: Path) -> None:
             prepared_page=_prepared_page(),
             witness_id="wit-1",
             runner_id="not-a-runner",
+            artifact_paths=[str(witness_path)],
+            coordinate_space=_coordinate_space(),
+        )
+
+
+def _write_structured_kraken_chat_completion(
+    tmp_path: Path,
+    *,
+    payload: dict[str, object],
+    filename: str = "kraken-structured.json",
+) -> Path:
+    """Write a chat.completion witness whose content is structured kraken v1 JSON."""
+    return _write_chat_completion(
+        tmp_path,
+        content=json.dumps(payload),
+        filename=filename,
+    )
+
+
+@pytest.mark.parametrize(
+    ("payload", "match"),
+    [
+        pytest.param(
+            {
+                "schema": "wordwending.kraken_segmentation/v1",
+                "type": "baselines",
+                "lines": [
+                    {
+                        "id": "line_0",
+                        "text": "Boundary only",
+                        "boundary": [[10, 20], [180, 20], [180, 50], [10, 50]],
+                    },
+                ],
+            },
+            "boundary-only",
+            id="boundary_only_line",
+        ),
+        pytest.param(
+            {
+                "schema": "wordwending.kraken_segmentation/v1",
+                "type": "bbox",
+                "lines": [
+                    {
+                        "id": "line_0",
+                        "text": "Baseline without bbox",
+                        "baseline": [[10, 40], [180, 42]],
+                    },
+                ],
+            },
+            "bbox or baseline",
+            id="bbox_type_without_bbox",
+        ),
+    ],
+)
+def test_adapt_page_rejects_invalid_structured_kraken_geometry(
+    tmp_path: Path,
+    payload: dict[str, object],
+    match: str,
+) -> None:
+    """Structured kraken lines must satisfy bbox/baseline accept rules."""
+    witness_path = _write_structured_kraken_chat_completion(tmp_path, payload=payload)
+    service = WitnessAdaptationService()
+    with pytest.raises(ValueError, match=match):
+        service.adapt_page(
+            prepared_page=_prepared_page(),
+            witness_id="wit-kraken-bad-1",
+            runner_id="kraken",
             artifact_paths=[str(witness_path)],
             coordinate_space=_coordinate_space(),
         )

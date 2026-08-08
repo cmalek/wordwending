@@ -637,7 +637,7 @@ class WitnessAdaptationService:
 
         """
         prepared_page_id = prepared_page.prepared_page_id
-        space_id = prepared_page.coordinate_space.space_id
+        space_id = coordinate_space.space_id
         provenance = ObjectProvenance(
             source_page_id=prepared_page_id,
             witness_ids=[witness_id],
