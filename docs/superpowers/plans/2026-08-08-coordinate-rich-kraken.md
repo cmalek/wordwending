@@ -146,10 +146,10 @@ def test_adapt_olmocr_provisional_has_no_line_boxes(...):
     # regression: olmOCR provisional must not use page-wide line boxes
 ```
 
-- [ ] Step 1: Write failing tests + fixture
-- [ ] Step 2: RED
-- [ ] Step 3: (implementation in Task 2) — stop after RED if preferred, or continue in Task 2
-- [ ] Commit fixture + failing tests only **or** fold into Task 2 single commit after GREEN
+- [x] Step 1: Write failing tests + fixture
+- [x] Step 2: RED
+- [x] Step 3: (implementation in Task 2) — stop after RED if preferred, or continue in Task 2
+- [x] Commit fixture + failing tests only **or** fold into Task 2 single commit after GREEN
 
 ### Task 2: Kraken structured adapter + provisional box honesty (TDD)
 
@@ -173,9 +173,9 @@ def test_adapt_olmocr_provisional_has_no_line_boxes(...):
 3. olmOCR path: `_build_provisional_page` without line/span page-wide boxes (region may retain page box for a single BODY region).
 4. Docstrings: remove “coordinate-rich fields are not present” for kraken when structured; document dual-mode.
 
-- [ ] Implement until Task 1 tests GREEN
-- [ ] ruff/mypy/napoleon-gate + `graphify update .`
-- [ ] Commit
+- [x] Implement until Task 1 tests GREEN
+- [x] ruff/mypy/napoleon-gate + `graphify update .`
+- [x] Commit
 
 ### Task 3: Kraken runner prompt contract (TDD)
 
@@ -189,9 +189,9 @@ Replace `KRAKEN_TRANSCRIPTION_PROMPT` with a prompt that demands **only** the v1
 
 Still persist `response.content` exact bytes (ADR 0004). No second write path.
 
-- [ ] Failing test on prompt constant
-- [ ] Update prompt
-- [ ] GREEN + gates + commit
+- [x] Failing test on prompt constant
+- [x] Update prompt
+- [x] GREEN + gates + commit
 
 ### Task 4: Multi-witness merge prefers kraken geometry (TDD)
 
@@ -213,10 +213,10 @@ Still persist `response.content` exact bytes (ADR 0004). No second write path.
 4. **Wire the assemble spine:** change `_merge_policy` so when `runners` contains `kraken`, scaffold order is `["kraken", …other runners…]` (today it uses `[ordered[0]]`, which keeps olmocr first for `["olmocr", "kraken"]` and never falls through to coordinate-rich counting). Update multi-witness merge-policy JSON fixtures the same way. Leave single-runner olmocr fixtures as `["olmocr"]`.
 5. Optional assemble-level test: two raw witnesses → bundle page line boxes match kraken fixture boxes.
 
-- [ ] Failing tests
-- [ ] Update `_merge_policy` + multi-witness fixture scaffold order
-- [ ] GREEN (should pass once Task 2 done; fix merge only if unexpected)
-- [ ] Commit
+- [x] Failing tests
+- [x] Update `_merge_policy` + multi-witness fixture scaffold order
+- [x] GREEN (should pass once Task 2 done; fix merge only if unexpected)
+- [x] Commit
 
 ### Task 5: Docs honesty
 
@@ -227,21 +227,21 @@ Still persist `response.content` exact bytes (ADR 0004). No second write path.
 
 **Model:** `composer-2.5-fast`
 
-- [ ] State: kraken structured segmentation v1 → coordinate-rich adapt; plain-text fallback remains provisional
-- [ ] Remove blanket “coordinate-rich second-runner deferred” **or** narrow to “live HF endpoint must emit v1 JSON; fixtures prove the spine”
-- [ ] Keep Phase 5/10 NOT COMPLETE
-- [ ] Commit
+- [x] State: kraken structured segmentation v1 → coordinate-rich adapt; plain-text fallback remains provisional
+- [x] Remove blanket “coordinate-rich second-runner deferred” **or** narrow to “live HF endpoint must emit v1 JSON; fixtures prove the spine”
+- [x] Keep Phase 5/10 NOT COMPLETE
+- [x] Commit
 
 ### Task 6: Exit checklist
 
 **Model:** `cursor-grok-4.5-medium` (reviewer)
 
-- [ ] `pytest tests/test_witness_adaptation.py tests/test_coordinate_rich_merge.py tests/test_kraken_runner.py -q` green (adjust paths if names differ)
-- [ ] Structured kraken lines have baselines + distinct boxes; olmOCR provisional lines have `bounding_box is None`
-- [ ] All geometry space ids == prepared page `space_id` (not default `"prepared-page"`)
-- [ ] Multi-witness fixtures / `_merge_policy` scaffold order starts with `kraken`
-- [ ] Runbook/README honesty matches code
-- [ ] Human gate summary
+- [x] `pytest tests/test_witness_adaptation.py tests/test_coordinate_rich_merge.py tests/test_kraken_runner.py -q` green (adjust paths if names differ)
+- [x] Structured kraken lines have baselines + distinct boxes; olmOCR provisional lines have `bounding_box is None`
+- [x] All geometry space ids == prepared page `space_id` (not default `"prepared-page"`)
+- [x] Multi-witness fixtures / `_merge_policy` scaffold order starts with `kraken`
+- [x] Runbook/README honesty matches code
+- [x] Human gate summary
 
 ---
 
