@@ -12,15 +12,18 @@ import pytest
 from wordwending.models import (
     CoordinateSpace,
     PageClass,
+    Point,
     PreparationMode,
     PreparedPage,
     RegionKind,
 )
+from wordwending.services.merge import _coordinate_rich_line_count
 from wordwending.services.witness_adaptation import WitnessAdaptationService
 
 _FIXTURES = Path(__file__).parent / "fixtures" / "assemble"
 _FIXTURE = _FIXTURES / "olmocr-chat-completion-v1.json"
 _KRAKEN_FIXTURE = _FIXTURES / "kraken-chat-completion-v1.json"
+_KRAKEN_SEGMENTATION_FIXTURE = _FIXTURES / "kraken-segmentation-v1.json"
 _MANIFEST_FIXTURE = _FIXTURES / "manifest-v1.json"
 
 
@@ -354,6 +357,105 @@ def test_adapt_page_stable_ids_for_kraken_across_rebuilds(tmp_path: Path) -> Non
     assert [span.text_diplomatic for span in first.spans] == [
         span.text_diplomatic for span in second.spans
     ]
+
+
+def test_adapt_kraken_structured_sets_per_line_boxes_and_baselines(
+    tmp_path: Path,
+) -> None:
+    """Structured kraken v1 content yields per-line geometry in prepared-page space."""
+    witness_path = tmp_path / "kraken-segmentation-witness.json"
+    shutil.copy(_KRAKEN_SEGMENTATION_FIXTURE, witness_path)
+    prepared = _prepared_page()
+    space_id = prepared.coordinate_space.space_id
+
+    page = WitnessAdaptationService().adapt_page(
+        prepared_page=prepared,
+        witness_id="wit-kraken-structured-1",
+        runner_id="kraken",
+        artifact_paths=[str(witness_path)],
+        coordinate_space=_coordinate_space(),
+    )
+
+    assert page.runner_id == "kraken"
+    assert len(page.lines) == 2
+    assert page.lines[0].line_id == f"{space_id}:l0"
+    assert page.lines[1].line_id == f"{space_id}:l1"
+    assert page.spans[0].text_diplomatic == "Diplomatic line one"
+    assert page.spans[1].text_diplomatic == "Diplomatic line two"
+
+    line0_box = page.lines[0].bounding_box
+    line1_box = page.lines[1].bounding_box
+    assert line0_box is not None
+    assert line1_box is not None
+    assert (line0_box.x0, line0_box.y0, line0_box.x1, line0_box.y1) != (
+        line1_box.x0,
+        line1_box.y0,
+        line1_box.x1,
+        line1_box.y1,
+    )
+    assert line0_box.x0 == 10
+    assert line0_box.y0 == 20
+    assert line0_box.x1 == 180
+    assert line0_box.y1 == 50
+    assert line0_box.coordinate_space_id == space_id
+    assert line1_box.x0 == 10
+    assert line1_box.y0 == 60
+    assert line1_box.x1 == 180
+    assert line1_box.y1 == 90
+    assert line1_box.coordinate_space_id == space_id
+
+    assert page.lines[0].baseline == [
+        Point(x=10, y=40),
+        Point(x=180, y=42),
+    ]
+    assert page.lines[1].baseline == [
+        Point(x=10, y=80),
+        Point(x=180, y=82),
+    ]
+    assert page.lines[0].baseline_coordinate_space_id == space_id
+    assert page.lines[1].baseline_coordinate_space_id == space_id
+
+    assert _coordinate_rich_line_count(page) == 2
+
+
+def test_adapt_kraken_plain_text_fallback_has_no_line_boxes(
+    tmp_path: Path,
+) -> None:
+    """Plain-text kraken chat.completion must not assign page-wide line boxes."""
+    witness_path = tmp_path / "kraken-plain-witness.json"
+    shutil.copy(_KRAKEN_FIXTURE, witness_path)
+    prepared = _prepared_page()
+
+    page = WitnessAdaptationService().adapt_page(
+        prepared_page=prepared,
+        witness_id="wit-kraken-plain-1",
+        runner_id="kraken",
+        artifact_paths=[str(witness_path)],
+        coordinate_space=_coordinate_space(),
+    )
+
+    assert len(page.lines) == 2
+    assert all(line.bounding_box is None for line in page.lines)
+    assert _coordinate_rich_line_count(page) == 0
+
+
+def test_adapt_olmocr_provisional_has_no_line_boxes(tmp_path: Path) -> None:
+    """OlmOCR provisional adaptation must not use page-wide line boxes."""
+    witness_path = tmp_path / "olmocr-witness.json"
+    shutil.copy(_FIXTURE, witness_path)
+    prepared = _prepared_page()
+
+    page = WitnessAdaptationService().adapt_page(
+        prepared_page=prepared,
+        witness_id="wit-olmocr-1",
+        runner_id="olmocr",
+        artifact_paths=[str(witness_path)],
+        coordinate_space=_coordinate_space(),
+    )
+
+    assert len(page.lines) == 2
+    assert all(line.bounding_box is None for line in page.lines)
+    assert _coordinate_rich_line_count(page) == 0
 
 
 def test_adapt_page_rejects_unsupported_runner_id(tmp_path: Path) -> None:
