@@ -1,59 +1,59 @@
 # Graph Report - wordwending  (2026-08-08)
 
 ## Corpus Check
-- 201 files · ~249,790 words
+- 202 files · ~250,883 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 4043 nodes · 11528 edges · 143 communities (126 shown, 17 thin omitted)
+- 4078 nodes · 11620 edges · 163 communities (138 shown, 25 thin omitted)
 - Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 1173 edges (avg confidence: 0.55)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `555b568e`
+- Built from commit: `151e70c8`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - BundleLayoutService
 - test_ocr_models.py
-- services/preparation.py
+- CoordinateSpace
 - MergePolicy
-- QualitySignal
-- test_merge_review.py
+- Typography
+- _bundle_page_payload
 - SpanRecord
+- MergeOrchestrator
+- TestOcrModels
+- BundlePaths
+- MetricProfile
+- GoldPageAnnotation
 - cli.py
-- services/merge.py
-- Path
-- services/evaluation.py
-- SchemaModel
-- _build_document_run_orchestrator
 - ReviewCliService
 - test_preparation_service.py
-- models/__init__.py
-- _rag_chunk
-- PlannedRunnerBatch
+- test_merge_review.py
+- _prediction
+- HuggingFaceKrakenRunner
 - test_write_document_exports_frozen_contract_jsonl_validates
 - test_document_run.py
 - test_evaluation_service.py
 - test_runner_execution.py
 - Path
-- test_text_normalization.py
-- evaluation_cohorts.py
-- MergeOrchestrator
+- PageClass
+- PageEvaluationSummary
+- _normalize_page_overrides
 - test_olmocr_runner.py
 - test_kraken_runner.py
 - test_assemble.py
-- RunnerThroughputSummary
-- EndpointLifecycleService
-- TestOcrModels
-- ReviewTask
+- models/__init__.py
+- bakeoff_matrix
+- OverlayState
+- services/merge.py
 - check_napoleon_gate.py
 - From Source Material to Markdown
 - BundleChecksumService
 - DocumentRunOrchestrator
 - TestConfiguration
-- BundlePaths
+- Path
 - test_assemble_manifest.py
 - test_graph_rebase.py
 - BT Witness Preparation Slice
@@ -63,29 +63,29 @@
 - HfEndpointClient
 - source_acquisition.py
 - PageXmlInterchangeService
-- review_cli.py
+- SourceAcquisitionService
 - model_validator
 - test_page_interchange.py
-- Settings
+- EndpointLifecycleService
 - ResumeLedgerService
-- EndpointRemoteState
-- cli
+- ConfigurationError
+- graph_rebase.py
 - Hands-Off Operator Path Implementation Plan
-- PreparedArtifactRef
-- test_endpoint_lifecycle.py
+- RunnerBatchPlanner
+- DocumentExportService
 - EndpointCatalogEntry
-- SourceAcquisitionService
+- valid_bundle_page
 - Phase 2 Gold Evaluator Plan
 - RunnerInputPackager
 - Spec 0012: Runner Execution and Batch Policy
 - Machine Assistance Resources
-- TestCLIReview
-- RagChunk
+- ReviewOverlayService
+- AbstainingMergeService
 - Architecture review — wordwending
 - conftest.py
 - TestCLISettings
-- TestCLIGlobalOptions
-- build_endpoint_lifecycle_service
+- test_text_normalization.py
+- endpoints_down
 - Architecture documentation index
 - Spec 0006: Exports and Retrieval Views
 - i-mutation / i-umlaut
@@ -95,46 +95,52 @@
 - Spec 0003: V1 Evaluation Schema
 - Raw OCR witness layer
 - print_error
-- Image
-- _AssembleExecution
+- services/preparation.py
+- test_endpoint_lifecycle.py
 - ._coords
 - Coordinate-Rich Kraken Adaptation Plan
 - create_progress
 - ._write_page_xml
 - Spec 0009: Merge and Alignment
-- ._bbox_from_coords
-- _line_has_required_geometry
-- model_validator
+- HuggingFaceOlmocrRunner
+- witness_adaptation.py
+- ReviewSummary
 - Anglian dialect group
 - .validate_https_huggingface_endpoints
-- TestCLIExport
+- _minimal_page_overlay
 - Learner lacks stable conceptual map of sound-change order
 - OE Grammar Resources
-- test_write_document_exports_writes_derived_views
+- PreparedArtifactRef
 - Spec 0007: PDF-to-Image Preparation
 - Python Coding Standards
 - DocumentExportService
 - Machine Assistance Mission
 - Reference 0006 OCR Output Formats
 - Prepared Page Image (page-0001)
-- test_assemble_eval_export_wave_a_exit
-- TestCLIEval
+- cli
+- _review_base
 - TestPrintSuccess
 - TestConsoleQuietMode
-- prepare_pages
+- DocumentRunStage
+- _review_polygon
 - V1 Engine Bake-Off
 - Spec 0002: V1 Bundle Layout and Data Shape
 - Rename bochord to wordwending Implementation Plan
+- .validate_item_page_alignment
 - Lesson 0003 Pronouncing Old English Letters
 - ADR 0009: Adapt OCR-D/PAGE and eScriptorium Boundaries
 - Phase 1 PAGE Interoperability Spike Plan
 - RunnerReference
 - TestConsole
+- TestCLIGlobalOptions
 - Chris Malek
 - Character Error Rate (CER)
-- test_live_hf_bakeoff_requires_integration_marker
+- test_assemble_eval_export_wave_a_exit
+- ResumeLedger
 - test_live_endpoint_lifecycle_smoke
-- review.py
+- TestCLIExport
+- .create_successor
+- ._scored_text_pairs
 - release.sh
 - Contributor Covenant 3.0
 - ADR 0005 Evaluation First
@@ -143,8 +149,13 @@
 - Old English c/g palatalization
 - OE tēon walk-back (Grimm + h-loss + contraction)
 - ipa-play.js
+- _witness_skip_reason
 - BundlePage
-- .__init__
+- Settings
+- model_validator
+- test_live_hf_bakeoff_requires_integration_marker
+- _attach_alternates_to_objects
+- .read_review_events
 - Changelog
 - Contributing
 - Layered On-Disk Bundle Layout
@@ -152,6 +163,15 @@
 - wordwending
 - Mixed dialect spellings from copying history
 - Reference Sound Terms
+- .test_gold_annotation_requires_graph_or_image_anchor
+- .test_model_backed_runner_requires_revision_and_digests
+- .test_overlay_flag_review_event_rejects_trust_state_change
+- .test_review_task_rejects_related_object_id_overlap
+- .test_bounding_box_rejects_empty_or_reversed_geometry
+- .__init__
+- review.py
+- .__init__
+- .__init__
 
 ## God Nodes (most connected - your core abstractions)
 1. `BundlePage` - 171 edges
@@ -159,11 +179,11 @@
 3. `AlternateCandidate` - 120 edges
 4. `BundleLayoutService` - 96 edges
 5. `cli()` - 94 edges
-6. `MergePolicy` - 90 edges
-7. `CoordinateSpace` - 90 edges
-8. `PreparedPage` - 87 edges
+6. `MergePolicy` - 93 edges
+7. `CoordinateSpace` - 93 edges
+8. `PreparedPage` - 89 edges
 9. `Settings` - 81 edges
-10. `PageClass` - 79 edges
+10. `PageClass` - 80 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `DocumentBundle` --semantically_similar_to--> `Document bundle`  [INFERRED] [semantically similar]
@@ -200,139 +220,139 @@
 - **HF endpoint lifecycle service stack** — docs_superpowers_specs_2026_08_07_hf_endpoint_lifecycle_design_endpoint_lifecycle_service, docs_superpowers_plans_2026_08_07_hf_endpoint_lifecycle_hf_endpoint_client, docs_superpowers_specs_2026_08_07_hf_endpoint_lifecycle_design_endpoint_session_ledger, docs_superpowers_plans_2026_08_07_hf_endpoint_lifecycle_ensure_endpoints_flag [EXTRACTED 1.00]
 - **Hands-Off Prepare Page-0001 Fixture Artifacts** — tests_fixtures_hands_off_prepare_pages_page_0001_prepared_prepared_page_1_image_prepared_page_image, tests_fixtures_hands_off_prepare_pages_page_0001_prepared_prepared_page_1_image_prepared_page_artifact_slot, tests_fixtures_hands_off_prepare_pages_page_0001_prepared_prepared_page_1_image_source_page_0001, tests_fixtures_hands_off_prepare_pages_page_0001_prepared_prepared_page_1_image_hands_off_prepare_fixture [INFERRED 0.85]
 
-## Communities (143 total, 17 thin omitted)
+## Communities (163 total, 25 thin omitted)
 
 ### Community 0 - "BundleLayoutService"
 Cohesion: 0.05
-Nodes (82): Path, Document source digests are omitted from verification when not recorded., Prepared units without recorded digests are skipped honestly., Materialize a minimal bundle whose recorded digests match on-disk bytes., Recorded digests that match on-disk bytes report OK., Tampered prepared image bytes report FAIL against the recorded digest., _sha256_label(), test_verify_matching_checksums_ok() (+74 more)
+Nodes (85): Path, Document source digests are omitted from verification when not recorded., Prepared units without recorded digests are skipped honestly., Materialize a minimal bundle whose recorded digests match on-disk bytes., Recorded digests that match on-disk bytes report OK., Tampered prepared image bytes report FAIL against the recorded digest., _sha256_label(), test_verify_matching_checksums_ok() (+77 more)
 
 ### Community 1 - "test_ocr_models.py"
-Cohesion: 0.03
-Nodes (77): _bundle_page_payload(), capability_payload(), execution_batch_payload(), model_runner_payload(), _page_witness(), _prepared_unit_ref(), _provenance(), parametrize (+69 more)
+Cohesion: 0.04
+Nodes (80): capability_payload(), execution_batch_payload(), _minimal_rag_document(), model_runner_payload(), parametrize, _rag_chunk(), Alternate merge interpretations live in provenance, not duplicate nodes., Return a valid model-backed runner payload with optional overrides. (+72 more)
 
-### Community 2 - "services/preparation.py"
+### Community 2 - "CoordinateSpace"
 Cohesion: 0.05
-Nodes (100): BundlePage carries graph-v0 by default for overlay binding., test_bundle_page_defaults_graph_revision(), _FakePreparation, Records prepare calls and seeds preparation.json under output_dir., Graph parent-child identifiers must resolve within the page., Prepared-unit identifiers must be unique on one prepared page., Prepared units must belong to the prepared page and known spaces., test_prepared_page_rejects_duplicate_prepared_unit_ids() (+92 more)
+Nodes (94): BundlePage carries graph-v0 by default for overlay binding., test_bundle_page_defaults_graph_revision(), test_document_bundle_manifest_rejects_non_positive_page_count(), test_document_bundle_manifest_round_trip(), _FakePreparation, _FakeRegistry, _minimal_document_bundle(), Records prepare calls and seeds preparation.json under output_dir. (+86 more)
 
 ### Community 3 - "MergePolicy"
-Cohesion: 0.06
-Nodes (115): _aligned_text_witnesses(), _bounding_box(), _coordinate_space(), _line(), _load_merge_fixture(), _note(), _prepared_page(), _provenance() (+107 more)
+Cohesion: 0.07
+Nodes (99): _aligned_text_witnesses(), _bounding_box(), _coordinate_space(), _line(), _note(), _prepared_page(), _provenance(), Empty precedence with differing text flags disagreement and abstains. (+91 more)
 
-### Community 4 - "QualitySignal"
+### Community 4 - "Typography"
 Cohesion: 0.08
-Nodes (43): AssessmentThresholds, BaseModel, QualitySignal, One measured image-quality signal from preparation assessment., Calibratable limits for deterministic image-quality heuristics., _bleedthrough_signal(), _border_shadow_signal(), _colored_marking_signal() (+35 more)
+Nodes (37): Orthogonal visual typography facets for one text span., Typography, Collect distinct known typography signals from included spans. Args: spans:…, Report whether typography carries at least one known facet. Args: typography:…, _apply_span_text_resolution(), _first_candidate_by_runner_precedence(), Any, Collect unique witness ids from span candidates in input order. Args:… (+29 more)
 
-### Community 5 - "test_merge_review.py"
-Cohesion: 0.06
-Nodes (45): Enum, _eval_flag(), _merge_flag(), _page_with_text_flags(), parametrize, Return one merge flag fixture., Return one evaluation flag with an explicit merge flag_type., Attach evaluation flags onto the text family only (legacy C3 shape). (+37 more)
+### Community 5 - "_bundle_page_payload"
+Cohesion: 0.12
+Nodes (16): _bundle_page_payload(), Return a mutable dump of a valid bundle page with optional overrides., Graph boxes and polygons must name a known page coordinate space., Non-empty baselines require an explicit baseline coordinate space id., Baseline coordinate spaces must resolve to a known page space., Every span listed by a line must claim that line as parent., Line order values must be positive and unique within a parent region., Provenance source/witness/runner ids must belong to the owning page. (+8 more)
 
 ### Community 6 - "SpanRecord"
-Cohesion: 0.02
-Nodes (164): _body_region_page(), _document_bundle(), _load_frozen_document_bundle_v1(), _load_minimal_bundle(), _markdown_style_page(), _merge_page_regions(), _minimal_document_bundle(), _object_provenance() (+156 more)
-
-### Community 7 - "cli.py"
 Cohesion: 0.05
-Nodes (73): test_document_bundle_manifest_rejects_non_positive_page_count(), test_document_bundle_manifest_round_trip(), _minimal_document_bundle(), Records RunnerExecutionService.run invocations., Return a tiny DocumentBundle for stubbed assemble/export stages., Records AssembleManifestBuilder.build calls., Records assemble_document calls and writes document-bundle.json., _RecordingAssemble (+65 more)
+Nodes (74): _markdown_style_page(), _object_provenance(), _page_provenance(), _page_witness(), _prepared_page(), Document export filenames stay fixed under exports/., Return valid single-page provenance for programmatic graph tests., Return provenance for one accepted page graph. (+66 more)
 
-### Community 8 - "services/merge.py"
+### Community 7 - "MergeOrchestrator"
+Cohesion: 0.06
+Nodes (30): _collect_span_candidates(), _first_witness_by_runner_preference(), _flagged_object_ids(), MergeOrchestrator, Gather matched span candidates from all eligible witnesses. Args:…, Return a span flagged for missing witness text evidence. Args: span: Accepted…, Per-page mutable merge state and step runner. Args: policy: Versioned merge…, Collect object ids already referenced by merge flags. Args: flags: Merge flags… (+22 more)
+
+### Community 8 - "TestOcrModels"
+Cohesion: 0.12
+Nodes (9): OCR models must run on the required Hugging Face hosting boundary., Contract checks for persisted OCR schema models., Tasks must bind to the same prepared image the overlay records., Region revisions must include at least one geometry form., A review task should be actionable without undocumented context., Review tasks must bind to the prepared image the operator inspects., Related object ids must be unique., Preferred input must be one of the runner's accepted inputs. (+1 more)
+
+### Community 9 - "BundlePaths"
+Cohesion: 0.05
+Nodes (58): Multiple source/pages/NNNN.* files must not silently pick one., test_page_bundle_manifest_round_trip(), test_resolve_source_image_path_rejects_ambiguous_extensions(), _page_witness(), Return a witness owned by the given page., _page_witnesses(), Return page-local witnesses matching fixture provenance., BundlePaths (+50 more)
+
+### Community 10 - "MetricProfile"
 Cohesion: 0.04
-Nodes (101): _LayoutObject, NamedTuple, _apply_layout_merge_confidence(), _apply_note_link_resolution(), _apply_span_text_resolution(), _apply_span_typography_resolution(), _attach_alternates_to_objects(), _box_iou() (+93 more)
+Nodes (67): test_metric_profile_rejects_invalid_iou_threshold(), MetricProfile, BaseModel, Versioned, deterministic evaluation policy., GoldRegionAnnotation, GoldStyleSpan, Gold style target for one span or image-anchored area., Gold region or structure target. (+59 more)
 
-### Community 9 - "Path"
-Cohesion: 0.05
-Nodes (45): Multiple source/pages/NNNN.* files must not silently pick one., test_page_dir_name_is_zero_padded(), test_resolve_source_image_path_rejects_ambiguous_extensions(), page_dir_name(), Return the stable page directory name for one 1-based page number. Args:…, _atomic_write_json(), _executed_passes(), _needs_trailing_newline() (+37 more)
+### Community 11 - "GoldPageAnnotation"
+Cohesion: 0.09
+Nodes (52): profile(), Schema defaults name real ADR 0007 candidates, not FakePassRunner., Matrix cells carry runner, page class, scores, latency, failure, license., Harness scores recorded (mocked) responses for both real candidates., Failed invocations populate failure and omit score families., Scoring exceptions become per-cell failures instead of aborting the run., Harness writes bakeoff-matrix-v1.json under the output directory., Fake invoker exercises plumbing; must not appear as a matrix candidate id. (+44 more)
 
-### Community 10 - "services/evaluation.py"
-Cohesion: 0.05
-Nodes (51): _box(), Build one axis-aligned box in the fixture prepared-page space., BoundingBox, GoldStyleSpan, Gold style target for one span or image-anchored area., Axis-aligned rectangle for page-relative geometry., Semantic role kept separate from visual typography., TextRole (+43 more)
-
-### Community 11 - "SchemaModel"
+### Community 12 - "cli.py"
 Cohesion: 0.06
-Nodes (87): _gold(), _prediction(), profile(), Path, Build one gold page annotation matching the prediction span., Schema defaults name real ADR 0007 candidates, not FakePassRunner., Matrix cells carry runner, page class, scores, latency, failure, license., Harness scores recorded (mocked) responses for both real candidates. (+79 more)
-
-### Community 12 - "_build_document_run_orchestrator"
-Cohesion: 0.06
-Nodes (49): argument, PassRunnerClass, test_register_overrides_or_adds_runner_id(), test_resolve_unknown_runner_id_fails_clearly(), _build_document_run_endpoint_ensurer(), _build_document_run_orchestrator(), _build_document_run_runner_factory(), document_run() (+41 more)
+Nodes (57): argument, _build_document_run_endpoint_ensurer(), _build_document_run_orchestrator(), document_run(), _echo_checksum_results(), _echo_document_run_result(), _echo_export_paths(), _echo_page_flags() (+49 more)
 
 ### Community 13 - "ReviewCliService"
-Cohesion: 0.10
-Nodes (20): Path, Orchestrate review apply / materialize / issue / rebase for bundle pages. Keeps…, Validate an overlay, append new events, and rewrite overlay state. Args:…, Replay append-only review history into ``overlays/current_state.json``. Args:…, Rebuild pending review tasks from one page's evaluation flags. Args:…, Apply overlay corrections onto the page graph and write a successor overlay.…, Ensure overlay task targets exist on the accepted page graph. Validation is…, Validate one review task's targets against the page graph. Args: page: Accepted… (+12 more)
+Cohesion: 0.06
+Nodes (42): _bump_graph_revision(), _identity_object_id_map(), Path, ReviewEvent, Orchestrate review apply / materialize / issue / rebase for bundle pages. Keeps…, Validate an overlay, append new events, and rewrite overlay state. Args:…, Replay append-only review history into ``overlays/current_state.json``. Args:…, Rebuild pending review tasks from one page's evaluation flags. Args:… (+34 more)
 
 ### Community 14 - "test_preparation_service.py"
-Cohesion: 0.09
-Nodes (66): MockerFixture, binary_recipe(), bundle_service(), dark_gutter_image(), dense_source_page(), dense_two_column_image(), note_heavy_image(), preparation_service() (+58 more)
+Cohesion: 0.08
+Nodes (69): MockerFixture, test_page_override_requires_choice_and_reason(), binary_recipe(), bundle_service(), dark_gutter_image(), dense_source_page(), dense_two_column_image(), note_heavy_image() (+61 more)
 
-### Community 15 - "models/__init__.py"
-Cohesion: 0.03
-Nodes (132): Runner, overlay, and gold contracts should fit the planned workflow., _event_base(), _polygon(), datetime, MonkeyPatch, Return polygon-only replacement geometry., Return orthogonal typography facets for style correction., Build one overlay covering every replay assertion path. current_state is… (+124 more)
+### Community 15 - "test_merge_review.py"
+Cohesion: 0.05
+Nodes (52): _eval_flag(), _page_with_text_flags(), parametrize, Return one evaluation flag with an explicit merge flag_type., Attach evaluation flags onto the text family only (legacy C3 shape)., Known merge flag types become Spec 0005 dimension packets even if mis-bucketed., Every MergeFlagType has a Spec 0005 dimension mapping entry., Note-scoped text disagreement has no Spec 0005 text packet; use adjudication. (+44 more)
 
-### Community 16 - "_rag_chunk"
-Cohesion: 0.07
-Nodes (46): _minimal_rag_document(), _rag_chunk(), Return multi-page retrieval provenance with stable witness pointers., Return a page-local retrieval chunk with optional field overrides., Return a cross-page stitched chunk with optional field overrides., Return a document-level RAG export with optional chunk overrides., Page-local chunk ids must stay unique within a RagDocument., Stitched chunk ids must stay unique within a RagDocument. (+38 more)
+### Community 16 - "_prediction"
+Cohesion: 0.21
+Nodes (13): _box(), _gold(), _prediction(), Path, Build one gold page annotation matching the prediction span., Loaded prediction BundlePage.page_id must match the prediction ref., CLI/offline path loads recorded BundlePage JSON via BakeoffManifest., Thin bakeoff CLI writes matrix JSON and echoes Phase 5 NOT COMPLETE. (+5 more)
 
-### Community 17 - "PlannedRunnerBatch"
-Cohesion: 0.03
-Nodes (113): LookupError, MockHttpxClient, Minimal httpx client stand-in for hosted runner tests., MockHttpxClient, Minimal httpx client stand-in for hosted runner tests., ConfigurationError, Raised when settings or configuration fails., Raised when a hosted runner endpoint is not ready for inference. (+105 more)
+### Community 17 - "HuggingFaceKrakenRunner"
+Cohesion: 0.06
+Nodes (35): _encode_png_base64(), _failed_item_result(), HuggingFaceKrakenRunner, _load_direct_image(), _load_image_from_pdf(), Any, Client, Image (+27 more)
 
 ### Community 18 - "test_write_document_exports_frozen_contract_jsonl_validates"
 Cohesion: 0.50
 Nodes (4): load_frozen_document_bundle_v1(), Layout exports from document-bundle-v1 keep stable ids and model-valid JSONL., Load the frozen document-bundle-v1 contract fixture., test_write_document_exports_frozen_contract_jsonl_validates()
 
 ### Community 19 - "test_document_run.py"
-Cohesion: 0.08
-Nodes (63): _absolute_prepare_run_config(), _FakeRegistry, _full_page_preparation_json(), _make_orchestrator(), Any, Path, Write preparation.json under the prepare-tree layout., PassRunnerRegistry stand-in returning a sentinel class. (+55 more)
+Cohesion: 0.10
+Nodes (49): _absolute_prepare_run_config(), _full_page_preparation_json(), _make_orchestrator(), Any, Path, Write preparation.json under the prepare-tree layout., Copy provenance, merge policy, gold, and metric fixtures into directory., Build a prepare+run config with paths relative to ``config_dir``. (+41 more)
 
 ### Community 20 - "test_evaluation_service.py"
-Cohesion: 0.07
-Nodes (66): bold_but_not_italic_prediction(), bold_italic_gold(), _box(), note_link_gold(), _page_witnesses(), _prepared_page(), profile(), _provenance() (+58 more)
+Cohesion: 0.11
+Nodes (52): bold_but_not_italic_prediction(), bold_italic_gold(), _box(), note_link_gold(), _page_witnesses(), _prepared_page(), profile(), _provenance() (+44 more)
 
 ### Community 21 - "test_runner_execution.py"
-Cohesion: 0.13
-Nodes (41): InvokeResult, execution_service(), _fail_all_items(), _fail_second_item(), FakeOlmocrRunner, fixture_root(), hosted_result(), policy() (+33 more)
+Cohesion: 0.14
+Nodes (39): InvokeResult, execution_service(), _fail_all_items(), _fail_second_item(), fixture_root(), hosted_result(), policy(), prepared_artifacts() (+31 more)
 
 ### Community 22 - "Path"
 Cohesion: 0.07
 Nodes (26): Path, inspect-bundle does not list export paths until export has run., inspect-bundle lists exports/* paths after assemble and export., inspect-bundle prints document and page summary., inspect-bundle surfaces OK after assemble seals prepared-image digests., inspect-bundle surfaces OK when layout digests match on-disk bytes., inspect-bundle prints merge flags after multi-witness disagreement., Assemble fails when manifest witness paths are absent under bundle_root. (+18 more)
 
-### Community 23 - "test_text_normalization.py"
-Cohesion: 0.06
-Nodes (43): _load_cases(), _page_witnesses(), _policy_from_overrides(), _provenance(), Any, parametrize, Return valid single-page object provenance., Return page-local witnesses matching fixture provenance. (+35 more)
+### Community 23 - "PageClass"
+Cohesion: 0.05
+Nodes (83): test_operator_override_requires_reason(), CoordinateTransform, FlagSeverity, PageClass, PreparationMode, Page-level layout cohorts used by preparation and evaluation., Prepared-page subdivision modes., Supported top-level source kinds. (+75 more)
 
-### Community 24 - "evaluation_cohorts.py"
+### Community 24 - "PageEvaluationSummary"
 Cohesion: 0.10
-Nodes (38): metric(), Return one metric from a family summary by id., Build one page evaluation record with a single macron_recall metric., record(), test_empty_input_returns_three_empty_lists(), test_page_class_summary_sums_metric_denominators(), test_reports_split_same_class_by_mode_and_runner(), test_zero_denominator_unit_error_aggregates_as_unit_error() (+30 more)
+Nodes (43): metric(), Return one metric from a family summary by id., Build one page evaluation record with a single macron_recall metric., record(), test_empty_input_returns_three_empty_lists(), test_page_class_summary_sums_metric_denominators(), test_reports_split_same_class_by_mode_and_runner(), test_zero_denominator_unit_error_aggregates_as_unit_error() (+35 more)
 
-### Community 25 - "MergeOrchestrator"
-Cohesion: 0.06
-Nodes (27): _first_witness_by_runner_preference(), _flagged_object_ids(), MergeOrchestrator, Return a span flagged for missing witness text evidence. Args: span: Accepted…, Per-page mutable merge state and step runner. Args: policy: Versioned merge…, Initialize merge orchestration for one page. Args: policy: Versioned merge…, Collect object ids already referenced by merge flags. Args: flags: Merge flags…, Execute the Spec 0009 merge sequence for one page. Returns: Accepted page graph… (+19 more)
+### Community 25 - "_normalize_page_overrides"
+Cohesion: 0.50
+Nodes (4): _index_page_overrides(), _normalize_page_overrides(), Index page overrides and reject duplicate or inconsistent ids. Args:…, Index page overrides by ``source_page_id``. Args: overrides: Validated page…
 
 ### Community 26 - "test_olmocr_runner.py"
-Cohesion: 0.13
-Nodes (40): hosted_runner(), mock_client(), olmocr_response(), packaged_input(), planned_batch(), policy(), policy_with_endpoint(), Any (+32 more)
+Cohesion: 0.09
+Nodes (49): PassRunnerClass, hosted_runner(), mock_client(), olmocr_response(), packaged_input(), planned_batch(), policy(), policy_with_endpoint() (+41 more)
 
 ### Community 27 - "test_kraken_runner.py"
-Cohesion: 0.14
-Nodes (39): hosted_runner(), kraken_response(), mock_client(), planned_batch(), policy(), policy_with_endpoint(), Any, BaseException (+31 more)
+Cohesion: 0.12
+Nodes (43): hosted_runner(), kraken_response(), mock_client(), MockHttpxClient, planned_batch(), policy(), policy_with_endpoint(), Any (+35 more)
 
 ### Community 28 - "test_assemble.py"
-Cohesion: 0.14
-Nodes (47): _acquisition(), _bibliographic(), _coordinate_space(), _merge_policy(), _MergeWithExtraFlags, _orchestrator(), _prepared_page(), Path (+39 more)
+Cohesion: 0.10
+Nodes (51): _acquisition(), _bibliographic(), _coordinate_space(), _merge_policy(), _MergeWithExtraFlags, _orchestrator(), _prepared_page(), Path (+43 more)
 
-### Community 29 - "RunnerThroughputSummary"
+### Community 29 - "models/__init__.py"
+Cohesion: 0.03
+Nodes (147): Enum, _event_base(), _polygon(), datetime, Return polygon-only replacement geometry., Return orthogonal typography facets for style correction., Build one overlay covering every replay assertion path. current_state is…, Replay builds OverlayState solely from ordered append-only events. (+139 more)
+
+### Community 30 - "bakeoff_matrix"
+Cohesion: 0.19
+Nodes (11): bakeoff_matrix(), _ensure_catalogued_bakeoff_endpoints(), Score recorded candidate predictions into bakeoff-matrix-v1.json. Thin offline…, Ensure catalogued real bakeoff candidates and overlay HTTPS URLs. Fake / non-…, _outcome_from_prediction_ref(), Path, Write ``bakeoff-matrix-v1.json`` under ``output_dir``. Side Effects: Creates…, Load an offline bake-off request and recorded invoker from a manifest. Args:… (+3 more)
+
+### Community 31 - "OverlayState"
+Cohesion: 0.18
+Nodes (10): OverlayState, Current overlay state for one reviewable object., Apply one append-only event onto a mutable overlay state. Args: state:…, Record trust, applied event id, and reviewed/corrected dimensions. Args: state:…, Apply event-specific override fields named by the event contract. Structural…, Append novel review dimensions while preserving first-seen order. Args:…, Replay ``overlay.review_events`` into per-object overlay state. Ignores any…, Append novel string ids while preserving first-seen order. Args: existing: Ids… (+2 more)
+
+### Community 32 - "services/merge.py"
 Cohesion: 0.06
-Nodes (37): Persisted batch status must agree with submitted and failed items., test_throughput_summary_accepts_coherent_values(), test_throughput_summary_rejects_inconsistent_items_per_second(), Exact persisted record for one runner invocation., RunnerExecutionBatch, model_validator, Require one page number for every packaged batch item. Returns: The validated…, Measured throughput for one runner execution segment. (+29 more)
-
-### Community 30 - "EndpointLifecycleService"
-Cohesion: 0.08
-Nodes (29): datetime, endpoints(), group, Ensure, pause, or inspect Hugging Face Inference Endpoints., EndpointLifecycleError, FileError, Raised when file I/O operations fail., Raised when Hugging Face endpoint lifecycle operations fail. (+21 more)
-
-### Community 31 - "TestOcrModels"
-Cohesion: 0.05
-Nodes (27): _minimal_page_overlay(), Gold text without a graph target or geometry cannot be scored., Model-backed evidence must be reproducible., OCR models must run on the required Hugging Face hosting boundary., Return fields required by every review event., Return a valid review geometry bounding box., Return a minimal text-review task bound to the overlay defaults., Return a minimal page overlay with one text task and no events. (+19 more)
-
-### Community 32 - "ReviewTask"
-Cohesion: 0.07
-Nodes (26): A review task should be actionable without undocumented context., Review tasks must bind to the prepared image the operator inspects., Related ids must not duplicate or overlap primary targets., Related object ids must be unique., Self-contained instructions and evidence binding for human review., ReviewTask, Project merge flags onto pages and build Spec 0005 pending tasks. Replaces…, Build a span-scoped diplomatic-text review task packet. Task identity is scoped… (+18 more)
+Nodes (67): NamedTuple, _apply_note_link_resolution(), _apply_span_typography_resolution(), _box_iou(), _collect_note_candidates(), _detect_structure_conflict(), _geometry_alternates_for_regions(), _map_marker_span_ids() (+59 more)
 
 ### Community 33 - "check_napoleon_gate.py"
 Cohesion: 0.08
@@ -343,28 +363,28 @@ Cohesion: 0.05
 Nodes (43): Spec 0014: Review Task and Overlay Schema, OverlayState, PageOverlay, ReviewTask, Spec 0016: Concrete Bundle and RAG Models, DocumentBundle, PreparedPage, RagChunk (+35 more)
 
 ### Community 35 - "BundleChecksumService"
-Cohesion: 0.12
-Nodes (20): BundleChecksumReport, ChecksumVerificationResult, ChecksumVerificationStatus, StrEnum, Outcome for one recorded checksum field verified against on-disk bytes., One bundle-relative path checked against a recorded digest label., Aggregate checksum verification results for one bundle root., Return whether every non-skipped verification succeeded. Returns: ``True`` when… (+12 more)
+Cohesion: 0.14
+Nodes (18): ChecksumVerificationResult, ChecksumVerificationStatus, StrEnum, Outcome for one recorded checksum field verified against on-disk bytes., One bundle-relative path checked against a recorded digest label., BundleChecksumService, Path, Verify prepared-page and prepared-unit digests from one page graph. Args:… (+10 more)
 
 ### Community 36 - "DocumentRunOrchestrator"
 Cohesion: 0.10
-Nodes (29): DocumentRunConfig, DocumentRunStage, StrEnum, Return whether gold and metric profile enable default eval. Returns: ``True``…, Stages in a full document run machine path., Configuration for one orchestrated document run., Return the stage order for this run. Returns: Explicit ``stages`` when set;…, Return the default machine path before ``skip_export`` filtering. Returns:… (+21 more)
+Nodes (27): DocumentRunConfig, Return whether gold and metric profile enable default eval. Returns: ``True``…, Configuration for one orchestrated document run., Return the stage order for this run. Returns: Explicit ``stages`` when set;…, Return the default machine path before ``skip_export`` filtering. Returns:…, DocumentRunOrchestrator, _DocumentRunState, _load_json_model() (+19 more)
 
 ### Community 37 - "TestConfiguration"
 Cohesion: 0.06
 Nodes (22): Exception, patch, Unit tests for configuration settings. Tests the new OpenAI and summary…, Test that settings fields have proper descriptions., Test that model_config is properly configured., Test output format validation., Test valid output format validation., Test settings loading from environment variables. This test is a placeholder… (+14 more)
 
-### Community 38 - "BundlePaths"
-Cohesion: 0.08
-Nodes (25): test_bundle_paths_match_spec_0002_layout(), test_source_page_image_rejects_empty_extension(), BundlePaths, Path, Return the source page image path for one page number and extension. Args:…, Return the page bundle directory for one page number. Args: page_number:…, Return the page manifest path for one page number. Args: page_number: 1-based…, Return the prepared page image directory for one page number. Args:… (+17 more)
+### Community 38 - "Path"
+Cohesion: 0.07
+Nodes (21): Path, Return the source page image path for one page number and extension. Args:…, Return the page bundle directory for one page number. Args: page_number:…, Return the page manifest path for one page number. Args: page_number: 1-based…, Return the prepared page image directory for one page number. Args:…, Return the witness artifact directory for one page and family. Args:…, Return the normalized page graph artifact path. Args: page_number: 1-based page…, Return the page evaluation scores artifact path. Args: page_number: 1-based… (+13 more)
 
 ### Community 39 - "test_assemble_manifest.py"
 Cohesion: 0.11
 Nodes (39): _acquisition(), _bibliographic(), _build(), _load_batch(), _merge_policy(), Path, Single succeeded run yields one page with one copied witness., Two runner runs merge into one page with two witnesses. (+31 more)
 
 ### Community 40 - "test_graph_rebase.py"
-Cohesion: 0.05
-Nodes (54): _GraphNode, Text overrides rewrite span diplomatic text by object_id + scope., Text overrides rewrite note diplomatic text by object_id + scope., Typography and role overrides update the matching span., Unknown object_id raises ValueError naming the id., Returned page carries the caller-supplied graph_revision., Aside from applied overrides and revision, the page graph is equal., Geometry, region_kind, and note linkage overrides update targets. (+46 more)
+Cohesion: 0.15
+Nodes (22): _page(), _provenance(), Text overrides rewrite span diplomatic text by object_id + scope., Text overrides rewrite note diplomatic text by object_id + scope., Typography and role overrides update the matching span., Unknown object_id raises ValueError naming the id., Returned page carries the caller-supplied graph_revision., Geometry, region_kind, and note linkage overrides update targets. (+14 more)
 
 ### Community 41 - "BT Witness Preparation Slice"
 Cohesion: 0.06
@@ -375,79 +395,79 @@ Cohesion: 0.11
 Nodes (29): Path, test_corrupt_ledger_loads_empty(), test_ledger_round_trip(), test_mark_down_records_pause_action(), test_missing_ledger_loads_empty(), test_save_persists_ledger(), test_touch_rejects_invalid_action(), test_touch_replaces_same_runner_id() (+21 more)
 
 ### Community 43 - "test_review_cli.py"
-Cohesion: 0.09
-Nodes (49): _eval_flag(), _gold_task(), _overlay_with_tasks(), Path, Return a span-scoped text review task for validation fixtures., Return a gold task packet (unsupported by review apply)., Return a minimal PageOverlay carrying the given review tasks., Return one evaluation flag for pending-task regeneration fixtures. (+41 more)
+Cohesion: 0.13
+Nodes (33): _eval_flag(), Path, Return one evaluation flag for pending-task regeneration fixtures., Overwrite one bundle page graph artifact on disk., Write a minimal Spec 0002 bundle tree under ``bundle_root``., Apply appends new events and materializes overlay state on disk., Apply refuses overlays whose task targets are missing from the page., Issue regenerates pending_tasks.json from the page evaluation flags. (+25 more)
 
 ### Community 44 - "WitnessAdaptationService"
-Cohesion: 0.06
-Nodes (59): _coordinate_space(), _prepared_page(), Path, Two independent adapt_page calls yield identical ids and diplomatic texts. ADR…, Adapted span ids and texts match assemble gold-v1 target_object_ids., Empty artifact_paths list is rejected before reading., Non-chat.completion JSON is rejected as an invalid raw witness., Write a minimal chat.completion witness artifact for adaptation tests. (+51 more)
+Cohesion: 0.09
+Nodes (52): _coordinate_space(), _prepared_page(), parametrize, Path, Two independent adapt_page calls yield identical ids and diplomatic texts. ADR…, Adapted span ids and texts match assemble gold-v1 target_object_ids., Empty artifact_paths list is rejected before reading., Non-chat.completion JSON is rejected as an invalid raw witness. (+44 more)
 
 ### Community 45 - "HfEndpointClient"
-Cohesion: 0.10
-Nodes (25): InferenceEndpoint, _FakeInferenceEndpoint, MonkeyPatch, test_constructor_requires_token(), test_create_omits_scale_to_zero_when_disabled(), test_create_passes_catalog_fields_and_scale_to_zero(), test_describe_maps_remote_state(), test_hub_errors_map_to_endpoint_lifecycle_error() (+17 more)
+Cohesion: 0.11
+Nodes (24): InferenceEndpoint, _FakeInferenceEndpoint, MonkeyPatch, test_constructor_requires_token(), test_create_omits_scale_to_zero_when_disabled(), test_create_passes_catalog_fields_and_scale_to_zero(), test_describe_maps_remote_state(), test_hub_errors_map_to_endpoint_lifecycle_error() (+16 more)
 
 ### Community 46 - "source_acquisition.py"
-Cohesion: 0.10
-Nodes (32): PdfPage, _artifact_from_raster(), _image_dpi(), _image_paths_in_directory(), _natural_key(), _page_ids(), _pdf_page_image(), Image (+24 more)
+Cohesion: 0.09
+Nodes (34): PdfPage, PdfPageImageMode, PDF page rasterization strategy during source acquisition., _artifact_from_raster(), _image_dpi(), _image_paths_in_directory(), _natural_key(), _page_ids() (+26 more)
 
 ### Community 47 - "PageXmlInterchangeService"
-Cohesion: 0.15
-Nodes (14): PageXmlInterchangeService, Element, Apply PAGE-supported field updates onto the canonical sidecar. Args: root:…, Return the PAGE Page element, raising when it is absent. Args: root: Parsed…, Reject PAGE corrections for a different prepared image identity. Args: page_el:…, Index TextLine and Word elements by stable id. Args: region_elements: PAGE…, Merge PAGE region geometry and reading order. Args: regions: Canonical region…, Round-trip canonical page evidence through PAGE review packages. Exports a… (+6 more)
-
-### Community 48 - "review_cli.py"
 Cohesion: 0.11
-Nodes (22): _bump_graph_revision(), _identity_object_id_map(), ReviewEvent, Outcome of appending overlay events and rewriting overlay state., Outcome of replaying append-only review history into overlay state., Return the next graph revision by bumping a trailing integer. Args: revision:…, Build an identity object-id map for leaf-only graph rebase. Args: page: Rebased…, Outcome of rebasing overlay corrections onto the accepted page graph. (+14 more)
+Nodes (20): PageXmlInterchangeService, Element, Apply PAGE-supported field updates onto the canonical sidecar. Args: root:…, Return the PAGE Page element, raising when it is absent. Args: root: Parsed…, Reject PAGE corrections for a different prepared image identity. Args: page_el:…, Index TextLine and Word elements by stable id. Args: region_elements: PAGE…, Merge PAGE region geometry and reading order. Args: regions: Canonical region…, Round-trip canonical page evidence through PAGE review packages. Exports a… (+12 more)
+
+### Community 48 - "SourceAcquisitionService"
+Cohesion: 0.21
+Nodes (21): pdf_fixture(), Path, Load the Phase 3 recipe fixture with optional field overrides. Keyword Args:…, Build a one-page blank PDF for acquisition tests. Args: tmp_path: Optional…, Write a tiny RGB PNG/JPEG/TIFF image to ``path``. Args: path: Destination image…, recipe(), test_image_bounds_must_overlap_most_of_page_area(), test_image_folder_records_image_set_source_type() (+13 more)
 
 ### Community 49 - "model_validator"
-Cohesion: 0.05
-Nodes (25): _known_page_space_ids(), _known_preparation_space_ids(), model_validator, Require baseline_coordinate_space_id exactly when baseline is present. Returns:…, Collect coordinate-space ids declared by preparation context. Args:…, Collect coordinate-space ids usable by page-graph geometry. Args:…, Reject duplicate ids and dangling page-graph references. Returns: The validated…, Require provenance pointers to stay local to the owning page. Args: provenance:… (+17 more)
+Cohesion: 0.04
+Nodes (29): _known_page_space_ids(), _known_preparation_space_ids(), model_validator, Require baseline_coordinate_space_id exactly when baseline is present. Returns:…, Collect coordinate-space ids declared by preparation context. Args:…, Collect coordinate-space ids usable by page-graph geometry. Args:…, Reject duplicate ids and dangling page-graph references. Returns: The validated…, Require provenance pointers to stay local to the owning page. Args: provenance:… (+21 more)
 
 ### Community 50 - "test_page_interchange.py"
 Cohesion: 0.10
 Nodes (34): _export_note_page(), _line_unicode(), _page_element(), _parse_native_corrected(), Element, parametrize, Path, Export should round PAGE coordinates to importer-friendly integers. (+26 more)
 
-### Community 51 - "Settings"
+### Community 51 - "EndpointLifecycleService"
 Cohesion: 0.10
-Nodes (31): BaseSettings, PydanticBaseSettingsSource, configured_settings(), ExplodingEndpointLifecycleService, fake_service(), FakeEndpointLifecycleService, fixture, patch (+23 more)
+Nodes (24): ExplodingEndpointLifecycleService, Service that raises on ensure_up for fail-closed CLI tests., test_overlay_endpoints_merges_runner_urls_immutably(), EndpointLifecycleError, Raised when Hugging Face endpoint lifecycle operations fail., EndpointDownResult, EndpointEnsureResult, EndpointStatusReport (+16 more)
 
 ### Community 52 - "ResumeLedgerService"
-Cohesion: 0.11
-Nodes (22): Path, test_corrupt_ledger_is_treated_as_empty(), test_missing_ledger_is_empty(), test_record_completed_persists_and_reloads(), test_record_completed_replaces_same_batch_id(), One successfully completed runner batch recorded for resume., Persisted set of successfully completed runner batches under a bundle., ResumeLedger (+14 more)
+Cohesion: 0.13
+Nodes (16): Path, test_corrupt_ledger_is_treated_as_empty(), test_missing_ledger_is_empty(), test_record_completed_persists_and_reloads(), test_record_completed_replaces_same_batch_id(), _atomic_write_text(), Path, Load the on-disk ledger, returning empty on missing or corrupt data. Returns:… (+8 more)
 
-### Community 53 - "EndpointRemoteState"
-Cohesion: 0.10
-Nodes (15): FakeHfEndpointClient, In-memory ``EndpointClient`` double for lifecycle unit tests., test_fake_satisfies_endpoint_client_protocol(), EndpointRemoteState, Remote Inference Endpoint snapshot from Hugging Face Hub., EndpointClient, Protocol, Scale one endpoint to zero replicas. Args: name: Inference Endpoint name in the… (+7 more)
+### Community 53 - "ConfigurationError"
+Cohesion: 0.07
+Nodes (26): _overlay_ensure_endpoints(), Ensure runners and store an in-process Settings URL overlay on ``ctx``. Args:…, build_endpoint_lifecycle_service(), endpoints(), ensure_and_overlay_settings(), group, Ensure, pause, or inspect Hugging Face Inference Endpoints., Construct an ``EndpointLifecycleService`` from effective settings. Args:… (+18 more)
 
-### Community 54 - "cli"
-Cohesion: 0.08
-Nodes (26): _dense_two_column_image(), Image, patch, Test the document-run command., document-run --help exits zero and documents options., Invalid config JSON exits nonzero with a ClickException message., document-run loads config, calls orchestrator, and echoes result., --force sets force_rerun on the config passed to orchestrator.run. (+18 more)
+### Community 54 - "graph_rebase.py"
+Cohesion: 0.26
+Nodes (10): _GraphNode, _apply_leaf_overrides(), _apply_trust_and_review(), _indexes(), Copy overlay trust and review audit fields onto the target node. Args: target:…, Apply leaf override fields present on ``state`` onto ``target``. Illegible does…, Return a new page with leaf overlay overrides and a bumped revision. Structural…, Index page graph nodes by scope and stable object id. Args: page: Page whose… (+2 more)
 
 ### Community 55 - "Hands-Off Operator Path Implementation Plan"
 Cohesion: 0.09
 Nodes (28): DocumentRunOrchestrator Implementation Plan, DocumentRunConfig, DocumentRunOrchestrator, DocumentRunStage, Multi-runner execution run_id, Hands-Off Operator Path Implementation Plan, assemble --from-run CLI, AssembleManifestBuilder (+20 more)
 
-### Community 56 - "PreparedArtifactRef"
-Cohesion: 0.13
-Nodes (31): Return a valid runner execution policy payload with optional overrides., runner_policy_payload(), artifacts(), capability(), policy(), _prepared_unit(), Return a default multi-item runner capability with optional overrides., Return a default runner execution policy with optional overrides. (+23 more)
+### Community 56 - "RunnerBatchPlanner"
+Cohesion: 0.25
+Nodes (21): Return a valid runner execution policy payload with optional overrides., runner_policy_payload(), artifacts(), capability(), policy(), _prepared_unit(), Return a default multi-item runner capability with optional overrides., Return a default runner execution policy with optional overrides. (+13 more)
 
-### Community 57 - "test_endpoint_lifecycle.py"
-Cohesion: 0.30
-Nodes (17): _assert_is_endpoint_client(), _catalog(), Path, _service(), _settings(), test_down_pauses_by_default_delete_flag_destroys(), test_ensure_up_already_running_skips_create_and_resume(), test_ensure_up_creates_missing_and_returns_https_url() (+9 more)
+### Community 57 - "DocumentExportService"
+Cohesion: 0.04
+Nodes (49): _body_region_page(), _document_bundle(), _load_frozen_document_bundle_v1(), _load_minimal_bundle(), _merge_page_regions(), _minimal_document_bundle(), Bold+italic spans use ***text*** with bold outside italic., Notes without a parent region still appear in the Notes section. (+41 more)
 
 ### Community 58 - "EndpointCatalogEntry"
-Cohesion: 0.16
-Nodes (15): test_catalog_entry_rejects_mutable_revision(), test_default_catalog_includes_olmocr_and_kraken(), test_default_catalog_revisions_are_immutable(), test_mutable_revision_rejected(), test_settings_idle_and_ledger_defaults(), default_endpoint_catalog(), EndpointCatalogEntry, mutable_revision_rejected() (+7 more)
+Cohesion: 0.14
+Nodes (16): test_catalog_entry_rejects_mutable_revision(), test_default_catalog_includes_olmocr_and_kraken(), test_default_catalog_revisions_are_immutable(), test_mutable_revision_rejected(), test_settings_idle_and_ledger_defaults(), default_endpoint_catalog(), EndpointCatalogEntry, mutable_revision_rejected() (+8 more)
 
-### Community 59 - "SourceAcquisitionService"
-Cohesion: 0.21
-Nodes (21): pdf_fixture(), Path, Load the Phase 3 recipe fixture with optional field overrides. Keyword Args:…, Build a one-page blank PDF for acquisition tests. Args: tmp_path: Optional…, Write a tiny RGB PNG/JPEG/TIFF image to ``path``. Args: path: Destination image…, recipe(), test_image_bounds_must_overlap_most_of_page_area(), test_image_folder_records_image_set_source_type() (+13 more)
+### Community 59 - "valid_bundle_page"
+Cohesion: 0.18
+Nodes (11): _provenance(), Return valid single-page object provenance., Existing provenance fixtures stay valid without alternate candidates., Document page ids must stay unique., Source page_count must remain exact versus exported pages., Return a minimal valid page graph for join-reference tests., test_bundle_rejects_unknown_line_join_target(), test_document_bundle_rejects_duplicate_page_ids() (+3 more)
 
 ### Community 60 - "Phase 2 Gold Evaluator Plan"
 Cohesion: 0.12
 Nodes (19): Phase 2 Gold Evaluator Plan, EvaluationService, GoldLineJoin, regex Unicode Grapheme Clusters, Phase 3 Acquisition Preparation Plan, PagePreparationService, Pillow and pypdfium2 Stack, SourceAcquisitionService (+11 more)
 
 ### Community 61 - "RunnerInputPackager"
-Cohesion: 0.12
+Cohesion: 0.11
 Nodes (30): bundle_root(), planned_batch(), fixture, Path, Build a planned batch aligned with ``prepared-inputs.json``., Create a bundle root with PNG inputs for packaging tests., test_direct_packaging_references_original_artifact(), test_direct_packaging_rejects_multi_item_batch() (+22 more)
 
 ### Community 62 - "Spec 0012: Runner Execution and Batch Policy"
@@ -458,13 +478,13 @@ Nodes (17): Spec 0012: Runner Execution and Batch Policy, Batching Policy, Huggi
 Cohesion: 0.13
 Nodes (16): OCR Learning Goal Record, Witness-first OCR to structured data learning goal, Lesson 0004 Lossless OCR Pipeline, OCR produces evidence; structured data produces claims, Lower CER can still reduce trustworthiness via silent normalization, Review by exception, Seven-stage OCR-to-structured-data pipeline, Lesson 0005 Input Quality and Page Preparation (+8 more)
 
-### Community 64 - "TestCLIReview"
-Cohesion: 0.17
-Nodes (9): Test review apply and materialize commands., Write a minimal Spec 0002 bundle tree under ``bundle_root``., Apply appends overlay events and materializes current_state.json., Re-applying the same overlay must not rewrite prior JSONL bytes., Materialize replays JSONL history into current_state.json., Apply fails when --page-id does not match the overlay file., Apply fails when overlay tasks reference ids absent from the page., Materialize fails when the bundle has no matching page id. (+1 more)
+### Community 64 - "ReviewOverlayService"
+Cohesion: 0.12
+Nodes (16): Test review apply and materialize commands., Write a minimal Spec 0002 bundle tree under ``bundle_root``., Apply appends overlay events and materializes current_state.json., Re-applying the same overlay must not rewrite prior JSONL bytes., Materialize replays JSONL history into current_state.json., Apply fails when --page-id does not match the overlay file., Apply fails when overlay tasks reference ids absent from the page., Materialize fails when the bundle has no matching page id. (+8 more)
 
-### Community 65 - "RagChunk"
-Cohesion: 0.16
-Nodes (9): RagChunk, Page-local retrieval chunk., Build cross-page stitched chunks from contiguous BODY region runs. Args:…, Emit one stitched chunk when a BODY run spans multiple pages. Args:…, Collect ordered distinct page ids from component chunks. Args: chunks: Region…, Union source object ids from component region chunks. Args: chunks: Region…, Union provenance pointers from component region chunks. Args: chunks: Region…, Aggregate trust from one or more trust-state values. Args: trust_states: Trust… (+1 more)
+### Community 65 - "AbstainingMergeService"
+Cohesion: 0.07
+Nodes (39): _adapt_olmocr_and_kraken(), _coordinate_space(), _kraken_preferring_policy(), _olmocr_preferring_policy(), _prepared_page(), Path, Return multi-witness merge policy with kraken-first structure scaffold., Return multi-witness merge policy with olmOCR-first structure scaffold. (+31 more)
 
 ### Community 66 - "Architecture review — wordwending"
 Cohesion: 0.18
@@ -478,13 +498,13 @@ Nodes (14): Config, cli_context(), mock_console(), mock_settings(), fixture, pyt
 Cohesion: 0.14
 Nodes (8): Settings output must not expose the raw Hugging Face token., Test the settings command., Test the settings command with table output., Test the settings command with JSON output., Test the settings command with text output., Test the settings command with verbose flag., Test the settings command with custom config file., TestCLISettings
 
-### Community 69 - "TestCLIGlobalOptions"
-Cohesion: 0.14
-Nodes (8): Test global CLI options., Test verbose flag is properly set., Test quiet flag is properly set., Test default output format is table., Test JSON output format., Test text output format., Test invalid output format., TestCLIGlobalOptions
+### Community 69 - "test_text_normalization.py"
+Cohesion: 0.07
+Nodes (31): _load_cases(), _page_witnesses(), _policy_from_overrides(), _provenance(), Any, parametrize, Return valid single-page object provenance., Return page-local witnesses matching fixture provenance. (+23 more)
 
-### Community 70 - "build_endpoint_lifecycle_service"
-Cohesion: 0.15
-Nodes (20): test_overlay_endpoints_merges_runner_urls_immutably(), build_endpoint_lifecycle_service(), endpoints_down(), endpoints_status(), endpoints_up(), ensure_and_overlay_settings(), _handle_lifecycle_errors(), command (+12 more)
+### Community 70 - "endpoints_down"
+Cohesion: 0.26
+Nodes (14): endpoints_down(), endpoints_status(), endpoints_up(), _handle_lifecycle_errors(), command, Context, option, pass_context (+6 more)
 
 ### Community 71 - "Architecture documentation index"
 Cohesion: 0.22
@@ -522,13 +542,13 @@ Nodes (12): Normalized structured export layer, Overlay correction layer, Raw OC
 Cohesion: 0.21
 Nodes (8): Test error printing functions., Test basic error printing., Test error printing with suggestions., Test error printing without suggestions., Test error panel has correct styling., TestPrintError, print_error(), Print error message with optional suggestions. Args: message: Error message…
 
-### Community 80 - "Image"
-Cohesion: 0.07
-Nodes (42): _adaptive_binary(), _apply_binarize(), _apply_color_mode(), _apply_recipe_transforms(), _column_ink_profile(), _crop_box(), _downsample_for_heuristics(), _fill_color() (+34 more)
+### Community 80 - "services/preparation.py"
+Cohesion: 0.06
+Nodes (80): AssessmentThresholds, BaseModel, QualitySignal, One measured image-quality signal from preparation assessment., Calibratable limits for deterministic image-quality heuristics., _adaptive_binary(), _apply_binarize(), _bleedthrough_signal() (+72 more)
 
-### Community 81 - "_AssembleExecution"
-Cohesion: 0.14
-Nodes (16): _AssembleExecution, _bundle_ready_page(), Path, Per-run mutable assemble state and page loop. Args: adapter: Witness adaptation…, Initialize per-run assemble accumulators. Keyword Args: adapter: Witness…, Adapt, merge, and accumulate one page into run state. Args: page_request:…, Adapt every raw witness on one page with unique-id checks. Args: page_request:…, Reject duplicate ``witness_id`` within a page or across pages. Keyword Args:… (+8 more)
+### Community 81 - "test_endpoint_lifecycle.py"
+Cohesion: 0.16
+Nodes (22): _assert_is_endpoint_client(), _catalog(), FakeHfEndpointClient, Path, In-memory ``EndpointClient`` double for lifecycle unit tests., _service(), _settings(), test_down_pauses_by_default_delete_flag_destroys() (+14 more)
 
 ### Community 82 - "._coords"
 Cohesion: 0.21
@@ -550,17 +570,17 @@ Nodes (6): Path, Merge PAGE-supported corrections into canonical sidecar data. A
 Cohesion: 0.22
 Nodes (10): Layer 1 evidence-preserving OCR intermediate structure, Document bundle, Merge policy, Page bundle, Page graph (region/line/span/note), Page-local truth design principle, ADR 0002: Top-Level Artifact Is Document Bundle Per Run, Spec 0009: Merge and Alignment (+2 more)
 
-### Community 87 - "._bbox_from_coords"
-Cohesion: 0.21
-Nodes (6): Merge PAGE geometry and reading order into one region record. Args: region:…, Merge PAGE geometry into one line record. Args: line: Canonical line from the…, Parse PAGE point strings into coordinate pairs. Args: points: Space-separated…, Derive one axis-aligned box from PAGE Coords. Args: coords: Optional PAGE…, Derive one polygon from PAGE Coords when enough points exist. Args: coords:…, Derive one point list from PAGE Baseline or Coords. Args: element: Optional…
+### Community 87 - "HuggingFaceOlmocrRunner"
+Cohesion: 0.05
+Nodes (38): LookupError, _encode_png_base64(), _failed_item_result(), HuggingFaceOlmocrRunner, _load_direct_image(), _load_image_from_pdf(), Any, Client (+30 more)
 
-### Community 88 - "_line_has_required_geometry"
-Cohesion: 0.29
-Nodes (7): _line_has_required_geometry(), BaseModel, Return whether a structured line meets accept rules for its type. Args: line:…, One region from a ``wordwending.kraken_segmentation/v1`` payload., One line from a ``wordwending.kraken_segmentation/v1`` payload., StructuredKrakenLine, StructuredKrakenRegion
+### Community 88 - "witness_adaptation.py"
+Cohesion: 0.09
+Nodes (28): _bbox_from_xyxy(), _extract_openai_chat_completion_content(), _extract_openai_chat_completion_lines(), KrakenChatCompletionAdapter, _line_has_required_geometry(), _points_from_pairs(), _polygon_from_boundary(), BaseModel (+20 more)
 
-### Community 89 - "model_validator"
-Cohesion: 0.22
-Nodes (5): model_validator, Keep tile overlap strictly smaller than tile height. Returns: The validated…, Require a non-empty reason for operator page-class overrides. Returns: The…, Require at least one override choice and a non-empty reason. Returns: The…, Require a non-empty reason for operator preparation overrides. Returns: The…
+### Community 89 - "ReviewSummary"
+Cohesion: 0.20
+Nodes (10): Aside from applied overrides and revision, the page graph is equal., test_rebase_preserves_unrelated_page_fields(), Every line listed by a region must claim that region as parent., Every note listed by a region must claim that region as parent., Region reading_order_index values must be positive and unique., test_bundle_page_rejects_line_not_owned_by_listing_region(), test_bundle_page_rejects_non_positive_or_duplicate_reading_order(), test_bundle_page_rejects_note_not_owned_by_listing_region() (+2 more)
 
 ### Community 90 - "Anglian dialect group"
 Cohesion: 0.22
@@ -570,9 +590,9 @@ Nodes (9): Anglian dialect group, Kentish dialect, Mercian dialect, Northumbrian
 Cohesion: 0.50
 Nodes (3): AnyHttpUrl, field_validator, Require HTTPS for every configured Hugging Face endpoint URL. Args: endpoints:…
 
-### Community 92 - "TestCLIExport"
-Cohesion: 0.25
-Nodes (5): Test the export command., Export writes Spec 0006 derived artifacts under exports/., Export aborts when DocumentBundle JSON fails validation., Export requires --bundle-root., TestCLIExport
+### Community 92 - "_minimal_page_overlay"
+Cohesion: 0.20
+Nodes (8): _minimal_page_overlay(), Bundle pages store review event ids, not an embedded overlay graph., Return a minimal text-review task bound to the overlay defaults., Return a minimal page overlay with one text task and no events., Events must use the same target scope as their review task., Events must bind to the exact guideline revision shown in the task., test_bundle_page_keeps_review_overlay_as_external_references(), _text_review_task()
 
 ### Community 93 - "Learner lacks stable conceptual map of sound-change order"
 Cohesion: 0.29
@@ -582,9 +602,9 @@ Nodes (7): Learner lacks stable conceptual map of sound-change order, OE Grammar
 Cohesion: 0.33
 Nodes (6): Comparative method of reconstruction, Cognate, Reference Reconstruction Glossary, Reflex (descended later form), OE Grammar Resources, Proto-Germanic Introduction: Linguistic Methods
 
-### Community 95 - "test_write_document_exports_writes_derived_views"
-Cohesion: 0.50
-Nodes (4): load_export_minimal_bundle(), Persisted document exports match renderer output and preserve overlays., Load the compact export-fixture DocumentBundle., test_write_document_exports_writes_derived_views()
+### Community 95 - "PreparedArtifactRef"
+Cohesion: 0.04
+Nodes (100): Persisted batch status must agree with submitted and failed items., Runner, overlay, and gold contracts should fit the planned workflow., MockHttpxClient, Minimal httpx client stand-in for hosted runner tests., FakeOlmocrRunner, Stub hosted runner for offline execution orchestration tests., _invoke_hosted_run(), Delegate to the wrapped service and always close the HTTP client. Args: run_id:… (+92 more)
 
 ### Community 96 - "Spec 0007: PDF-to-Image Preparation"
 Cohesion: 0.33
@@ -610,13 +630,13 @@ Nodes (6): ALTO archival OCR XML, hOCR layout-bearing OCR format, Reference 0006
 Cohesion: 0.53
 Nodes (6): Fake PNG Placeholder Content, Hands-Off Prepare Test Fixture, Non-Decodable Raster File, Prepared Page Artifact Slot, Prepared Page Image (page-0001), Source Page page-0001
 
-### Community 102 - "test_assemble_eval_export_wave_a_exit"
-Cohesion: 0.47
-Nodes (5): Path, Copy witness fixture and prepared image under ``bundle_root``., Assemble page graph scores against assemble gold, then export markdown., _stage_bundle_inputs(), test_assemble_eval_export_wave_a_exit()
+### Community 102 - "cli"
+Cohesion: 0.12
+Nodes (19): _dense_two_column_image(), Image, patch, Test the document-run command., document-run --help exits zero and documents options., Invalid config JSON exits nonzero with a ClickException message., document-run loads config, calls orchestrator, and echoes result., --force sets force_rerun on the config passed to orchestrator.run. (+11 more)
 
-### Community 103 - "TestCLIEval"
-Cohesion: 0.50
-Nodes (3): Test the eval command., Test eval writes deterministic PageEvaluationSummary JSON., TestCLIEval
+### Community 103 - "_review_base"
+Cohesion: 0.20
+Nodes (6): Return fields required by every review event., Review-event schema should discriminate on ``action``., Source-triage events carry an explicit disposition and optional reason., Preparation events carry full-page or subdivide plus optional reason., Materialized state must only reference events for the same object., _review_base()
 
 ### Community 104 - "TestPrintSuccess"
 Cohesion: 0.33
@@ -626,9 +646,13 @@ Nodes (4): Test success panel has correct styling., Test success printing functi
 Cohesion: 0.33
 Nodes (4): Test console quiet mode functionality., Test that console can be set to quiet mode., Test that stderr console can be set to quiet mode., TestConsoleQuietMode
 
-### Community 106 - "prepare_pages"
-Cohesion: 0.50
-Nodes (4): prepare_pages(), Acquire and prepare source pages into a reproducible output bundle. Args:…, Reject global CLI overrides when multiple recipes are requested. Args:…, _reject_multi_recipe_global_overrides()
+### Community 106 - "DocumentRunStage"
+Cohesion: 0.10
+Nodes (15): Test the eval command., Test eval writes deterministic PageEvaluationSummary JSON., Test CLI error handling., Test CLI without arguments shows help., Test invalid command shows error., Test the version command., Test the version command displays version information., Test the version command with verbose flag. (+7 more)
+
+### Community 107 - "_review_polygon"
+Cohesion: 0.29
+Nodes (6): Return a valid review geometry bounding box., Return a valid review geometry polygon., Box and polygon must share one coordinate space identity., Region revisions must not mix geometry from different spaces., _review_box(), _review_polygon()
 
 ### Community 108 - "V1 Engine Bake-Off"
 Cohesion: 0.40
@@ -641,6 +665,10 @@ Nodes (5): Spec 0002: V1 Bundle Layout and Data Shape, Document Bundle Layout, N
 ### Community 110 - "Rename bochord to wordwending Implementation Plan"
 Cohesion: 0.40
 Nodes (5): Rename bochord to wordwending Implementation Plan, Big-bang rename on one branch, rg verification gate, Rename bochord to wordwending Design Spec, wordwending identity map
+
+### Community 111 - ".validate_item_page_alignment"
+Cohesion: 0.29
+Nodes (4): model_validator, Require one page number for every packaged batch item. Returns: The validated…, Keep failure counts and derived throughput internally coherent. Returns: The…, Reject endpoint estimates that exceed the configured run cost cap. Returns: The…
 
 ### Community 112 - "Lesson 0003 Pronouncing Old English Letters"
 Cohesion: 0.40
@@ -662,6 +690,10 @@ Nodes (4): Mutable Model Revision Rejection, RunnerCapability, RunnerExecutionBa
 Cohesion: 0.50
 Nodes (3): Test console objects., Test that console objects are properly initialized., TestConsole
 
+### Community 117 - "TestCLIGlobalOptions"
+Cohesion: 0.14
+Nodes (8): Test global CLI options., Test verbose flag is properly set., Test quiet flag is properly set., Test default output format is table., Test JSON output format., Test text output format., Test invalid output format., TestCLIGlobalOptions
+
 ### Community 118 - "Chris Malek"
 Cohesion: 0.67
 Nodes (3): AUTHORS Credits, Chris Malek, MIT License
@@ -670,17 +702,53 @@ Nodes (3): AUTHORS Credits, Chris Malek, MIT License
 Cohesion: 0.67
 Nodes (3): Five-layer philology-aware metric stack, Character Error Rate (CER), Word Error Rate (WER)
 
-### Community 120 - "test_live_hf_bakeoff_requires_integration_marker"
+### Community 120 - "test_assemble_eval_export_wave_a_exit"
+Cohesion: 0.47
+Nodes (5): Path, Copy witness fixture and prepared image under ``bundle_root``., Assemble page graph scores against assemble gold, then export markdown., _stage_bundle_inputs(), test_assemble_eval_export_wave_a_exit()
+
+### Community 121 - "ResumeLedger"
+Cohesion: 0.33
+Nodes (6): One successfully completed runner batch recorded for resume., Persisted set of successfully completed runner batches under a bundle., ResumeLedger, ResumeLedgerEntry, datetime, Record one successfully completed batch and persist the ledger. Side Effects:…
+
+### Community 123 - "TestCLIExport"
+Cohesion: 0.25
+Nodes (5): Test the export command., Export writes Spec 0006 derived artifacts under exports/., Export aborts when DocumentBundle JSON fails validation., Export requires --bundle-root., TestCLIExport
+
+### Community 124 - ".create_successor"
+Cohesion: 0.25
+Nodes (7): _normalize_tasks(), Normalize a successor task map or list into a task-id dictionary. Args:…, Reject task maps that point at missing successor tasks. Args: task_id_map:…, Derive successor run, graph, and checksum from caller-supplied tasks. Args:…, Build a rebased successor overlay without mutating the predecessor. Copies only…, _require_mapped_tasks(), _successor_bindings()
+
+### Community 134 - "_witness_skip_reason"
+Cohesion: 0.33
+Nodes (6): Return whether a witness coordinate space aligns with the prepared page. Args:…, Return whether every present bounding box uses the expected coordinate space.…, Return the skip reason for a witness excluded from merge eligibility. Args:…, _witness_bounding_box_spaces_match(), _witness_coordinate_space_matches(), _witness_skip_reason()
+
+### Community 135 - "BundlePage"
+Cohesion: 0.06
+Nodes (55): _merge_flag(), Return one merge flag fixture., Assemble projection places each merge flag into its Spec 0005 family., Service API: MergeFlag list → ReviewTask packets via HumanMarkupService., test_project_merge_flags_routes_into_evaluation_families(), test_tasks_from_merge_flags_builds_spec_0005_packets(), _expected_evidence(), _flag() (+47 more)
+
+### Community 136 - "Settings"
+Cohesion: 0.10
+Nodes (30): BaseSettings, PydanticBaseSettingsSource, configured_settings(), fake_service(), FakeEndpointLifecycleService, datetime, fixture, patch (+22 more)
+
+### Community 137 - "model_validator"
+Cohesion: 0.22
+Nodes (5): model_validator, Keep tile overlap strictly smaller than tile height. Returns: The validated…, Require a non-empty reason for operator page-class overrides. Returns: The…, Require at least one override choice and a non-empty reason. Returns: The…, Require a non-empty reason for operator preparation overrides. Returns: The…
+
+### Community 138 - "test_live_hf_bakeoff_requires_integration_marker"
 Cohesion: 0.67
 Nodes (3): integration, Live HF bake-off stays behind pytest.mark.integration (not default suite)., test_live_hf_bakeoff_requires_integration_marker()
 
-### Community 125 - "review.py"
+### Community 139 - "_attach_alternates_to_objects"
+Cohesion: 0.40
+Nodes (5): _LayoutObject, _apply_layout_merge_confidence(), _attach_alternates_to_objects(), Stamp merge confidence onto accepted layout objects. Args: objects: Accepted…, Attach the same alternate payloads to every layout object. Args: objects:…
+
+### Community 140 - ".read_review_events"
+Cohesion: 0.30
+Nodes (3): Any, Read append-only review events for one page. Args: root: Filesystem root for…, Serialize JSON objects as JSONL with a trailing newline when nonempty. Args:…
+
+### Community 160 - "review.py"
 Cohesion: 0.22
 Nodes (14): command, group, option, Path, Regenerate pending review tasks from one page's evaluation flags. Args:…, Apply overlay corrections onto the page graph and write a successor overlay.…, Apply, materialize, issue, and rebase human review overlays on bundles., Append overlay review events and write materialized overlay state. Args:… (+6 more)
-
-### Community 135 - "BundlePage"
-Cohesion: 0.14
-Nodes (30): _expected_evidence(), _flag(), parametrize, Return a minimal evaluation flag for queue fixtures., Return Spec 0005 evidence order with a dimension-specific item 3., test_adjudication_excludes_page_id_from_related_object_ids(), test_blank_target_object_id_routes_to_adjudication(), test_build_review_tasks_preserves_dimension_specific_coverage() (+22 more)
 
 ## Ambiguous Edges - Review These
 - `i-mutation / i-umlaut` → `Ablaut (inherited vowel alternation)`  [AMBIGUOUS]
@@ -693,7 +761,7 @@ Nodes (30): _expected_evidence(), _flag(), parametrize, Return a minimal evaluat
 ## Knowledge Gaps
 - **145 isolated node(s):** `release.sh script`, `wordwending`, `IPA_AUDIO`, `Locked Decisions`, `Witness content schema (lock)` (+140 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **17 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **25 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -704,11 +772,11 @@ _Questions this graph is uniquely positioned to answer:_
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
 - **What is the exact relationship between `Architecture review — wordwending` and `Phase 6 PassRunner Protocol (COMPLETE)`?**
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **Why does `BundlePage` connect `BundlePage` to `test_ocr_models.py`, `services/preparation.py`, `MergePolicy`, `test_merge_review.py`, `SpanRecord`, `cli.py`, `services/merge.py`, `Path`, `services/evaluation.py`, `SchemaModel`, `ReviewCliService`, `models/__init__.py`, `test_document_run.py`, `test_evaluation_service.py`, `test_text_normalization.py`, `MergeOrchestrator`, `ReviewTask`, `DocumentRunOrchestrator`, `test_assemble_manifest.py`, `test_graph_rebase.py`, `test_review_cli.py`, `PageXmlInterchangeService`, `review_cli.py`, `model_validator`, `test_page_interchange.py`, `RagChunk`, `_AssembleExecution`, `._write_page_xml`?**
-  _High betweenness centrality (0.078) - this node is a cross-community bridge._
-- **Why does `cli()` connect `cli` to `TestCLIReview`, `TestCLISettings`, `TestCLIGlobalOptions`, `test_assemble_eval_export_wave_a_exit`, `TestCLIEval`, `cli.py`, `SchemaModel`, `test_review_cli.py`, `_build_document_run_orchestrator`, `main`, `print_error`, `Settings`, `Path`, `TestCLIExport`?**
-  _High betweenness centrality (0.065) - this node is a cross-community bridge._
-- **Why does `SchemaModel` connect `SchemaModel` to `BundleLayoutService`, `test_ocr_models.py`, `services/preparation.py`, `MergePolicy`, `QualitySignal`, `test_merge_review.py`, `SpanRecord`, `cli.py`, `BundlePage`, `services/evaluation.py`, `models/__init__.py`, `PlannedRunnerBatch`, `test_document_run.py`, `test_evaluation_service.py`, `test_runner_execution.py`, `test_text_normalization.py`, `evaluation_cohorts.py`, `test_assemble.py`, `RunnerThroughputSummary`, `EndpointLifecycleService`, `ReviewTask`, `BundleChecksumService`, `DocumentRunOrchestrator`, `BundlePaths`, `test_graph_rebase.py`, `EndpointSessionLedgerStore`, `ResumeLedgerService`, `EndpointRemoteState`, `PreparedArtifactRef`, `EndpointCatalogEntry`, `RagChunk`?**
-  _High betweenness centrality (0.065) - this node is a cross-community bridge._
+- **Why does `cli()` connect `cli` to `ReviewOverlayService`, `TestCLISettings`, `Settings`, `DocumentRunStage`, `GoldPageAnnotation`, `test_review_cli.py`, `cli.py`, `main`, `print_error`, `_prediction`, `TestCLIGlobalOptions`, `Path`, `test_assemble_eval_export_wave_a_exit`, `TestCLIExport`?**
+  _High betweenness centrality (0.085) - this node is a cross-community bridge._
+- **Why does `BundlePage` connect `BundlePage` to `test_ocr_models.py`, `CoordinateSpace`, `MergePolicy`, `SpanRecord`, `MergeOrchestrator`, `BundlePaths`, `MetricProfile`, `GoldPageAnnotation`, `cli.py`, `ReviewCliService`, `test_merge_review.py`, `_prediction`, `test_document_run.py`, `test_evaluation_service.py`, `models/__init__.py`, `services/merge.py`, `DocumentRunOrchestrator`, `test_assemble_manifest.py`, `test_graph_rebase.py`, `test_review_cli.py`, `PageXmlInterchangeService`, `model_validator`, `test_page_interchange.py`, `graph_rebase.py`, `DocumentExportService`, `valid_bundle_page`, `test_text_normalization.py`, `._write_page_xml`, `cli`, `._scored_text_pairs`?**
+  _High betweenness centrality (0.076) - this node is a cross-community bridge._
+- **Why does `SchemaModel` connect `models/__init__.py` to `CoordinateSpace`, `MergePolicy`, `Typography`, `SpanRecord`, `BundlePage`, `BundlePaths`, `MetricProfile`, `GoldPageAnnotation`, `test_preparation_service.py`, `test_merge_review.py`, `test_document_run.py`, `test_evaluation_service.py`, `PageClass`, `PageEvaluationSummary`, `OverlayState`, `BundleChecksumService`, `DocumentRunOrchestrator`, `test_graph_rebase.py`, `EndpointSessionLedgerStore`, `source_acquisition.py`, `EndpointLifecycleService`, `EndpointCatalogEntry`, `test_text_normalization.py`, `services/preparation.py`, `test_endpoint_lifecycle.py`, `ReviewSummary`, `PreparedArtifactRef`, `DocumentRunStage`, `ResumeLedger`?**
+  _High betweenness centrality (0.058) - this node is a cross-community bridge._
 - **Are the 30 inferred relationships involving `BundlePage` (e.g. with `_FakePreparation` and `_FakeRegistry`) actually correct?**
   _`BundlePage` has 30 INFERRED edges - model-reasoned connections that need verification._
