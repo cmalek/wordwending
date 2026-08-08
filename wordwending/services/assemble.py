@@ -105,6 +105,7 @@ class AssembleOrchestrator:
         acquisition: AcquisitionProvenance,
         pages: list[AssemblePageRequest],
         merge_policy: MergePolicy,
+        document_id: str | None = None,
     ) -> DocumentBundle:
         """
         Adapt, merge, and write one document bundle under ``bundle_root``.
@@ -124,6 +125,8 @@ class AssembleOrchestrator:
             acquisition: Acquisition metadata kept with the document.
             pages: Per-page prepared inputs and raw witness refs.
             merge_policy: Versioned merge precedence and thresholds.
+            document_id: Optional authoritative document id; defaults to
+                ``doc-{source.source_id}`` when omitted.
 
         Returns:
             Assembled ``DocumentBundle`` after successful on-disk write.
@@ -151,11 +154,15 @@ class AssembleOrchestrator:
         pending_by_page = execution.project_flags_and_build_pending_tasks(
             run_id=run_id
         )
+        resolved_document_id = (
+            document_id if document_id is not None else f"doc-{source.source_id}"
+        )
         bundle = execution.build_document_bundle(
             source=source,
             bibliographic=bibliographic,
             acquisition=acquisition,
             run_id=run_id,
+            document_id=resolved_document_id,
         )
         self._bundles.write_document_bundle(
             bundle,
@@ -447,6 +454,7 @@ class _AssembleExecution:
         bibliographic: BibliographicProvenance,
         acquisition: AcquisitionProvenance,
         run_id: str,
+        document_id: str,
     ) -> DocumentBundle:
         """
         Build the in-memory document bundle from accumulated page results.
@@ -456,6 +464,7 @@ class _AssembleExecution:
             bibliographic: Bibliographic metadata kept with the document.
             acquisition: Acquisition metadata kept with the document.
             run_id: Deterministic assemble run identifier.
+            document_id: Authoritative document identifier for the bundle.
 
         Returns:
             Document bundle with coherent schema versions and runner set.
@@ -463,7 +472,7 @@ class _AssembleExecution:
         """
         schema_version = BUNDLE_SCHEMA_VERSION
         return DocumentBundle(
-            document_id=f"doc-{source.source_id}",
+            document_id=document_id,
             bundle_schema_version=schema_version,
             source=source,
             bibliographic_provenance=bibliographic,

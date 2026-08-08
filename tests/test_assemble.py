@@ -17,6 +17,7 @@ from wordwending.models import (
     BibliographicProvenance,
     BundlePaths,
     CoordinateSpace,
+    DocumentBundle,
     MergeFlag,
     MergeFlagType,
     MergePageInput,
@@ -539,3 +540,70 @@ def test_assemble_document_happy_path_writes_bundle_tree(tmp_path: Path) -> None
     assert witness_dir.is_dir()
     assert any(witness_dir.iterdir())
     assert (bundle_root / "pages" / "page-0001" / "image" / "page.png").exists()
+
+
+def test_assemble_document_uses_provided_document_id(tmp_path: Path) -> None:
+    """Lock A: optional document_id overrides doc-{source_id} default."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_bundle_inputs(bundle_root)
+    page = AssemblePageRequest(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        raw_witnesses=[
+            RawWitnessRef(
+                witness_id="wit-1",
+                runner_id="olmocr",
+                artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
+                coordinate_space=_coordinate_space(),
+            )
+        ],
+    )
+
+    bundle = _orchestrator().assemble_document(
+        bundle_root=bundle_root,
+        source=_source(),
+        bibliographic=_bibliographic(),
+        acquisition=_acquisition(),
+        pages=[page],
+        merge_policy=_merge_policy(),
+        document_id="doc-config-authoritative",
+    )
+
+    assert bundle.document_id == "doc-config-authoritative"
+    written = DocumentBundle.model_validate_json(
+        (bundle_root / "document-bundle.json").read_text(encoding="utf-8")
+    )
+    assert written.document_id == "doc-config-authoritative"
+
+
+def test_assemble_document_defaults_document_id_from_source(tmp_path: Path) -> None:
+    """Without document_id kwarg, keep doc-{source.source_id}."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_bundle_inputs(bundle_root)
+    page = AssemblePageRequest(
+        page_id="page-0001",
+        page_number=1,
+        prepared_page=_prepared_page(),
+        raw_witnesses=[
+            RawWitnessRef(
+                witness_id="wit-1",
+                runner_id="olmocr",
+                artifact_paths=["raw/witnesses/olmocr-chat-completion-v1.json"],
+                coordinate_space=_coordinate_space(),
+            )
+        ],
+    )
+
+    bundle = _orchestrator().assemble_document(
+        bundle_root=bundle_root,
+        source=_source(),
+        bibliographic=_bibliographic(),
+        acquisition=_acquisition(),
+        pages=[page],
+        merge_policy=_merge_policy(),
+    )
+
+    assert bundle.document_id == f"doc-{_source().source_id}"

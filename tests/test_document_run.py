@@ -1,9 +1,10 @@
 # Copyright (C) 2026 Chris Malek.
-"""Tests for document run configuration and orchestrator prepare/run stages."""
+"""Tests for document run configuration and orchestrator stages."""
 
 from __future__ import annotations
 
 import json
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -11,19 +12,46 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
+from wordwending.models.assemble import (
+    AssembleManifest,
+    AssemblePageRequest,
+    RawWitnessRef,
+)
 from wordwending.models.document_run import (
     DocumentRunConfig,
     DocumentRunnerSpec,
     DocumentRunStage,
 )
-from wordwending.models.ocr import InputKind, PreparedArtifactRef
+from wordwending.models.evaluation import MetricProfile  # noqa: TC001
+from wordwending.models.merge import MergePolicy  # noqa: TC001
+from wordwending.models.ocr import (
+    AcquisitionProvenance,
+    BibliographicProvenance,
+    BundlePage,
+    CoordinateSpace,
+    DocumentBundle,
+    EvaluationFamilySummary,
+    EvaluationFlag,
+    ExportSummary,
+    FlagSeverity,
+    GoldPageAnnotation,
+    InputKind,
+    PageClass,
+    PageEvaluationSummary,
+    PreparationMode,
+    PreparedArtifactRef,
+    PreparedPage,
+    SourceDescriptor,
+)
 from wordwending.models.preparation import PreparationRecipe, PreparationResult
 from wordwending.services.document_run import (
     DocumentRunOrchestrator,
     prepared_artifacts_from_bundle,
 )
+from wordwending.services.review_cli import ReviewIssueResult
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures"
+DOCUMENT_RUN_FIXTURES = FIXTURE_ROOT / "document_run"
 HANDS_OFF_PREP = (
     FIXTURE_ROOT
     / "hands_off"
@@ -36,6 +64,7 @@ HANDS_OFF_PREP = (
 )
 RUNNER_POLICY = FIXTURE_ROOT / "runner" / "olmocr-policy-v1.json"
 PREP_RECIPE = FIXTURE_ROOT / "preparation" / "recipe-v1.json"
+MINIMAL_BUNDLE = FIXTURE_ROOT / "exports" / "minimal-bundle.json"
 
 
 def _runner_reference_payload(runner_id: str = "olmocr") -> dict[str, object]:
@@ -212,18 +241,263 @@ class _FakeRegistry:
         return type(f"FakeRunner_{runner_id}", (), {})
 
 
-def _make_orchestrator(
+def _minimal_document_bundle(
+    *,
+    document_id: str = "doc-source-001",
+    page_id: str = "page-0001",
+) -> DocumentBundle:
+    """Return a tiny DocumentBundle for stubbed assemble/export stages."""
+    base = DocumentBundle.model_validate_json(
+        MINIMAL_BUNDLE.read_text(encoding="utf-8")
+    )
+    page = base.pages[0].model_copy(update={"page_id": page_id, "page_number": 1})
+    return base.model_copy(
+        update={
+            "document_id": document_id,
+            "pages": [page],
+            "source": base.source.model_copy(update={"page_count": 1}),
+        }
+    )
+
+
+def _seed_assemble_inputs(directory: Path) -> None:
+    """Copy provenance, merge policy, gold, and metric fixtures into directory."""
+    directory.mkdir(parents=True, exist_ok=True)
+    for name in (
+        "source.json",
+        "bibliographic.json",
+        "acquisition.json",
+        "merge-policy.json",
+        "gold-page-0001.json",
+        "metric-profile-v1.json",
+    ):
+        shutil.copy(DOCUMENT_RUN_FIXTURES / name, directory / name)
+
+
+@dataclass
+class _RecordingManifestBuilder:
+    """Records AssembleManifestBuilder.build calls."""
+
+    calls: list[dict[str, object]] = field(default_factory=list)
+
+    def build(  # noqa: PLR0913
+        self,
+        *,
+        bundle_root: Path,
+        run_dirs: list[Path],
+        source: SourceDescriptor,
+        bibliographic: BibliographicProvenance,
+        acquisition: AcquisitionProvenance,
+        merge_policy: MergePolicy,
+    ) -> AssembleManifest:
+        self.calls.append(
+            {
+                "bundle_root": bundle_root,
+                "run_dirs": list(run_dirs),
+                "source": source,
+                "bibliographic": bibliographic,
+                "acquisition": acquisition,
+                "merge_policy": merge_policy,
+            }
+        )
+        prepared = PreparedPage(
+            prepared_page_id="prepared-page-1",
+            preparation_mode=PreparationMode.FULL_PAGE,
+            page_class=PageClass.ORDINARY_PROSE,
+            image_path="prepared/page.png",
+            source_artifact_id="source-1",
+            image_checksum="sha256:image",
+            preparation_recipe_id="prep-v1",
+            preparation_recipe_digest="digest-prep-v1",
+            coordinate_space=CoordinateSpace(
+                space_id="prepared-page-1",
+                width_px=200,
+                height_px=300,
+            ),
+        )
+        return AssembleManifest(
+            source=source,
+            bibliographic=bibliographic,
+            acquisition=acquisition,
+            merge_policy=merge_policy,
+            pages=[
+                AssemblePageRequest(
+                    page_id="page-0001",
+                    page_number=1,
+                    prepared_page=prepared,
+                    raw_witnesses=[
+                        RawWitnessRef(
+                            witness_id="wit-1",
+                            runner_id="olmocr",
+                            artifact_paths=["raw/witnesses/stub.json"],
+                            coordinate_space=prepared.coordinate_space,
+                        )
+                    ],
+                )
+            ],
+        )
+
+
+@dataclass
+class _RecordingAssemble:
+    """Records assemble_document calls and writes document-bundle.json."""
+
+    calls: list[dict[str, object]] = field(default_factory=list)
+
+    def assemble_document(self, **kwargs: object) -> DocumentBundle:
+        self.calls.append(dict(kwargs))
+        document_id = kwargs.get("document_id")
+        if not isinstance(document_id, str) or not document_id:
+            source = kwargs["source"]
+            assert isinstance(source, SourceDescriptor)
+            document_id = f"doc-{source.source_id}"
+        bundle = _minimal_document_bundle(document_id=document_id)
+        bundle_root = kwargs["bundle_root"]
+        assert isinstance(bundle_root, Path)
+        bundle_root.mkdir(parents=True, exist_ok=True)
+        (bundle_root / "document-bundle.json").write_text(
+            bundle.model_dump_json(indent=2) + "\n",
+            encoding="utf-8",
+        )
+        return bundle
+
+
+@dataclass
+class _RecordingBundles:
+    """Records BundleLayoutService write-backs used by eval/export."""
+
+    write_page_graph_calls: list[dict[str, object]] = field(default_factory=list)
+    update_document_bundle_page_calls: list[BundlePage] = field(default_factory=list)
+    write_document_exports_calls: list[dict[str, object]] = field(default_factory=list)
+
+    def write_page_graph(
+        self,
+        root: Path,
+        page_number: int,
+        page: BundlePage,
+    ) -> None:
+        self.write_page_graph_calls.append(
+            {"root": root, "page_number": page_number, "page": page}
+        )
+
+    def update_document_bundle_page(self, root: Path, page: BundlePage) -> None:
+        self.update_document_bundle_page_calls.append(page)
+        bundle_path = root / "document-bundle.json"
+        if bundle_path.is_file():
+            bundle = DocumentBundle.model_validate_json(
+                bundle_path.read_text(encoding="utf-8")
+            )
+            pages = [
+                page if existing.page_id == page.page_id else existing
+                for existing in bundle.pages
+            ]
+            updated = bundle.model_copy(update={"pages": pages})
+            bundle_path.write_text(
+                updated.model_dump_json(indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+    def write_document_exports(
+        self,
+        bundle: DocumentBundle,
+        root: Path,
+    ) -> DocumentBundle:
+        self.write_document_exports_calls.append({"bundle": bundle, "root": root})
+        export_root = root / "exports"
+        export_root.mkdir(parents=True, exist_ok=True)
+        (export_root / "document.md").write_text("export", encoding="utf-8")
+        return bundle.model_copy(
+            update={
+                "exports": ExportSummary(
+                    bundle_json_path="exports/bundle.json",
+                    rag_jsonl_path="exports/rag.jsonl",
+                    stitched_chunks_jsonl_path="exports/stitched_chunks.jsonl",
+                    document_markdown_path="exports/document.md",
+                )
+            }
+        )
+
+
+@dataclass
+class _RecordingEvaluation:
+    """Records EvaluationService.evaluate_page calls."""
+
+    calls: list[dict[str, object]] = field(default_factory=list)
+
+    def evaluate_page(
+        self,
+        prediction: BundlePage,
+        gold: GoldPageAnnotation,
+        profile: MetricProfile,
+    ) -> PageEvaluationSummary:
+        self.calls.append(
+            {"prediction": prediction, "gold": gold, "profile": profile}
+        )
+        return PageEvaluationSummary(
+            text=EvaluationFamilySummary(
+                flags=[
+                    EvaluationFlag(
+                        flag_id="eval-flag-1",
+                        flag_type="stub_eval",
+                        severity=FlagSeverity.WARNING,
+                        message="stub eval flag",
+                    )
+                ]
+            )
+        )
+
+
+@dataclass
+class _RecordingReviewCli:
+    """Records ReviewCliService.issue calls."""
+
+    calls: list[dict[str, object]] = field(default_factory=list)
+
+    def issue(
+        self,
+        bundle_root: Path,
+        page_id: str,
+        *,
+        run_id: str | None = None,
+    ) -> ReviewIssueResult:
+        self.calls.append(
+            {"bundle_root": bundle_root, "page_id": page_id, "run_id": run_id}
+        )
+        return ReviewIssueResult(page_id=page_id, task_count=1)
+
+
+def _make_orchestrator(  # noqa: PLR0913
     *,
     preparation: _FakePreparation | None = None,
     registry: _FakeRegistry | None = None,
     factory_calls: list[dict[str, object]] | None = None,
     runner_service: _RecordingRunnerService | None = None,
     endpoint_ensurer: Any = None,
-) -> tuple[DocumentRunOrchestrator, _FakePreparation, _RecordingRunnerService, list]:
+    manifest_builder: _RecordingManifestBuilder | None = None,
+    assemble: _RecordingAssemble | None = None,
+    bundles: _RecordingBundles | None = None,
+    evaluation: _RecordingEvaluation | None = None,
+    review_cli: _RecordingReviewCli | None = None,
+) -> tuple[
+    DocumentRunOrchestrator,
+    _FakePreparation,
+    _RecordingRunnerService,
+    list,
+    _RecordingManifestBuilder,
+    _RecordingAssemble,
+    _RecordingBundles,
+    _RecordingEvaluation,
+    _RecordingReviewCli,
+]:
     prep = preparation or _FakePreparation()
     reg = registry or _FakeRegistry()
     service = runner_service or _RecordingRunnerService()
     calls = factory_calls if factory_calls is not None else []
+    manifest = manifest_builder or _RecordingManifestBuilder()
+    assemble_svc = assemble or _RecordingAssemble()
+    bundles_svc = bundles or _RecordingBundles()
+    evaluation_svc = evaluation or _RecordingEvaluation()
+    review = review_cli or _RecordingReviewCli()
 
     def factory(**kwargs: object) -> _RecordingRunnerService:
         calls.append(kwargs)
@@ -232,13 +506,25 @@ def _make_orchestrator(
     orchestrator = DocumentRunOrchestrator(
         preparation=prep,  # type: ignore[arg-type]
         runner_registry=reg,  # type: ignore[arg-type]
-        manifest_builder=object(),  # type: ignore[arg-type]
-        assemble=object(),  # type: ignore[arg-type]
-        bundles=object(),  # type: ignore[arg-type]
+        manifest_builder=manifest,  # type: ignore[arg-type]
+        assemble=assemble_svc,  # type: ignore[arg-type]
+        bundles=bundles_svc,  # type: ignore[arg-type]
         runner_service_factory=factory,  # type: ignore[arg-type]
+        evaluation=evaluation_svc,  # type: ignore[arg-type]
+        review_cli=review,  # type: ignore[arg-type]
         endpoint_ensurer=endpoint_ensurer,
     )
-    return orchestrator, prep, service, calls
+    return (
+        orchestrator,
+        prep,
+        service,
+        calls,
+        manifest,
+        assemble_svc,
+        bundles_svc,
+        evaluation_svc,
+        review,
+    )
 
 
 def _relative_prepare_run_config(
@@ -444,7 +730,7 @@ def test_prepared_artifacts_from_bundle_prepared_units(tmp_path: Path) -> None:
 
 def test_orchestrator_prepare_then_run_sequencing(tmp_path: Path) -> None:
     config = _absolute_prepare_run_config(tmp_path)
-    orchestrator, prep, service, factory_calls = _make_orchestrator()
+    orchestrator, prep, service, factory_calls, *_ = _make_orchestrator()
     result = orchestrator.run(config)
 
     assert [call[0] for call in prep.calls] == ["prepare_bundle"]
@@ -498,7 +784,7 @@ def test_orchestrator_multi_runner_distinct_execution_dirs(tmp_path: Path) -> No
             ),
         ],
     )
-    orchestrator, prep, service, factory_calls = _make_orchestrator()
+    orchestrator, prep, service, factory_calls, *_ = _make_orchestrator()
     orchestrator.run(config)
 
     assert len(prep.calls) == 1
@@ -521,7 +807,7 @@ def test_orchestrator_ensure_endpoints_calls_ensurer(tmp_path: Path) -> None:
     def ensurer(*, runner_ids: list[str]) -> None:
         ensured.append(list(runner_ids))
 
-    orchestrator, _, service, _ = _make_orchestrator(endpoint_ensurer=ensurer)
+    orchestrator, _, service, *_ = _make_orchestrator(endpoint_ensurer=ensurer)
     orchestrator.run(config)
 
     assert ensured == [["olmocr"]]
@@ -530,7 +816,7 @@ def test_orchestrator_ensure_endpoints_calls_ensurer(tmp_path: Path) -> None:
 
 def test_orchestrator_force_rerun_passed_through(tmp_path: Path) -> None:
     config = _absolute_prepare_run_config(tmp_path, force_rerun=True)
-    orchestrator, _, service, _ = _make_orchestrator()
+    orchestrator, _, service, *_ = _make_orchestrator()
     orchestrator.run(config)
     assert service.calls[0]["force"] is True
 
@@ -544,7 +830,7 @@ def test_orchestrator_multi_recipe_uses_prepare_variants(tmp_path: Path) -> None
         tmp_path,
         recipe_paths=[str(recipe_a), str(recipe_b)],
     )
-    orchestrator, prep, _, _ = _make_orchestrator()
+    orchestrator, prep, *_ = _make_orchestrator()
     orchestrator.run(config)
     assert [call[0] for call in prep.calls] == ["prepare_variants"]
     assert len(prep.calls[0][2]) == 2
@@ -560,7 +846,7 @@ def test_orchestrator_resolves_relative_paths_from_config_dir(
     expected_source = (config_dir / "sources" / "source.pdf").resolve()
     wrong_source_under_bundle = expected_bundle / "sources" / "source.pdf"
 
-    orchestrator, prep, service, factory_calls = _make_orchestrator()
+    orchestrator, prep, service, factory_calls, *_ = _make_orchestrator()
     result = orchestrator.run(config, config_dir=config_dir)
 
     assert [call[0] for call in prep.calls] == ["prepare_bundle"]
@@ -594,7 +880,7 @@ def test_orchestrator_runner_id_mismatch_raises(tmp_path: Path) -> None:
             )
         ],
     )
-    orchestrator, _, _, _ = _make_orchestrator()
+    orchestrator, *_ = _make_orchestrator()
     with pytest.raises(ValueError, match="does not match"):
         orchestrator.run(config, config_dir=config_dir)
     assert ref_path.exists()
@@ -607,22 +893,212 @@ def test_orchestrator_ensure_endpoints_without_ensurer_raises(
     config_dir = tmp_path / "config"
     config_dir.mkdir()
     config = _relative_prepare_run_config(config_dir, ensure_endpoints=True)
-    orchestrator, _, _, _ = _make_orchestrator(endpoint_ensurer=None)
+    orchestrator, *_ = _make_orchestrator(endpoint_ensurer=None)
     with pytest.raises(ValueError, match="ensure_endpoints requires endpoint_ensurer"):
         orchestrator.run(config, config_dir=config_dir)
 
 
-def test_orchestrator_assemble_stage_not_implemented(tmp_path: Path) -> None:
-    config_dir = tmp_path / "config"
-    config_dir.mkdir()
-    config = _relative_prepare_run_config(
-        config_dir,
+def test_orchestrator_full_machine_path_assemble_issue_export(
+    tmp_path: Path,
+) -> None:
+    """Default path without gold: assemble → issue → export with stubbed stages."""
+    _seed_assemble_inputs(tmp_path)
+    config = _absolute_prepare_run_config(
+        tmp_path,
+        source_json=str(tmp_path / "source.json"),
+        bibliographic_json=str(tmp_path / "bibliographic.json"),
+        acquisition_json=str(tmp_path / "acquisition.json"),
+        merge_policy_path=str(tmp_path / "merge-policy.json"),
         stages=[
             DocumentRunStage.PREPARE,
             DocumentRunStage.RUN,
             DocumentRunStage.ASSEMBLE,
+            DocumentRunStage.ISSUE_REVIEW_TASKS,
+            DocumentRunStage.EXPORT,
         ],
     )
-    orchestrator, _, _, _ = _make_orchestrator()
-    with pytest.raises(NotImplementedError, match="assemble"):
-        orchestrator.run(config, config_dir=config_dir)
+    (
+        orchestrator,
+        prep,
+        service,
+        _,
+        manifest,
+        assemble,
+        bundles,
+        evaluation,
+        review,
+    ) = _make_orchestrator()
+    result = orchestrator.run(config)
+
+    assert [call[0] for call in prep.calls] == ["prepare_bundle"]
+    assert len(service.calls) == 1
+    assert DocumentRunStage.EVAL not in result.stages_completed
+    assert evaluation.calls == []
+    assert len(manifest.calls) == 1
+    assert manifest.calls[0]["run_dirs"] == [
+        Path(config.bundle_root) / "runs" / "run-001-olmocr"
+    ]
+    assert len(assemble.calls) == 1
+    assert assemble.calls[0]["document_id"] == "doc-source-001"
+    assert len(review.calls) == 1
+    assert review.calls[0]["run_id"] == "run-001"
+    assert review.calls[0]["page_id"] == "page-0001"
+    assert len(bundles.write_document_exports_calls) == 1
+    assert result.stages_completed == [
+        DocumentRunStage.PREPARE,
+        DocumentRunStage.RUN,
+        DocumentRunStage.ASSEMBLE,
+        DocumentRunStage.ISSUE_REVIEW_TASKS,
+        DocumentRunStage.EXPORT,
+    ]
+    assert result.document_bundle_path == Path(config.bundle_root) / "document-bundle.json"
+    assert result.export_root == Path(config.bundle_root) / "exports"
+    assert result.pending_task_pages == ["page-0001"]
+
+
+def test_orchestrator_skips_eval_when_no_gold(tmp_path: Path) -> None:
+    _seed_assemble_inputs(tmp_path)
+    config = _absolute_prepare_run_config(
+        tmp_path,
+        source_json=str(tmp_path / "source.json"),
+        bibliographic_json=str(tmp_path / "bibliographic.json"),
+        acquisition_json=str(tmp_path / "acquisition.json"),
+        merge_policy_path=str(tmp_path / "merge-policy.json"),
+        stages=None,
+    )
+    assert DocumentRunStage.EVAL not in config.resolved_stages()
+    (
+        orchestrator,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        evaluation,
+        review,
+    ) = _make_orchestrator()
+    result = orchestrator.run(config)
+    assert DocumentRunStage.EVAL not in result.stages_completed
+    assert evaluation.calls == []
+    assert [call["run_id"] for call in review.calls] == ["run-001"]
+
+
+def test_orchestrator_eval_before_issue_writes_page_graph(
+    tmp_path: Path,
+) -> None:
+    _seed_assemble_inputs(tmp_path)
+    config = _absolute_prepare_run_config(
+        tmp_path,
+        source_json=str(tmp_path / "source.json"),
+        bibliographic_json=str(tmp_path / "bibliographic.json"),
+        acquisition_json=str(tmp_path / "acquisition.json"),
+        merge_policy_path=str(tmp_path / "merge-policy.json"),
+        gold_page_paths={"page-0001": str(tmp_path / "gold-page-0001.json")},
+        metric_profile_path=str(tmp_path / "metric-profile-v1.json"),
+        stages=[
+            DocumentRunStage.ASSEMBLE,
+            DocumentRunStage.EVAL,
+            DocumentRunStage.ISSUE_REVIEW_TASKS,
+        ],
+    )
+    call_order: list[str] = []
+
+    class _OrderedEvaluation(_RecordingEvaluation):
+        def evaluate_page(self, prediction, gold, profile):  # type: ignore[no-untyped-def]
+            call_order.append("eval")
+            return super().evaluate_page(prediction, gold, profile)
+
+    class _OrderedReview(_RecordingReviewCli):
+        def issue(self, bundle_root, page_id, *, run_id=None):  # type: ignore[no-untyped-def]
+            call_order.append("issue")
+            return super().issue(bundle_root, page_id, run_id=run_id)
+
+    evaluation = _OrderedEvaluation()
+    review = _OrderedReview()
+    (
+        orchestrator,
+        _,
+        _,
+        _,
+        _,
+        _,
+        bundles,
+        _,
+        _,
+    ) = _make_orchestrator(evaluation=evaluation, review_cli=review)
+    result = orchestrator.run(config)
+
+    assert call_order == ["eval", "issue"]
+    assert len(evaluation.calls) == 1
+    assert evaluation.calls[0]["gold"].page_id == "page-0001"
+    assert len(bundles.write_page_graph_calls) == 1
+    written_page = bundles.write_page_graph_calls[0]["page"]
+    assert isinstance(written_page, BundlePage)
+    assert written_page.evaluation_summary.text is not None
+    assert written_page.evaluation_summary.text.flags
+    assert written_page.evaluation_summary.text.flags[0].flag_id == "eval-flag-1"
+    assert len(bundles.update_document_bundle_page_calls) == 1
+    assert review.calls[0]["run_id"] == "run-001"
+    assert result.stages_completed == [
+        DocumentRunStage.ASSEMBLE,
+        DocumentRunStage.EVAL,
+        DocumentRunStage.ISSUE_REVIEW_TASKS,
+    ]
+
+
+def test_orchestrator_multi_runner_passes_two_run_dirs_to_manifest(
+    tmp_path: Path,
+) -> None:
+    _seed_assemble_inputs(tmp_path)
+    olmocr_ref, olmocr_policy = _write_runner_files(
+        tmp_path / "runners", runner_id="olmocr"
+    )
+    kraken_ref, kraken_policy = _write_runner_files(
+        tmp_path / "runners",
+        runner_id="kraken",
+    )
+    config = _absolute_prepare_run_config(
+        tmp_path,
+        source_json=str(tmp_path / "source.json"),
+        bibliographic_json=str(tmp_path / "bibliographic.json"),
+        acquisition_json=str(tmp_path / "acquisition.json"),
+        merge_policy_path=str(tmp_path / "merge-policy.json"),
+        runners=[
+            DocumentRunnerSpec(
+                runner_id="olmocr",
+                runner_reference_path=str(olmocr_ref),
+                policy_path=str(olmocr_policy),
+            ),
+            DocumentRunnerSpec(
+                runner_id="kraken",
+                runner_reference_path=str(kraken_ref),
+                policy_path=str(kraken_policy),
+            ),
+        ],
+        stages=[DocumentRunStage.ASSEMBLE],
+    )
+    orchestrator, _, _, _, manifest, *_ = _make_orchestrator()
+    orchestrator.run(config)
+    bundle = Path(config.bundle_root)
+    assert manifest.calls[0]["run_dirs"] == [
+        bundle / "runs" / "run-001-olmocr",
+        bundle / "runs" / "run-001-kraken",
+    ]
+
+
+def test_orchestrator_assemble_passes_config_document_id(tmp_path: Path) -> None:
+    _seed_assemble_inputs(tmp_path)
+    config = _absolute_prepare_run_config(
+        tmp_path,
+        document_id="doc-config-authoritative",
+        source_json=str(tmp_path / "source.json"),
+        bibliographic_json=str(tmp_path / "bibliographic.json"),
+        acquisition_json=str(tmp_path / "acquisition.json"),
+        merge_policy_path=str(tmp_path / "merge-policy.json"),
+        stages=[DocumentRunStage.ASSEMBLE],
+    )
+    orchestrator, _, _, _, _, assemble, *_ = _make_orchestrator()
+    result = orchestrator.run(config)
+    assert assemble.calls[0]["document_id"] == "doc-config-authoritative"
+    assert result.document_bundle_path == Path(config.bundle_root) / "document-bundle.json"

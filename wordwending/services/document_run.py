@@ -5,15 +5,28 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from wordwending.models.document_run import (
     DocumentRunConfig,
     DocumentRunStage,
 )
-from wordwending.models.ocr import InputKind, PreparedArtifactRef, RunnerReference
+from wordwending.models.evaluation import MetricProfile
+from wordwending.models.merge import MergePolicy
+from wordwending.models.ocr import (
+    AcquisitionProvenance,
+    BibliographicProvenance,
+    BundlePage,
+    DocumentBundle,
+    GoldPageAnnotation,
+    InputKind,
+    PreparedArtifactRef,
+    RunnerReference,
+    SourceDescriptor,
+)
 from wordwending.models.preparation import PreparationRecipe, PreparationResult
 from wordwending.models.runner_execution import RunnerExecutionPolicy
+from wordwending.services.assemble import DOCUMENT_BUNDLE_JSON
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -46,6 +59,20 @@ class DocumentRunResult:
     export_root: Path | None
     #: Page ids with pending review tasks after issue, when issued.
     pending_task_pages: list[str]
+
+
+@dataclass
+class _DocumentRunState:
+    """Mutable per-run accumulator for orchestrator stage outputs."""
+
+    #: Path to written ``document-bundle.json`` after assemble.
+    document_bundle_path: Path | None = None
+    #: In-memory assembled bundle kept for eval/issue/export.
+    document_bundle: DocumentBundle | None = None
+    #: Export directory after export stage.
+    export_root: Path | None = None
+    #: Page ids with non-empty pending task queues after issue.
+    pending_task_pages: list[str] | None = None
 
 
 def prepared_artifacts_from_bundle(bundle_root: Path) -> list[PreparedArtifactRef]:
@@ -127,6 +154,21 @@ def _resolve_path(raw: str, *, config_dir: Path | None) -> Path:
     return (config_dir / path).resolve()
 
 
+def _load_json_model(path: Path, model: type[Any]) -> Any:
+    """
+    Load and validate one JSON model from ``path``.
+
+    Args:
+        path: Filesystem path to JSON.
+        model: Pydantic model type with ``model_validate_json``.
+
+    Returns:
+        Validated model instance.
+
+    """
+    return model.model_validate_json(path.read_text(encoding="utf-8"))
+
+
 class DocumentRunOrchestrator:
     """
     Thin facade: sequence existing stage modules for one document run.
@@ -134,13 +176,13 @@ class DocumentRunOrchestrator:
     Args:
         preparation: Bundle preparation service for the prepare stage.
         runner_registry: Registry mapping runner ids to PassRunner classes.
-        manifest_builder: Assemble-from-run manifest builder (Task 3).
-        assemble: Document assemble orchestrator (Task 3).
-        bundles: Bundle layout / export writer (Task 3).
+        manifest_builder: Assemble-from-run manifest builder.
+        assemble: Document assemble orchestrator.
+        bundles: Bundle layout / export writer.
         runner_service_factory: Builds one ``RunnerExecutionService`` per
             runner invocation (mirrors CLI ``_invoke_hosted_run``).
-        evaluation: Optional evaluation service (Task 3).
-        review_cli: Optional review issue collaborator (Task 3).
+        evaluation: Optional evaluation service for the eval stage.
+        review_cli: Optional review issue collaborator.
         endpoint_ensurer: Optional ensure/overlay callable invoked when
             ``config.ensure_endpoints`` is true.
 
@@ -165,13 +207,13 @@ class DocumentRunOrchestrator:
         Keyword Args:
             preparation: Bundle preparation service for the prepare stage.
             runner_registry: Registry mapping runner ids to PassRunner classes.
-            manifest_builder: Assemble-from-run manifest builder (Task 3).
-            assemble: Document assemble orchestrator (Task 3).
-            bundles: Bundle layout / export writer (Task 3).
+            manifest_builder: Assemble-from-run manifest builder.
+            assemble: Document assemble orchestrator.
+            bundles: Bundle layout / export writer.
             runner_service_factory: Builds one ``RunnerExecutionService`` per
                 runner invocation.
-            evaluation: Optional evaluation service (Task 3).
-            review_cli: Optional review issue collaborator (Task 3).
+            evaluation: Optional evaluation service for the eval stage.
+            review_cli: Optional review issue collaborator.
             endpoint_ensurer: Optional ensure/overlay callable for endpoints.
 
         """
@@ -179,11 +221,11 @@ class DocumentRunOrchestrator:
         self._preparation = preparation
         #: Registry mapping runner ids to PassRunner classes.
         self._runner_registry = runner_registry
-        #: Assemble-from-run manifest builder (filled in later stages).
+        #: Assemble-from-run manifest builder.
         self._manifest_builder = manifest_builder
-        #: Document assemble orchestrator (filled in later stages).
+        #: Document assemble orchestrator.
         self._assemble = assemble
-        #: Bundle layout / export writer (filled in later stages).
+        #: Bundle layout / export writer.
         self._bundles = bundles
         #: Factory producing one RunnerExecutionService per runner invocation.
         self._runner_service_factory = runner_service_factory
@@ -215,39 +257,92 @@ class DocumentRunOrchestrator:
             Summary of completed stages and output locations.
 
         Raises:
-            NotImplementedError: When a stage beyond prepare/run is requested.
             ValueError: When relative paths lack ``config_dir``, runner ids
-                mismatch references, or ``ensure_endpoints`` lacks an ensurer.
+                mismatch references, required collaborators are missing, or
+                ``ensure_endpoints`` lacks an ensurer.
 
         """
         bundle_root = _resolve_path(config.bundle_root, config_dir=config_dir)
+        state = _DocumentRunState()
         stages_completed: list[DocumentRunStage] = []
         for stage in config.resolved_stages():
-            if stage is DocumentRunStage.PREPARE:
-                self._run_prepare(
-                    config,
-                    bundle_root=bundle_root,
-                    config_dir=config_dir,
-                )
-            elif stage is DocumentRunStage.RUN:
-                self._run_runners(
-                    config,
-                    bundle_root=bundle_root,
-                    config_dir=config_dir,
-                )
-            else:
-                msg = f"stage {stage.value!r} is not implemented yet"
-                raise NotImplementedError(msg)
+            self._dispatch_stage(
+                stage,
+                config,
+                bundle_root=bundle_root,
+                config_dir=config_dir,
+                state=state,
+            )
             stages_completed.append(stage)
         return DocumentRunResult(
             run_id=config.run_id,
             document_id=config.document_id,
             bundle_root=bundle_root,
             stages_completed=stages_completed,
-            document_bundle_path=None,
-            export_root=None,
-            pending_task_pages=[],
+            document_bundle_path=state.document_bundle_path,
+            export_root=state.export_root,
+            pending_task_pages=list(state.pending_task_pages or []),
         )
+
+    def _dispatch_stage(
+        self,
+        stage: DocumentRunStage,
+        config: DocumentRunConfig,
+        *,
+        bundle_root: Path,
+        config_dir: Path | None,
+        state: _DocumentRunState,
+    ) -> None:
+        """
+        Run one stage, updating ``state`` as needed.
+
+        Args:
+            stage: Stage to execute.
+            config: Document run configuration.
+
+        Keyword Args:
+            bundle_root: Resolved bundle root.
+            config_dir: Base for relative config paths.
+            state: Mutable per-run accumulator.
+
+        Raises:
+            ValueError: When a required collaborator is missing.
+
+        """
+        if stage is DocumentRunStage.PREPARE:
+            self._run_prepare(
+                config, bundle_root=bundle_root, config_dir=config_dir
+            )
+            return
+        if stage is DocumentRunStage.RUN:
+            self._run_runners(
+                config, bundle_root=bundle_root, config_dir=config_dir
+            )
+            return
+        if stage is DocumentRunStage.ASSEMBLE:
+            self._run_assemble(
+                config,
+                bundle_root=bundle_root,
+                config_dir=config_dir,
+                state=state,
+            )
+            return
+        if stage is DocumentRunStage.EVAL:
+            self._run_eval(
+                config,
+                bundle_root=bundle_root,
+                config_dir=config_dir,
+                state=state,
+            )
+            return
+        if stage is DocumentRunStage.ISSUE_REVIEW_TASKS:
+            self._run_issue_review_tasks(config, bundle_root=bundle_root, state=state)
+            return
+        if stage is DocumentRunStage.EXPORT:
+            self._run_export(bundle_root=bundle_root, state=state)
+            return
+        msg = f"unsupported document run stage: {stage!r}"
+        raise ValueError(msg)
 
     def _run_prepare(
         self,
@@ -352,3 +447,273 @@ class DocumentRunOrchestrator:
                 output_dir,
                 force=config.force_rerun,
             )
+
+    def _run_assemble(
+        self,
+        config: DocumentRunConfig,
+        *,
+        bundle_root: Path,
+        config_dir: Path | None,
+        state: _DocumentRunState,
+    ) -> None:
+        """
+        Build assemble manifest from run dirs and write the document bundle.
+
+        Side Effects:
+            Copies witnesses via the manifest builder and writes the Spec 0002
+            document bundle under ``bundle_root``.
+
+        Args:
+            config: Document run configuration.
+
+        Keyword Args:
+            bundle_root: Bundle root owning prepare/run trees and assemble output.
+            config_dir: Base for relative provenance/policy paths.
+            state: Mutable per-run accumulator receiving the written bundle.
+
+        """
+        source, bibliographic, acquisition, merge_policy = self._load_assemble_inputs(
+            config, config_dir=config_dir
+        )
+        run_dirs = [
+            bundle_root / "runs" / f"{config.run_id}-{spec.runner_id}"
+            for spec in config.runners
+        ]
+        manifest = self._manifest_builder.build(
+            bundle_root=bundle_root,
+            run_dirs=run_dirs,
+            source=source,
+            bibliographic=bibliographic,
+            acquisition=acquisition,
+            merge_policy=merge_policy,
+        )
+        bundle = self._assemble.assemble_document(
+            bundle_root=bundle_root,
+            source=manifest.source,
+            bibliographic=manifest.bibliographic,
+            acquisition=manifest.acquisition,
+            pages=manifest.pages,
+            merge_policy=manifest.merge_policy,
+            document_id=config.document_id,
+        )
+        state.document_bundle = bundle
+        state.document_bundle_path = bundle_root / DOCUMENT_BUNDLE_JSON
+
+    def _load_assemble_inputs(
+        self,
+        config: DocumentRunConfig,
+        *,
+        config_dir: Path | None,
+    ) -> tuple[
+        SourceDescriptor,
+        BibliographicProvenance,
+        AcquisitionProvenance,
+        MergePolicy,
+    ]:
+        """
+        Load provenance and merge policy JSON for the assemble stage.
+
+        Args:
+            config: Document run configuration.
+
+        Keyword Args:
+            config_dir: Base for relative provenance/policy paths.
+
+        Returns:
+            Source, bibliographic, acquisition, and merge policy models.
+
+        """
+        source = _load_json_model(
+            _resolve_path(config.source_json, config_dir=config_dir),
+            SourceDescriptor,
+        )
+        bibliographic = _load_json_model(
+            _resolve_path(config.bibliographic_json, config_dir=config_dir),
+            BibliographicProvenance,
+        )
+        acquisition = _load_json_model(
+            _resolve_path(config.acquisition_json, config_dir=config_dir),
+            AcquisitionProvenance,
+        )
+        merge_policy = _load_json_model(
+            _resolve_path(config.merge_policy_path, config_dir=config_dir),
+            MergePolicy,
+        )
+        return source, bibliographic, acquisition, merge_policy
+
+    def _run_eval(
+        self,
+        config: DocumentRunConfig,
+        *,
+        bundle_root: Path,
+        config_dir: Path | None,
+        state: _DocumentRunState,
+    ) -> None:
+        """
+        Score gold pages and write evaluation summaries onto page graphs.
+
+        Side Effects:
+            Overwrites page graphs and ``document-bundle.json`` page entries
+            with ``evaluation_summary`` write-back so issue sees eval flags.
+
+        Args:
+            config: Document run configuration.
+
+        Keyword Args:
+            bundle_root: Bundle root containing the assembled document.
+            config_dir: Base for relative gold/metric paths.
+            state: Mutable per-run accumulator holding the assembled bundle.
+
+        Raises:
+            ValueError: When evaluation is requested without a service, metric
+                profile, assembled bundle, or matching page id.
+
+        """
+        if self._evaluation is None:
+            msg = "eval stage requires evaluation service"
+            raise ValueError(msg)
+        if config.metric_profile_path is None:
+            msg = "eval stage requires metric_profile_path"
+            raise ValueError(msg)
+        bundle = self._require_document_bundle(bundle_root=bundle_root, state=state)
+        profile = _load_json_model(
+            _resolve_path(config.metric_profile_path, config_dir=config_dir),
+            MetricProfile,
+        )
+        updated_pages = list(bundle.pages)
+        for page_id, gold_path in config.gold_page_paths.items():
+            gold = _load_json_model(
+                _resolve_path(gold_path, config_dir=config_dir),
+                GoldPageAnnotation,
+            )
+            page = self._page_by_id(bundle, page_id)
+            summary = self._evaluation.evaluate_page(page, gold, profile)
+            updated = page.model_copy(update={"evaluation_summary": summary})
+            self._bundles.write_page_graph(bundle_root, updated.page_number, updated)
+            self._bundles.update_document_bundle_page(bundle_root, updated)
+            updated_pages = [
+                updated if existing.page_id == page_id else existing
+                for existing in updated_pages
+            ]
+        state.document_bundle = bundle.model_copy(update={"pages": updated_pages})
+
+    def _run_issue_review_tasks(
+        self,
+        config: DocumentRunConfig,
+        *,
+        bundle_root: Path,
+        state: _DocumentRunState,
+    ) -> None:
+        """
+        Rebuild pending review tasks from current page evaluation flags.
+
+        Side Effects:
+            Calls ``ReviewCliService.issue`` per page, rewriting pending task
+            queues under each page tree.
+
+        Args:
+            config: Document run configuration.
+
+        Keyword Args:
+            bundle_root: Bundle root containing the assembled document.
+            state: Mutable per-run accumulator receiving pending page ids.
+
+        Raises:
+            ValueError: When issue is requested without ``review_cli`` or an
+                assembled bundle.
+
+        """
+        if self._review_cli is None:
+            msg = "issue_review_tasks stage requires review_cli"
+            raise ValueError(msg)
+        bundle = self._require_document_bundle(bundle_root=bundle_root, state=state)
+        pending: list[str] = []
+        for page in bundle.pages:
+            result = self._review_cli.issue(
+                bundle_root,
+                page.page_id,
+                run_id=config.run_id,
+            )
+            if result.task_count > 0:
+                pending.append(page.page_id)
+        state.pending_task_pages = pending
+
+    def _run_export(
+        self,
+        *,
+        bundle_root: Path,
+        state: _DocumentRunState,
+    ) -> None:
+        """
+        Write derived document exports from ``document-bundle.json``.
+
+        Side Effects:
+            Writes export artifacts under ``bundle_root/exports/``.
+
+        Keyword Args:
+            bundle_root: Bundle root containing ``document-bundle.json``.
+            state: Mutable per-run accumulator receiving ``export_root``.
+
+        Raises:
+            ValueError: When export is requested without an assembled bundle
+                path on disk.
+
+        """
+        bundle = self._require_document_bundle(bundle_root=bundle_root, state=state)
+        self._bundles.write_document_exports(bundle, bundle_root)
+        state.export_root = bundle_root / "exports"
+
+    def _require_document_bundle(
+        self,
+        *,
+        bundle_root: Path,
+        state: _DocumentRunState,
+    ) -> DocumentBundle:
+        """
+        Return the in-memory or on-disk assembled document bundle.
+
+        Keyword Args:
+            bundle_root: Bundle root containing ``document-bundle.json``.
+            state: Mutable per-run accumulator that may already hold the bundle.
+
+        Returns:
+            Assembled document bundle.
+
+        Raises:
+            ValueError: When neither state nor on-disk bundle is available.
+
+        """
+        if state.document_bundle is not None:
+            return state.document_bundle
+        bundle_path = bundle_root / DOCUMENT_BUNDLE_JSON
+        if not bundle_path.is_file():
+            msg = f"document bundle missing at {bundle_path}"
+            raise ValueError(msg)
+        bundle = DocumentBundle.model_validate_json(
+            bundle_path.read_text(encoding="utf-8")
+        )
+        state.document_bundle = bundle
+        state.document_bundle_path = bundle_path
+        return bundle
+
+    @staticmethod
+    def _page_by_id(bundle: DocumentBundle, page_id: str) -> BundlePage:
+        """
+        Locate one page in ``bundle`` by ``page_id``.
+
+        Args:
+            bundle: Assembled document bundle.
+            page_id: Stable page identifier to find.
+
+        Returns:
+            Matching bundle page.
+
+        Raises:
+            ValueError: When no page matches ``page_id``.
+
+        """
+        for page in bundle.pages:
+            if page.page_id == page_id:
+                return page
+        msg = f"assembled bundle has no page with page_id {page_id!r}"
+        raise ValueError(msg)

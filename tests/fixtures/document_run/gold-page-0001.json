@@ -1,0 +1,53 @@
+{
+  "page_id": "page-0001",
+  "page_number": 1,
+  "source_run_id": "run-assemble-1",
+  "base_graph_revision": "graph-assemble-1",
+  "prepared_image_checksum": "sha256:image",
+  "is_partial": true,
+  "coverage": [
+    {
+      "coverage_id": "coverage-assemble-text-1",
+      "dimensions": [
+        "text"
+      ],
+      "target_object_ids": [
+        "prepared-page-1:s0",
+        "prepared-page-1:s1"
+      ],
+      "bounding_box": null,
+      "whole_page": false,
+      "exhaustive": true,
+      "do_not_score": false,
+      "exclusion_reason": null
+    }
+  ],
+  "text_spans": [
+    {
+      "annotation_id": "gold-span-s0",
+      "target_object_id": "prepared-page-1:s0",
+      "bounding_box": null,
+      "polygon": null,
+      "do_not_score": false,
+      "exclusion_reason": null,
+      "text_diplomatic": "Line one of diplomatic text.",
+      "text_normalized": null,
+      "illegible": false
+    },
+    {
+      "annotation_id": "gold-span-s1",
+      "target_object_id": "prepared-page-1:s1",
+      "bounding_box": null,
+      "polygon": null,
+      "do_not_score": false,
+      "exclusion_reason": null,
+      "text_diplomatic": "Line two of diplomatic text.",
+      "text_normalized": null,
+      "illegible": false
+    }
+  ],
+  "style_spans": [],
+  "note_links": [],
+  "regions": [],
+  "line_joins": []
+}
