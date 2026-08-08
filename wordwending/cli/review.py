@@ -16,7 +16,7 @@ from wordwending.services.review_overlay import ReviewOverlayService
 
 @click.group()
 def review() -> None:
-    """Apply, materialize, and regenerate human review overlays on bundles."""
+    """Apply, materialize, issue, and rebase human review overlays on bundles."""
 
 
 @review.command("apply")
@@ -146,3 +146,62 @@ def review_issue(bundle_root: Path, page_id: str, run_id: str | None) -> None:
 
     click.echo(f"page_id: {result.page_id}")
     click.echo(f"tasks: {result.task_count}")
+
+
+@review.command("rebase")
+@click.option(
+    "--bundle-root",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Filesystem root for one assembled document bundle tree.",
+)
+@click.option("--page-id", required=True, help="Stable page identifier to rebase.")
+@click.option(
+    "--graph-revision",
+    default=None,
+    help=(
+        "Explicit successor graph revision; defaults to bumping a trailing "
+        "integer on the current page graph_revision."
+    ),
+)
+def review_rebase(
+    bundle_root: Path,
+    page_id: str,
+    graph_revision: str | None,
+) -> None:
+    """
+    Apply overlay corrections onto the page graph and write a successor overlay.
+
+    Args:
+        bundle_root: Filesystem root for one document bundle tree.
+        page_id: Stable page identifier whose graph is rebased.
+        graph_revision: Optional explicit successor graph revision.
+
+    Side Effects:
+        Overwrites page graph, document-bundle page entry when present,
+        ``overlays/page_overlay.json``, ``overlays/current_state.json``, and
+        ``overlays/pending_tasks.json``. Does not rewrite
+        ``overlays/review_events.jsonl``.
+
+    Raises:
+        click.ClickException: When the page is missing or rebase fails.
+
+    """
+    service = ReviewCliService(
+        layout=BundleLayoutService(),
+        replay=ReviewOverlayService(),
+    )
+    try:
+        result = service.rebase(
+            bundle_root,
+            page_id,
+            graph_revision=graph_revision,
+        )
+    except (OSError, ValidationError, ValueError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(f"page_id: {result.page_id}")
+    click.echo(
+        "graph_revision: "
+        f"{result.old_graph_revision} -> {result.new_graph_revision}"
+    )

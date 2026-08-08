@@ -249,6 +249,19 @@ class BundlePaths:
         """
         return self.page_dir(page_number) / "overlays" / "pending_tasks.json"
 
+    def page_overlay_path(self, page_number: int) -> Path:
+        """
+        Return the current Spec 0014 ``PageOverlay`` snapshot path.
+
+        Args:
+            page_number: 1-based page index within the document bundle.
+
+        Returns:
+            Path such as ``pages/page-0001/overlays/page_overlay.json``.
+
+        """
+        return self.page_dir(page_number) / "overlays" / "page_overlay.json"
+
     def page_export(self, page_number: int, name: str) -> Path:
         """
         Return one page export artifact path.

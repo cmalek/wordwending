@@ -21,6 +21,7 @@ from wordwending.models import (
     OverlayState,
     PageBundleManifest,
     PageEvaluationSummary,
+    PageOverlay,
     ReviewEvent,
     ReviewTask,
     RunnerReference,
@@ -810,6 +811,115 @@ class BundleLayoutService:
         return BundlePage.model_validate_json(
             paths.page_graph(page_number).read_text(encoding="utf-8")
         )
+
+    def write_page_graph(
+        self,
+        root: Path,
+        page_number: int,
+        page: BundlePage,
+    ) -> None:
+        """
+        Overwrite one accepted page graph artifact.
+
+        Side Effects:
+            Atomically replaces ``graph/page_graph.json`` for the page.
+
+        Args:
+            root: Filesystem root for one document bundle tree.
+            page_number: 1-based page index within the document bundle.
+            page: Accepted page graph to persist.
+
+        """
+        paths = BundlePaths(root)
+        _atomic_write_json(
+            paths.page_graph(page_number),
+            page.model_dump(mode="json"),
+        )
+
+    def write_page_overlay(
+        self,
+        root: Path,
+        page_number: int,
+        overlay: PageOverlay,
+    ) -> None:
+        """
+        Overwrite the current Spec 0014 ``PageOverlay`` snapshot.
+
+        Does not rewrite ``overlays/review_events.jsonl`` (ADR 0008).
+
+        Side Effects:
+            Atomically replaces ``overlays/page_overlay.json``.
+
+        Args:
+            root: Filesystem root for one document bundle tree.
+            page_number: 1-based page index within the document bundle.
+            overlay: Current or successor page overlay to persist.
+
+        """
+        paths = BundlePaths(root)
+        _atomic_write_json(
+            paths.page_overlay_path(page_number),
+            overlay.model_dump(mode="json"),
+        )
+
+    def read_page_overlay(self, root: Path, page_number: int) -> PageOverlay:
+        """
+        Read the current Spec 0014 ``PageOverlay`` snapshot.
+
+        Args:
+            root: Filesystem root for one document bundle tree.
+            page_number: 1-based page index within the document bundle.
+
+        Returns:
+            Validated page overlay from ``overlays/page_overlay.json``.
+
+        Raises:
+            FileNotFoundError: If the overlay snapshot does not exist.
+
+        """
+        paths = BundlePaths(root)
+        return PageOverlay.model_validate_json(
+            paths.page_overlay_path(page_number).read_text(encoding="utf-8")
+        )
+
+    def update_document_bundle_page(self, root: Path, page: BundlePage) -> None:
+        """
+        Replace one page entry inside ``document-bundle.json`` when present.
+
+        Side Effects:
+            Atomically rewrites ``document-bundle.json`` with the updated page.
+            No-op when the file is absent (Spec 0002 tree-only layouts).
+
+        Args:
+            root: Filesystem root for one document bundle tree.
+            page: Accepted page graph that replaces the matching ``page_id``.
+
+        Raises:
+            ValueError: If ``document-bundle.json`` exists but has no page with
+                ``page.page_id``.
+
+        """
+        bundle_path = root / "document-bundle.json"
+        if not bundle_path.is_file():
+            return
+        bundle = DocumentBundle.model_validate_json(
+            bundle_path.read_text(encoding="utf-8")
+        )
+        pages: list[BundlePage] = []
+        found = False
+        for existing in bundle.pages:
+            if existing.page_id == page.page_id:
+                pages.append(page)
+                found = True
+            else:
+                pages.append(existing)
+        if not found:
+            msg = (
+                f"document-bundle.json has no page with page_id {page.page_id!r}"
+            )
+            raise ValueError(msg)
+        updated = bundle.model_copy(update={"pages": pages})
+        _atomic_write_json(bundle_path, updated.model_dump(mode="json"))
 
     def append_review_events(
         self,

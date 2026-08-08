@@ -18,6 +18,7 @@ from wordwending.models import (
     BundlePage,
     BundlePaths,
     CoordinateSpace,
+    CorrectTextReviewEvent,
     DocumentBundle,
     EvaluationFamilySummary,
     EvaluationFlag,
@@ -39,6 +40,7 @@ from wordwending.models import (
     ReviewTask,
     ReviewTaskType,
     SpanRecord,
+    TrustState,
     WitnessReference,
 )
 from wordwending.models.merge import MergeFlagType
@@ -555,3 +557,213 @@ def test_review_issue_cli_defaults_run_id_when_bundle_json_absent(
     tasks = layout.read_pending_review_tasks(bundle_root, 1)
     assert len(tasks) == 1
     assert tasks[0].base_run_id == "run-review-issue"
+
+
+def _text_correction_overlay(
+    *,
+    page_id: str = "page-0001",
+    graph_revision: str = "graph-v0",
+    run_id: str = "run-minimal",
+    text_diplomatic: str = "emended",
+) -> PageOverlay:
+    """Return a one-event overlay that corrects span-1 diplomatic text."""
+    task = ReviewTask(
+        task_id="task-text",
+        task_type=ReviewTaskType.TEXT,
+        dimensions=[ReviewDimension.TEXT],
+        target_scope=ReviewScope.SPAN,
+        target_object_ids=["span-1"],
+        related_object_ids=[],
+        question="Correct the span text.",
+        required_evidence=["prepared-page", "witness"],
+        allowed_actions=[ReviewAction.ACCEPT, ReviewAction.CORRECT_TEXT],
+        completion_criteria=["evidence inspected"],
+        guideline_id="review",
+        guideline_version="1.0.0",
+        base_run_id=run_id,
+        base_graph_revision=graph_revision,
+        prepared_image_checksum="sha256:prepared",
+    )
+    event = CorrectTextReviewEvent(
+        event_id="evt-text-correct",
+        task_id="task-text",
+        target_object_id="span-1",
+        target_scope=ReviewScope.SPAN,
+        review_dimensions=[ReviewDimension.TEXT],
+        base_run_id=run_id,
+        base_graph_revision=graph_revision,
+        guideline_version="1.0.0",
+        prior_trust_state=TrustState.MACHINE,
+        new_trust_state=TrustState.CORRECTED,
+        operator_id="editor-1",
+        timestamp_utc="2026-08-07T00:00:00Z",
+        action=ReviewAction.CORRECT_TEXT,
+        text_diplomatic=text_diplomatic,
+    )
+    return PageOverlay(
+        schema_version="1.0.0",
+        overlay_id="overlay-correct-v1",
+        page_id=page_id,
+        source_run_id=run_id,
+        base_graph_revision=graph_revision,
+        prepared_image_checksum="sha256:prepared",
+        review_tasks=[task],
+        review_events=[event],
+        current_state=[],
+    )
+
+
+def _write_document_bundle_json(bundle_root: Path, page: BundlePage) -> None:
+    """Persist document-bundle.json with one accepted page for export."""
+    fixture = json.loads(_MINIMAL_BUNDLE_FIXTURE.read_text(encoding="utf-8"))
+    fixture["pages"] = [json.loads(page.model_dump_json())]
+    (bundle_root / "document-bundle.json").write_text(
+        json.dumps(fixture, indent=2),
+        encoding="utf-8",
+    )
+
+
+def test_rebase_apply_export_sees_corrected_text(tmp_path: Path, runner) -> None:
+    """
+    Apply text correction, rebase into the page graph, then export sees it.
+
+    JSONL history stays append-only; successor overlay binds the new revision.
+    """
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_minimal_bundle(bundle_root, tmp_path)
+    layout = BundleLayoutService()
+    page = layout.read_page_graph(bundle_root, 1)
+    page = page.model_copy(update={"graph_revision": "graph-v0"})
+    assert page.spans[0].text_diplomatic == "hello"
+    _write_page_graph(bundle_root, page)
+    _write_document_bundle_json(bundle_root, page)
+
+    overlay = _text_correction_overlay()
+    service = ReviewCliService(
+        layout=layout,
+        replay=ReviewOverlayService(),
+    )
+    apply_result = service.apply(bundle_root, overlay, page_id="page-0001")
+    assert apply_result.events_appended == 1
+
+    review_events_path = BundlePaths(bundle_root).review_events(1)
+    jsonl_before = review_events_path.read_bytes()
+
+    rebase_result = service.rebase(bundle_root, "page-0001")
+
+    assert rebase_result.old_graph_revision == "graph-v0"
+    assert rebase_result.new_graph_revision == "graph-v1"
+    assert review_events_path.read_bytes() == jsonl_before
+
+    rebased_page = layout.read_page_graph(bundle_root, 1)
+    assert rebased_page.spans[0].text_diplomatic == "emended"
+    assert rebased_page.graph_revision == "graph-v1"
+
+    successor_path = BundlePaths(bundle_root).page_overlay_path(1)
+    assert successor_path.exists()
+    successor = PageOverlay.model_validate_json(
+        successor_path.read_text(encoding="utf-8")
+    )
+    assert successor.base_graph_revision == "graph-v1"
+    assert successor.predecessor_overlay_id == "overlay-correct-v1"
+
+    doc_bundle = DocumentBundle.model_validate_json(
+        (bundle_root / "document-bundle.json").read_text(encoding="utf-8")
+    )
+    assert doc_bundle.pages[0].spans[0].text_diplomatic == "emended"
+    assert doc_bundle.pages[0].graph_revision == "graph-v1"
+
+    export = runner.invoke(
+        cli,
+        [
+            "export",
+            str(bundle_root / "document-bundle.json"),
+            "--bundle-root",
+            str(bundle_root),
+        ],
+    )
+    assert export.exit_code == 0, export.output
+    markdown = (bundle_root / "exports" / "document.md").read_text(encoding="utf-8")
+    assert "emended" in markdown
+    assert "hello" not in markdown.split("## Notes")[0]
+
+
+def test_rebase_drops_pending_tasks_whose_targets_vanished(
+    tmp_path: Path,
+) -> None:
+    """Pending tasks rebound to the new revision; vanished targets are dropped."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_minimal_bundle(bundle_root, tmp_path)
+    layout = BundleLayoutService()
+    page = layout.read_page_graph(bundle_root, 1)
+    page = page.model_copy(update={"graph_revision": "graph-v0"})
+    _write_page_graph(bundle_root, page)
+    _write_document_bundle_json(bundle_root, page)
+
+    keep = _text_task(target_object_ids=["span-1"]).model_copy(
+        update={
+            "task_id": "task-keep",
+            "base_graph_revision": "graph-v0",
+            "base_run_id": "run-minimal",
+            "prepared_image_checksum": "sha256:prepared",
+        }
+    )
+    drop = _text_task(target_object_ids=["span-gone"]).model_copy(
+        update={
+            "task_id": "task-drop",
+            "base_graph_revision": "graph-v0",
+            "base_run_id": "run-minimal",
+            "prepared_image_checksum": "sha256:prepared",
+        }
+    )
+    layout.write_pending_review_tasks(bundle_root, 1, [keep, drop])
+
+    overlay = _text_correction_overlay()
+    service = ReviewCliService(
+        layout=layout,
+        replay=ReviewOverlayService(),
+    )
+    service.apply(bundle_root, overlay, page_id="page-0001")
+    service.rebase(bundle_root, "page-0001")
+
+    pending = layout.read_pending_review_tasks(bundle_root, 1)
+    assert len(pending) == 1
+    assert pending[0].task_id == "task-keep"
+    assert pending[0].base_graph_revision == "graph-v1"
+    assert pending[0].target_object_ids == ["span-1"]
+
+
+def test_review_rebase_cli_echoes_revision_bump(runner, tmp_path: Path) -> None:
+    """CLI review rebase echoes old → new graph revision."""
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    _stage_minimal_bundle(bundle_root, tmp_path)
+    layout = BundleLayoutService()
+    page = layout.read_page_graph(bundle_root, 1)
+    page = page.model_copy(update={"graph_revision": "graph-v0"})
+    _write_page_graph(bundle_root, page)
+    _write_document_bundle_json(bundle_root, page)
+
+    service = ReviewCliService(
+        layout=layout,
+        replay=ReviewOverlayService(),
+    )
+    service.apply(bundle_root, _text_correction_overlay(), page_id="page-0001")
+
+    result = runner.invoke(
+        cli,
+        [
+            "review",
+            "rebase",
+            "--bundle-root",
+            str(bundle_root),
+            "--page-id",
+            "page-0001",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "page_id: page-0001" in result.output
+    assert "graph_revision: graph-v0 -> graph-v1" in result.output
