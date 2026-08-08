@@ -40,9 +40,13 @@ from ..models.merge import MergePolicy
 from ..models.ocr import (
     AcquisitionProvenance,
     BibliographicProvenance,
+    RunnerExecutionBatch,
     SourceDescriptor,
 )
-from ..models.runner_execution import RunnerExecutionPolicy
+from ..models.runner_execution import (
+    RunnerExecutionPolicy,
+    RunnerThroughputSummary,
+)
 from ..services.assemble import DOCUMENT_BUNDLE_JSON, AssembleOrchestrator
 from ..services.assemble_manifest import AssembleManifestBuilder
 from ..services.bakeoff import BakeoffService
@@ -778,7 +782,13 @@ def document_run(ctx: click.Context, config_path: Path, force: bool) -> None:
             config = config.model_copy(update={"force_rerun": True})
         orchestrator = _build_document_run_orchestrator(ctx)
         result = orchestrator.run(config, config_dir=config_path.parent)
-    except (OSError, ValidationError, ValueError) as exc:
+    except (
+        OSError,
+        ValidationError,
+        ValueError,
+        ConfigurationError,
+        UnknownPassRunnerError,
+    ) as exc:
         raise click.ClickException(str(exc)) from exc
 
     _echo_document_run_result(result)
@@ -1162,6 +1172,77 @@ def bakeoff_matrix(  # noqa: PLR0913, PLR0917
     click.echo("phase_5: NOT COMPLETE")
 
 
+class _ClientClosingRunnerExecutionService:
+    """
+    Close a shared ``httpx.Client`` after one ``RunnerExecutionService.run``.
+
+    The document-run orchestrator invokes ``run`` after the runner factory
+    returns, so the factory cannot close the client directly.
+
+    Args:
+        service: Underlying runner execution service.
+        client: Shared HTTP client closed after ``run`` completes.
+
+    """
+
+    def __init__(
+        self,
+        service: RunnerExecutionService,
+        client: httpx.Client,
+    ) -> None:
+        """
+        Store the wrapped service and client to close after ``run``.
+
+        Args:
+            service: Underlying runner execution service.
+            client: Shared HTTP client closed after ``run`` completes.
+
+        """
+        #: Underlying runner execution service.
+        self._service = service
+        #: Shared HTTP client closed after ``run`` completes.
+        self._client = client
+
+    def run(  # noqa: PLR0913
+        self,
+        run_id: str,
+        document_id: str,
+        artifacts: list[PreparedArtifactRef],
+        bundle_root: Path,
+        output_dir: Path,
+        *,
+        force: bool = False,
+    ) -> tuple[list[RunnerExecutionBatch], RunnerThroughputSummary]:
+        """
+        Delegate to the wrapped service and always close the HTTP client.
+
+        Args:
+            run_id: Execution run identifier.
+            document_id: Document identifier under processing.
+            artifacts: Ordered prepared artifacts ready for runner execution.
+            bundle_root: Bundle root containing prepared artifact bytes.
+            output_dir: Output root for batches, inputs, and witnesses.
+
+        Keyword Args:
+            force: When ``True``, bypass the resume ledger and re-run batches.
+
+        Returns:
+            Persisted batch records and the measured throughput summary.
+
+        """
+        try:
+            return self._service.run(
+                run_id,
+                document_id,
+                artifacts,
+                bundle_root,
+                output_dir,
+                force=force,
+            )
+        finally:
+            self._client.close()
+
+
 def _build_document_run_runner_factory(
     ctx: click.Context,
 ) -> Callable[..., RunnerExecutionService]:
@@ -1203,10 +1284,14 @@ def _build_document_run_runner_factory(
             token=token,
             client=client,
         )
-        return RunnerExecutionService(
+        service = RunnerExecutionService(
             RunnerBatchPlanner(),
             RunnerInputPackager(),
             hosted_runner,
+        )
+        return cast(
+            "RunnerExecutionService",
+            _ClientClosingRunnerExecutionService(service, client),
         )
 
     return factory

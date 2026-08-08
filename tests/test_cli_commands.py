@@ -1473,6 +1473,17 @@ class TestCLIDocumentRun:
         assert "--config" in result.output
         assert "--force" in result.output
 
+    def test_document_run_rejects_invalid_config(self, runner, tmp_path) -> None:
+        """Invalid config JSON exits nonzero with a ClickException message."""
+        config_path = tmp_path / "document-run.json"
+        config_path.write_text("{not valid json", encoding="utf-8")
+
+        result = runner.invoke(cli, ["document-run", "--config", str(config_path)])
+
+        assert result.exit_code != 0
+        assert "Error:" in result.output
+        assert "Invalid JSON" in result.output
+
     @patch("wordwending.cli.cli.DocumentRunOrchestrator")
     def test_document_run_loads_config_and_echoes_summary(
         self,
