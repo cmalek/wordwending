@@ -160,8 +160,10 @@ class ReviewCliService:
             Append counts and materialized states for operator reporting.
 
         Side Effects:
-            Appends new events to ``overlays/review_events.jsonl`` and overwrites
-            ``overlays/current_state.json`` from the full append-only history.
+            Appends new events to ``overlays/review_events.jsonl``, overwrites
+            ``overlays/current_state.json`` from the full append-only history,
+            and writes ``overlays/page_overlay.json`` as the predecessor snapshot
+            for rebase.
 
         Raises:
             ValueError: If page id, task targets, or bundle membership fail checks.
